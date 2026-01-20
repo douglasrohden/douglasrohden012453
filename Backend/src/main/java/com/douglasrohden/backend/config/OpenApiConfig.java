@@ -26,19 +26,21 @@ public class OpenApiConfig {
                                 .in(SecurityScheme.In.HEADER)
                                 .name("X-Refresh-Token"));
 
+        components.addSchemas("ErrorResponse", new io.swagger.v3.oas.models.media.Schema<>()
+                .type("object")
+                .addProperties("timestamp", new io.swagger.v3.oas.models.media.StringSchema().example("2026-01-20T00:00:00Z"))
+                .addProperties("status", new io.swagger.v3.oas.models.media.IntegerSchema().example(400))
+                .addProperties("error", new io.swagger.v3.oas.models.media.StringSchema().example("Bad Request"))
+                .addProperties("message", new io.swagger.v3.oas.models.media.StringSchema().example("Campo 'name' é obrigatório"))
+        );
+
         return new OpenAPI()
                 .components(components)
                 .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
                 .info(new Info()
                         .title("Backend API")
                         .version("v1")
-                        .description("API contract (source of truth). JWT + refresh token security. Use /v1 endpoints.\nDefault pagination: query params 'page' (0-based), 'size', 'sort' (e.g. 'name,asc')."))
-                .schema("ErrorResponse", new io.swagger.v3.oas.models.media.Schema<>().type("object")
-                        .addProperties("timestamp", new io.swagger.v3.oas.models.media.StringSchema().example("2026-01-20T00:00:00Z"))
-                        .addProperties("status", new io.swagger.v3.oas.models.media.IntegerSchema().example(400))
-                        .addProperties("error", new io.swagger.v3.oas.models.media.StringSchema().example("Bad Request"))
-                        .addProperties("message", new io.swagger.v3.oas.models.media.StringSchema().example("Campo 'name' é obrigatório")));
-
+                        .description("API contract (source of truth). JWT + refresh token security. Use /v1 endpoints.\nDefault pagination: query params 'page' (0-based), 'size', 'sort' (e.g. 'name,asc')."));
     }
 
     // Global responses customizer removed due to compatibility with current springdoc starter.

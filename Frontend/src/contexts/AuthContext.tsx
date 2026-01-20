@@ -1,5 +1,6 @@
 import { createContext, useContext, ReactNode } from "react";
-import { useAuthFacade } from "../hooks/useAuthFacade";
+import { useObservable } from "../hooks/useObservable";
+import { authStore } from "../store/auth.store";
 
 /**
  * AuthContext - Mantido para compatibilidade com código existente
@@ -15,19 +16,24 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-    const auth = useAuthFacade();
+    const authState = useObservable(authStore.state$, {
+        isAuthenticated: false,
+        user: null,
+        accessToken: null,
+        refreshToken: null,
+    });
 
     const login = (token: string, refreshToken: string, username: string) => {
-        auth.updateTokens(token, refreshToken, username);
+        authStore.setAuthenticated(token, refreshToken, username);
     };
 
     const logout = () => {
-        auth.logout();
+        authStore.clearAuthentication();
     };
 
     const value: AuthContextType = {
-        isAuthenticated: auth.isAuthenticated,
-        user: auth.user,
+        isAuthenticated: authState.isAuthenticated,
+        user: authState.user,
         login,
         logout,
     };

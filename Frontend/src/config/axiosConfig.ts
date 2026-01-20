@@ -44,7 +44,7 @@ api.interceptors.response.use(
 
                     originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
                     return api(originalRequest);
-                } catch (refreshError) {
+                } catch {
                     // If refresh fails, logout user
                     localStorage.removeItem("accessToken");
                     localStorage.removeItem("refreshToken");

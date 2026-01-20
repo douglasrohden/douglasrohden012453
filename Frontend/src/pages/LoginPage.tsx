@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Card, Label, TextInput, Alert } from "flowbite-react";
+import { Button, Card, Label, TextInput, Alert, Spinner } from "flowbite-react";
 import { useAuth } from "../contexts/AuthContext";
 import { authService } from "../services/authService";
 import { useNavigate } from "react-router-dom";
@@ -23,7 +23,7 @@ export default function LoginPage() {
             // Pass the token, refreshToken, and username to context login
             login(data.accessToken, data.refreshToken, username);
             navigate("/");
-        } catch (err: any) {
+        } catch (err) {
             console.error(err);
             setError("Falha no login. Verifique suas credenciais.");
         } finally {
@@ -71,7 +71,8 @@ export default function LoginPage() {
                         />
                     </div>
 
-                    <Button type="submit" className="w-full" isProcessing={loading}>
+                    <Button type="submit" className="w-full" disabled={loading}>
+                        {loading && <Spinner size="sm" aria-label="Loading" className="me-3" light />}
                         Entrar
                     </Button>
                 </form>

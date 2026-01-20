@@ -1,0 +1,2 @@
+@echo off
+docker compose run --rm --entrypoint sh backend -c "mvn -DskipTests -Dflyway.baselineOnMigrate=true -Dflyway.baselineVersion=0 -Dflyway.url=jdbc:postgresql://db:5433/artistsdb -Dflyway.user=postgres -Dflyway.password=postgres flyway:migrate"

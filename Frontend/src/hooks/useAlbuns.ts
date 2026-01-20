@@ -1,17 +1,21 @@
-import { useEffect, useState } from 'react';
-import { getAlbuns } from '../services/albunsService';
+import { useEffect } from 'react';
+import { useObservable } from './useObservable';
+import { albunsFacade } from '../facades/albuns.facade';
 
 export function useAlbuns() {
-  const [albuns, setAlbuns] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const state = useObservable(albunsFacade.state$, {
+    data: [] as any[],
+    loading: false,
+    error: null as string | null,
+  });
 
   useEffect(() => {
-    getAlbuns()
-      .then(setAlbuns)
-      .catch(() => setError('Erro ao buscar álbuns'))
-      .finally(() => setLoading(false));
+    // Fetch on mount if we don't have data yet
+    if (!state.data || state.data.length === 0) {
+      albunsFacade.fetch();
+    }
+    // no cleanup needed here; facade is singleton
   }, []);
 
-  return { albuns, loading, error };
+  return { albuns: state.data ?? [], loading: state.loading, error: state.error };
 }

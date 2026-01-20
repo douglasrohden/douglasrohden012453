@@ -14,12 +14,12 @@ export const artistsService = {
         if (search) {
             params.search = search;
         }
-        const response = await api.get<Page<Artista>>("/v1/artistas", { params });
+        const response = await api.get<Page<Artista>>("/artistas", { params });
         return response.data;
     },
 
     getById: async (id: number) => {
-        const response = await api.get<Artista>(`/v1/artistas/${id}`);
+        const response = await api.get<Artista>(`/artistas/${id}`);
         return response.data;
     },
 };

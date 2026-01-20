@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+// Deprecated: use /actuator/health for health checks
 @RestController
 @RequestMapping("/api/db")
 public class DbPingController {
@@ -18,7 +19,11 @@ public class DbPingController {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    /**
+     * @deprecated Use /actuator/health for health checks. This endpoint is legacy and may be removed.
+     */
     @GetMapping("/ping")
+    @Deprecated
     public Map<String, Object> ping() {
         Integer one = jdbcTemplate.queryForObject("select 1", Integer.class);
         return Map.of(

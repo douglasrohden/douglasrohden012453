@@ -11,6 +11,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import jakarta.persistence.ManyToMany;
+import java.util.Set;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -30,4 +33,7 @@ public class Artista {
 
     // Will handle image storage via MinIO separately or as a URL string for now
     private String imageUrl;
+
+    @ManyToMany
+    private Set<Album> albuns;
 }

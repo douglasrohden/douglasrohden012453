@@ -5,6 +5,8 @@ import { ArtistCard } from "../components/ArtistCard";
 import { useEffect, useState } from "react";
 import { Artista, artistsService } from "../services/artistsService";
 
+import AlbunsList from "../components/AlbunsList";
+
 const SearchIcon = () => (
     <svg
         className="h-5 w-5 text-gray-500 dark:text-gray-400"
@@ -60,6 +62,11 @@ export default function HomePage() {
                         <Button color="light" size="sm" onClick={logout}>
                             Sair
                         </Button>
+
+                    {/* Lista de álbuns (GET) */}
+                    <div className="mt-10">
+                      <AlbunsList />
+                    </div>
                     </div>
                 </div>
 

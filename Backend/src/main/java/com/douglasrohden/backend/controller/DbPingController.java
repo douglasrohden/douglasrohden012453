@@ -22,7 +22,7 @@ public class DbPingController {
     public Map<String, Object> ping() {
         Integer one = jdbcTemplate.queryForObject("select 1", Integer.class);
         return Map.of(
-                "o1k2", one != null && one == 1,
+                "ok", one != null && one == 1,
                 "timestamp", Instant.now().toString());
     }
 }

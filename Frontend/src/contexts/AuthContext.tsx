@@ -1,6 +1,10 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { authService } from "../services/authService";
+import { createContext, useContext, ReactNode } from "react";
+import { useAuthFacade } from "../hooks/useAuthFacade";
 
+/**
+ * AuthContext - Mantido para compatibilidade com código existente
+ * Agora utiliza AuthFacade e BehaviorSubject internamente
+ */
 interface AuthContextType {
     isAuthenticated: boolean;
     user: string | null;
@@ -11,46 +15,30 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-    const [user, setUser] = useState<string | null>(null);
-
-    useEffect(() => {
-        const checkAuth = () => {
-            const isAuth = authService.isAuthenticated();
-            const currentUser = authService.getCurrentUser();
-
-            setIsAuthenticated(isAuth);
-            setUser(currentUser);
-        };
-
-        checkAuth();
-
-        // Listen for storage changes (e.g. from axios interceptor logout)
-        window.addEventListener("storage", checkAuth);
-        return () => window.removeEventListener("storage", checkAuth);
-    }, []);
+    const auth = useAuthFacade();
 
     const login = (token: string, refreshToken: string, username: string) => {
-        localStorage.setItem("accessToken", token);
-        localStorage.setItem("refreshToken", refreshToken);
-        localStorage.setItem("user", username);
-        setIsAuthenticated(true);
-        setUser(username);
+        auth.updateTokens(token, refreshToken, username);
     };
 
     const logout = () => {
-        authService.logout();
-        setIsAuthenticated(false);
-        setUser(null);
+        auth.logout();
     };
 
-    return (
-        <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
-            {children}
-        </AuthContext.Provider>
-    );
+    const value: AuthContextType = {
+        isAuthenticated: auth.isAuthenticated,
+        user: auth.user,
+        login,
+        logout,
+    };
+
+    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
+/**
+ * Hook para usar o AuthContext
+ * @deprecated Prefira usar useAuthFacade() diretamente
+ */
 export const useAuth = () => {
     const context = useContext(AuthContext);
     if (!context) {

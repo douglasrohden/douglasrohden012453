@@ -12,6 +12,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
 import java.util.Set;
 
 @Data
@@ -35,5 +37,10 @@ public class Artista {
     private String imageUrl;
 
     @ManyToMany
+    @JoinTable(
+        name = "artista_album",
+        joinColumns = @JoinColumn(name = "artista_id"),
+        inverseJoinColumns = @JoinColumn(name = "album_id")
+    )
     private Set<Album> albuns;
 }

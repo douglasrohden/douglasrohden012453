@@ -2,6 +2,7 @@ package com.douglasrohden.backend.model;
 
 import jakarta.persistence.*;
 import java.util.Set;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "album")
@@ -16,6 +17,7 @@ public class Album {
 	private String imageUrl;
 
 	@ManyToMany(mappedBy = "albuns")
+	@JsonIgnore
 	private Set<Artista> artistas;
 
 	public Long getId() { return id; }

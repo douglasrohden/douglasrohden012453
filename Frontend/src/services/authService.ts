@@ -22,6 +22,18 @@ export const authService = {
         return response.data;
     },
 
+    refresh: async (refreshToken: string): Promise<LoginResponse> => {
+        // Use raw axios base URL to avoid interceptors
+        const resp = await api.post("/autenticacao/refresh", { refreshToken });
+        if (resp.data.accessToken) {
+            localStorage.setItem("accessToken", resp.data.accessToken);
+            if (resp.data.refreshToken) {
+                localStorage.setItem("refreshToken", resp.data.refreshToken);
+            }
+        }
+        return resp.data;
+    },
+
     logout: () => {
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");

@@ -47,7 +47,7 @@ export default function LoginPage() {
                 <form className="space-y-4 md:space-y-6" onSubmit={handleSubmit}>
                     <div>
                         <div className="mb-2 block">
-                            <Label htmlFor="username" value="Usuário" />
+                            <Label htmlFor="username">Usuário</Label>
                         </div>
                         <TextInput
                             id="username"
@@ -59,7 +59,7 @@ export default function LoginPage() {
                     </div>
                     <div>
                         <div className="mb-2 block">
-                            <Label htmlFor="password" value="Senha" />
+                            <Label htmlFor="password">Senha</Label>
                         </div>
                         <TextInput
                             id="password"

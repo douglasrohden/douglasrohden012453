@@ -68,7 +68,7 @@ export function SidebarMenu() {
                         <SidebarItem href="#" icon={UserIcon}>
                             Artistas
                         </SidebarItem>
-                        <SidebarItem href="#" icon={InboxIcon}>
+                        <SidebarItem href="/albuns" icon={InboxIcon}>
                             Álbuns
                         </SidebarItem>
                         <SidebarItem href="#" icon={ShoppingBagIcon}>

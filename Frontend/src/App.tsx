@@ -3,6 +3,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import LoginPage from "./pages/LoginPage";
 import HomePage from "./pages/HomePage";
+import AlbunsPage from "./pages/AlbunsPage";
 
 export default function App() {
   return (
@@ -13,6 +14,7 @@ export default function App() {
 
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<HomePage />} />
+            <Route path="/albuns" element={<AlbunsPage />} />
           </Route>
 
           {/* Catch all redirect to home (which will redirect to login if not auth) */}

@@ -5,7 +5,7 @@ import { ArtistCard } from "../components/ArtistCard";
 import { useEffect, useState } from "react";
 import { Artista, artistsService } from "../services/artistsService";
 
-import AlbunsList from "../components/AlbunsList";
+
 
 const SearchIcon = () => (
     <svg
@@ -63,10 +63,7 @@ export default function HomePage() {
                             Sair
                         </Button>
 
-                    {/* Lista de álbuns (GET) */}
-                    <div className="mt-10">
-                      <AlbunsList />
-                    </div>
+
                     </div>
                 </div>
 

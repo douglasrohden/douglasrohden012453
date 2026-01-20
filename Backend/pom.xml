@@ -103,6 +103,20 @@
       <artifactId>lombok</artifactId>
       <optional>true</optional>
     </dependency>
+    
+    <!-- OpenAPI / Swagger (springdoc) -->
+    <dependency>
+      <groupId>org.springdoc</groupId>
+      <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+      <version>2.1.0</version>
+    </dependency>
+
+    <!-- H2 (development-only, to allow local startup without external Postgres) -->
+    <dependency>
+      <groupId>com.h2database</groupId>
+      <artifactId>h2</artifactId>
+      <scope>runtime</scope>
+    </dependency>
   </dependencies>
 
   <build>

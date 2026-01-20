@@ -15,6 +15,12 @@ public class AlbumController {
     @Autowired
     private AlbumRepository albumRepository;
 
+    @io.swagger.v3.oas.annotations.Operation(summary = "Listar álbuns", description = "Retorna lista de álbuns")
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Lista retornada"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Não autorizado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Erro interno")
+    })
     @GetMapping
     public List<Album> getAllAlbuns() {
         return albumRepository.findAll();

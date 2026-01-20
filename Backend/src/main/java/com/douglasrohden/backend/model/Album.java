@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import java.util.Set;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+import java.util.HashSet;
+
 @Entity
 @Table(name = "album")
 public class Album {
@@ -18,7 +20,11 @@ public class Album {
 
 	@ManyToMany(mappedBy = "albuns")
 	@JsonIgnore
-	private Set<Artista> artistas;
+	private Set<Artista> artistas = new HashSet<>();
+
+	@OneToMany(mappedBy = "album", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+	@JsonIgnore
+	private Set<AlbumCover> covers = new HashSet<>();
 
 	public Long getId() { return id; }
 	public void setId(Long id) { this.id = id; }
@@ -30,5 +36,8 @@ public class Album {
 	public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 	public Set<Artista> getArtistas() { return artistas; }
 	public void setArtistas(Set<Artista> artistas) { this.artistas = artistas; }
+
+	public Set<AlbumCover> getCovers() { return covers; }
+	public void setCovers(Set<AlbumCover> covers) { this.covers = covers; }
 
 }

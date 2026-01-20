@@ -10,6 +10,7 @@ package-lock.json
 node_modules
 dist
 dist-ssr
+.flowbite-react/
 *.local
 package-lock.json
 # Editor directories and files

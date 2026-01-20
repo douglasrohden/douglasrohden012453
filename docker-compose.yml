@@ -39,7 +39,7 @@ services:
     working_dir: /workspace
     entrypoint: ["mvn"]
     volumes:
-      - ./backend:/workspace
+      - ./Backend:/workspace
       - ~/.m2:/root/.m2
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:${POSTGRES_PORT:-5433}/${POSTGRES_DB:-artistsdb}

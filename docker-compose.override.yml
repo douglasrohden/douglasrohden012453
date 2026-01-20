@@ -2,11 +2,12 @@ services:
   backend:
     image: maven:3.9-eclipse-temurin-17
     working_dir: /workspace
+    entrypoint: ["sh","/workspace/dev-hot-reload.sh"]
     volumes:
-      - ./backend:/workspace
+      - ./Backend:/workspace
       - ~/.m2:/root/.m2
-    command: ["clean", "-Dspring-boot.run.fork=false", "-DskipTests", "spring-boot:run"]
     environment:
+      - SPRING_PROFILES_ACTIVE=dev
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:${POSTGRES_PORT:-5433}/${POSTGRES_DB:-artistsdb}
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}

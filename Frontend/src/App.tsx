@@ -13,12 +13,12 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
 
           <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<HomePage />} />
+            <Route path="/artista" element={<HomePage />} />
             <Route path="/albuns" element={<AlbunsPage />} />
           </Route>
 
           {/* Catch all redirect to home (which will redirect to login if not auth) */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to="/artista" replace />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

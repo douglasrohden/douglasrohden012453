@@ -62,10 +62,7 @@ export function SidebarMenu() {
             <Sidebar aria-label="Sidebar with multi-level dropdown example">
                 <SidebarItems>
                     <SidebarItemGroup>
-                        <SidebarItem href="#" icon={HomeIcon}>
-                            Home
-                        </SidebarItem>
-                        <SidebarItem href="#" icon={UserIcon}>
+                        <SidebarItem href="/artista" icon={UserIcon}>
                             Artistas
                         </SidebarItem>
                         <SidebarItem href="/albuns" icon={InboxIcon}>

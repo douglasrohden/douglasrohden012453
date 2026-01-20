@@ -6,13 +6,15 @@ export class AlbunsFacade extends BaseFacade<any[]> {
         super([]);
     }
 
-    async fetch() {
+    async fetch(page = 0, size = 100) {
         try {
             this.setLoading(true);
-            const data = await getAlbuns();
-            this.setData(data);
+            const data = await getAlbuns(page, size);
+            this.setData(data.content);
         } catch (e: any) {
             this.setError(e?.message ?? 'Erro ao carregar álbuns');
+        } finally {
+            this.setLoading(false);
         }
     }
 }

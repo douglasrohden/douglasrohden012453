@@ -5,9 +5,10 @@ interface ArtistCardProps {
     name: string;
     genre: string;
     imageUrl?: string;
+    albumCount?: number;
 }
 
-export function ArtistCard({ name, genre, imageUrl }: ArtistCardProps) {
+export function ArtistCard({ name, genre, imageUrl, albumCount }: ArtistCardProps) {
     return (
         <Card
             className="max-w-sm"
@@ -20,6 +21,9 @@ export function ArtistCard({ name, genre, imageUrl }: ArtistCardProps) {
             <p className="font-normal text-gray-700 dark:text-gray-400">
                 {genre}
             </p>
+            {typeof albumCount === "number" && (
+                <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{albumCount} album(s)</p>
+            )}
         </Card>
     );
 }

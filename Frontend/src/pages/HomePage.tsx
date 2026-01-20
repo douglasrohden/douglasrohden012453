@@ -2,6 +2,7 @@ import { Button, DarkThemeToggle, TextInput, Spinner } from "flowbite-react";
 import { useAuth } from "../contexts/AuthContext";
 import { SidebarMenu } from "../components/SidebarMenu";
 import { ArtistCard } from "../components/ArtistCard";
+import CreateArtistForm from "../components/CreateArtistForm";
 import { useEffect, useState } from "react";
 import { Artista, artistsService } from "../services/artistsService";
 
@@ -30,6 +31,7 @@ export default function HomePage() {
     const [artists, setArtists] = useState<Artista[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
+    const [showCreate, setShowCreate] = useState(false);
 
     useEffect(() => {
         fetchArtists();
@@ -71,7 +73,9 @@ export default function HomePage() {
                 <div className="p-6 overflow-y-auto h-[calc(100vh-73px)]">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Artistas</h2>
-                        <div className="w-64">
+                        <div className="flex items-center gap-2">
+                            <Button size="sm" onClick={() => setShowCreate(true)}>Criar artista</Button>
+                            <div className="w-64">
                             <TextInput
                                 id="search"
                                 type="text"
@@ -80,8 +84,11 @@ export default function HomePage() {
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                             />
+                            </div>
                         </div>
                     </div>
+
+                    <CreateArtistForm isOpen={showCreate} onClose={() => setShowCreate(false)} onCreated={() => { fetchArtists(); }} />
 
                     {loading ? (
                         <div className="flex justify-center p-10">

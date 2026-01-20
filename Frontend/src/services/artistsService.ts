@@ -6,20 +6,34 @@ export interface Artista {
     nome: string;
     genero: string;
     imageUrl?: string;
+    albumCount?: number;
+}
+
+export interface Album {
+    id: number;
+    titulo: string;
+    ano?: number;
+    imageUrl?: string;
 }
 
 export const artistsService = {
-    getAll: async (page = 0, size = 10, search?: string) => {
+    getAll: async (page = 0, size = 10, search?: string, sort?: string, dir?: string) => {
         const params: any = { page, size };
         if (search) {
-            params.search = search;
+            params.q = search;
         }
+        if (sort) params.sort = sort;
+        if (dir) params.dir = dir;
         const response = await api.get<Page<Artista>>("/artistas", { params });
         return response.data;
     },
 
     getById: async (id: number) => {
         const response = await api.get<Artista>(`/artistas/${id}`);
+            return response.data as Artista & { albuns?: Album[] };
+    },
+    create: async (payload: { nome: string; genero?: string; imageUrl?: string }) => {
+        const response = await api.post<Artista>("/artistas", payload);
         return response.data;
     },
 };

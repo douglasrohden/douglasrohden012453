@@ -1,5 +1,13 @@
 import axios from '../config/axiosConfig'
+import { Page } from '../types/Page'
 
-export const getAlbuns = () => {
-  return axios.get('/albuns').then(response => response.data)
-} 
+export interface Album {
+  id: number;
+  titulo: string;
+  ano?: number;
+  imageUrl?: string;
+}
+
+export const getAlbuns = (page = 0, size = 12) => {
+  return axios.get<Page<Album>>('/albuns', { params: { page, size } }).then(response => response.data)
+}

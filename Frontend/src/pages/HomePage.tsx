@@ -1,38 +1,49 @@
-import { Button, DarkThemeToggle } from "flowbite-react";
+import { Button, DarkThemeToggle, TextInput, Spinner } from "flowbite-react";
 import { useAuth } from "../contexts/AuthContext";
 import { SidebarMenu } from "../components/SidebarMenu";
 import { ArtistCard } from "../components/ArtistCard";
+import { useEffect, useState } from "react";
+import { Artista, artistsService } from "../services/artistsService";
+
+const SearchIcon = () => (
+    <svg
+        className="h-5 w-5 text-gray-500 dark:text-gray-400"
+        aria-hidden="true"
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 20 20"
+    >
+        <path
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"
+        />
+    </svg>
+);
 
 export default function HomePage() {
     const { user, logout } = useAuth();
+    const [artists, setArtists] = useState<Artista[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [search, setSearch] = useState("");
 
-    const ARTISTS = [
-        {
-            name: "The Weeknd",
-            genre: "R&B, Pop",
-            imageUrl: "https://i.scdn.co/image/ab6761610000e5eb214f3cf1cbe7139c1e26ffbb",
-        },
-        {
-            name: "Ed Sheeran",
-            genre: "Pop",
-            imageUrl: "https://i.scdn.co/image/ab6761610000e5eb12a2ef08d00dd7451a6db6d3",
-        },
-        {
-            name: "Taylor Swift",
-            genre: "Pop, Country",
-            imageUrl: "https://i.scdn.co/image/ab6761610000e5eb5a00969a4698c3132a15fbb0",
-        },
-        {
-            name: "Beyoncé",
-            genre: "R&B, Pop",
-            imageUrl: "https://i.scdn.co/image/ab6761610000e5eb249d55f2d68a44637905c57e",
-        },
-        {
-            name: "Drake",
-            genre: "Hip-Hop, Rap",
-            imageUrl: "https://i.scdn.co/image/ab6761610000e5eb4293385d324db8558179afd9",
-        },
-    ];
+    useEffect(() => {
+        fetchArtists();
+    }, [search]);
+
+    const fetchArtists = async () => {
+        setLoading(true);
+        try {
+            const data = await artistsService.getAll(0, 10, search);
+            setArtists(data.content);
+        } catch (error) {
+            console.error("Failed to fetch artists", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <main className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -54,17 +65,36 @@ export default function HomePage() {
 
                 {/* Content Area */}
                 <div className="p-6 overflow-y-auto h-[calc(100vh-73px)]">
-                    <h2 className="mb-4 text-2xl font-bold text-gray-900 dark:text-white">Artistas Populares</h2>
-                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                        {ARTISTS.map((artist) => (
-                            <ArtistCard
-                                key={artist.name}
-                                name={artist.name}
-                                genre={artist.genre}
-                                imageUrl={artist.imageUrl}
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Artistas</h2>
+                        <div className="w-64">
+                            <TextInput
+                                id="search"
+                                type="text"
+                                icon={SearchIcon}
+                                placeholder="Buscar artista..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
                             />
-                        ))}
+                        </div>
                     </div>
+
+                    {loading ? (
+                        <div className="flex justify-center p-10">
+                            <Spinner size="xl" aria-label="Carregando artistas..." />
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                            {artists.map((artist) => (
+                                <ArtistCard
+                                    key={artist.id}
+                                    name={artist.nome}
+                                    genre={artist.genero}
+                                    imageUrl={artist.imageUrl}
+                                />
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
         </main>

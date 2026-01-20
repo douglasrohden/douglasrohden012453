@@ -1,0 +1,40 @@
+# IDE - VSCode
+.vscode/
+*.code-workspace
+
+# Maven
+.mvn/
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+backend_old/
+# Java
+*.class
+*.log
+*.jar
+*.war
+*.ear
+*.txt
+*.md
+# Node
+node_modules/
+npm-debug.log*
+dist/
+**/package-lock.json
+# Environment variables
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# IDEs
+.idea/
+*.iml
+.settings/

@@ -1,0 +1,44 @@
+{
+    "extends": [],
+    "rules": {
+        "type-enum": [
+            2,
+            "always",
+            [
+                "feat",
+                "fix",
+                "docs",
+                "style",
+                "refactor",
+                "test",
+                "chore",
+                "perf",
+                "ci",
+                "build",
+                "revert"
+            ]
+        ],
+        "type-case": [
+            2,
+            "always",
+            "lower-case"
+        ],
+        "type-empty": [
+            2,
+            "never"
+        ],
+        "subject-empty": [
+            2,
+            "never"
+        ],
+        "subject-case": [
+            0
+        ],
+        "header-max-length": [
+            2,
+            "always",
+            100
+        ]
+    },
+    "help": "Tipos de commit disponíveis:\n  feat:     Nova funcionalidade\n  fix:      Correção de bug\n  docs:     Alterações na documentação\n  style:    Formatação (sem mudança de código)\n  refactor: Refatoração de código\n  test:     Adição ou alteração de testes\n  chore:    Tarefas de manutenção\n  perf:     Melhorias de performance\n  ci:       Alterações em CI/CD\n  build:    Alterações no sistema de build\n  revert:   Reverter commit anterior\n\nFormato: <tipo>: <descrição em português>\nExemplo: feat: adicionar validação de CPF no formulário"
+}

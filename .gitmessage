@@ -1,0 +1,18 @@
+# Tipo de commit (escolha um):
+# feat:     Nova funcionalidade
+# fix:      Correção de bug
+# docs:     Alterações na documentação
+# style:    Formatação, ponto e vírgula faltando, etc; sem mudança de código
+# refactor: Refatoração de código de produção
+# test:     Adição de testes, refatoração de testes; sem mudança de código de produção
+# chore:    Atualização de tarefas de build, configurações, etc; sem mudança de código de produção
+
+# Exemplo: feat: adicionar validação de login
+# Exemplo: fix: corrigir erro de autenticação
+# Exemplo: docs: atualizar README com instruções de instalação
+
+# [TIPO]: [descrição curta em português]
+#
+# [Descrição detalhada opcional]
+#
+# [Referências opcionais, ex: #123]

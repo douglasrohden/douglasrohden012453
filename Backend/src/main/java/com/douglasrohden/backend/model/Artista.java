@@ -15,6 +15,8 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import java.util.Set;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 @Data
 @Builder
@@ -29,11 +31,15 @@ public class Artista {
     private Long id;
 
     @Column(nullable = false, unique = true)
+    @NotBlank(message = "Nome é obrigatório")
+    @Size(max = 100, message = "Nome deve ter no máximo 100 caracteres")
     private String nome;
 
+    @Size(max = 50, message = "Gênero deve ter no máximo 50 caracteres")
     private String genero;
 
     // Will handle image storage via MinIO separately or as a URL string for now
+    @Size(max = 255, message = "imageUrl deve ter no máximo 255 caracteres")
     private String imageUrl;
 
     @ManyToMany

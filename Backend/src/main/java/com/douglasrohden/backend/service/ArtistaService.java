@@ -2,10 +2,12 @@ package com.douglasrohden.backend.service;
 
 import com.douglasrohden.backend.model.Artista;
 import com.douglasrohden.backend.repository.ArtistaRepository;
+import com.douglasrohden.backend.dto.ArtistaDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -21,9 +23,19 @@ public class ArtistaService {
         return repository.findByNomeContainingIgnoreCase(nome, pageable);
     }
 
+    public Page<ArtistaDto> search(String q, Pageable pageable) {
+        return repository.searchWithAlbumCount(q, pageable);
+    }
+
+    @Transactional(readOnly = true)
     public Artista findById(Long id) {
-        return repository.findById(id)
+        Artista artista = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Artista não encontrado"));
+        // ensure albums are initialized within transaction so JSON serialization can include them
+        if (artista.getAlbuns() != null) {
+            artista.getAlbuns().size();
+        }
+        return artista;
     }
 
     public Artista create(Artista artista) {

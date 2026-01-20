@@ -1,13 +1,17 @@
 package com.douglasrohden.backend.controller;
 
 import com.douglasrohden.backend.model.Artista;
+import com.douglasrohden.backend.dto.ArtistaDto;
 import com.douglasrohden.backend.service.ArtistaService;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/v1/artistas")
@@ -17,13 +21,16 @@ public class ArtistaController {
     private final ArtistaService service;
 
     @GetMapping
-    public ResponseEntity<Page<Artista>> list(
-            @RequestParam(required = false) String search,
+    public ResponseEntity<Page<ArtistaDto>> list(
+            @RequestParam(required = false, name = "q") String q,
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) String dir,
             Pageable pageable) {
-        if (search != null && !search.isBlank()) {
-            return ResponseEntity.ok(service.searchByName(search, pageable));
+        if (sort != null && dir != null) {
+            Sort s = Sort.by("asc".equalsIgnoreCase(dir) ? Sort.Direction.ASC : Sort.Direction.DESC, sort);
+            pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), s);
         }
-        return ResponseEntity.ok(service.findAll(pageable));
+        return ResponseEntity.ok(service.search(q, pageable));
     }
 
     @GetMapping("/{id}")
@@ -32,12 +39,12 @@ public class ArtistaController {
     }
 
     @PostMapping
-    public ResponseEntity<Artista> create(@RequestBody Artista artista) {
+    public ResponseEntity<Artista> create(@Valid @RequestBody Artista artista) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(artista));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Artista> update(@PathVariable Long id, @RequestBody Artista artista) {
+    public ResponseEntity<Artista> update(@PathVariable Long id, @Valid @RequestBody Artista artista) {
         return ResponseEntity.ok(service.update(id, artista));
     }
 

@@ -4,30 +4,22 @@ import { Button, Label, TextInput, Modal, ModalBody, ModalHeader, ModalFooter } 
 import { useToast } from '../contexts/ToastContext';
 import { artistsService } from '../services/artistsService';
 import { getErrorMessage } from '../api/types';
-import { createAlbum } from '../services/albunsService';
 
 interface CreateAlbumFormProps {
-    artistId?: number;
+    artistId: number;
     onSuccess: () => void;
     onClose: () => void;
     show: boolean;
 }
 
-interface AlbumFormData {
-    titulo: string;
-    ano?: number;
-    imageUrl?: string;
-}
-
-        setIsSubmitting(true);
-        try {
+export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: CreateAlbumFormProps) {
+    const { addToast } = useToast();
     const [titulo, setTitulo] = useState('');
     const [ano, setAno] = useState('');
     const [imageUrl, setImageUrl] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
-            } else {
-                await createAlbum(data);
+
     const resetForm = () => {
         setTitulo('');
         setAno('');
@@ -63,22 +55,25 @@ interface AlbumFormData {
             return;
         }
 
-            addToast('Álbum adicionado com sucesso!', 'success');
-            reset();
+        setIsSubmitting(true);
+        try {
             await artistsService.addAlbum(artistId, {
                 titulo: trimmedTitulo,
                 ano: anoValue,
                 imageUrl: trimmedImageUrl || undefined,
             });
-            onClose();
+            addToast('Álbum adicionado com sucesso!', 'success');
             resetForm();
-            addToast('Erro ao adicionar álbum.', 'error');
-            console.error(error);
-        } finally {
-            const message = getErrorMessage(error, 'Erro ao adicionar álbum.');
+            onSuccess();
+            onClose();
+        } catch (err) {
+            const message = getErrorMessage(err, 'Erro ao adicionar álbum.');
             setError(message);
             addToast(message, 'error');
-            console.error(error);
+            console.error(err);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (

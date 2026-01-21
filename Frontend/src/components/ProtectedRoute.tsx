@@ -1,17 +1,13 @@
 import { Navigate, Outlet } from "react-router-dom";
-import { Spinner } from "flowbite-react";
+import { LoadingSpinner } from "./common/LoadingSpinner";
 import { useAuthFacade } from "../hooks/useAuthFacade";
 
-export const ProtectedRoute = () => {
+export function ProtectedRoute() {
     const { isAuthenticated, initializing } = useAuthFacade();
 
     // While we are determining auth state (refresh in progress), render nothing / loading
     if (initializing) {
-        return (
-            <div className="flex justify-center items-center h-screen">
-                <Spinner size="xl" aria-label="Carregando..." />
-            </div>
-        );
+        return <LoadingSpinner />;
     }
 
     // If not authenticated, redirect to login page
@@ -21,5 +17,5 @@ export const ProtectedRoute = () => {
 
     // If authenticated, render child routes
     return <Outlet />;
-};
+}
 

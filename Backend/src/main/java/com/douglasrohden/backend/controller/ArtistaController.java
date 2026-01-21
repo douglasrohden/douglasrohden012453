@@ -2,7 +2,9 @@ package com.douglasrohden.backend.controller;
 
 import com.douglasrohden.backend.model.Artista;
 import com.douglasrohden.backend.dto.ArtistaDto;
+import com.douglasrohden.backend.dto.ArtistaRequest;
 import com.douglasrohden.backend.service.ArtistaService;
+import com.douglasrohden.backend.model.ArtistaTipo;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import lombok.RequiredArgsConstructor;
@@ -40,12 +42,34 @@ public class ArtistaController {
     }
 
     @PostMapping
-    public ResponseEntity<Artista> create(@Valid @RequestBody Artista artista) {
+    public ResponseEntity<Artista> create(@Valid @RequestBody ArtistaRequest request) {
+        Artista artista = new Artista();
+        artista.setNome(request.getNome());
+        artista.setGenero(request.getGenero());
+        artista.setImageUrl(request.getImageUrl());
+        if (request.getTipo() != null) {
+            try {
+                artista.setTipo(ArtistaTipo.valueOf(request.getTipo()));
+            } catch (IllegalArgumentException e) {
+                // Ignore invalid type, service defaults to CANTOR if null
+            }
+        }
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(artista));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Artista> update(@PathVariable Long id, @Valid @RequestBody Artista artista) {
+    public ResponseEntity<Artista> update(@PathVariable Long id, @Valid @RequestBody ArtistaRequest request) {
+        Artista artista = new Artista();
+        artista.setNome(request.getNome());
+        artista.setGenero(request.getGenero());
+        artista.setImageUrl(request.getImageUrl());
+        if (request.getTipo() != null) {
+            try {
+                artista.setTipo(ArtistaTipo.valueOf(request.getTipo()));
+            } catch (IllegalArgumentException e) {
+                // Ignore invalid type
+            }
+        }
         return ResponseEntity.ok(service.update(id, artista));
     }
 

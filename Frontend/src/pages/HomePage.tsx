@@ -1,59 +1,31 @@
 import { Pagination, Select, Card, Label } from "flowbite-react";
-import { useToast } from "../contexts/ToastContext";
 import { PageLayout } from "../components/layout/PageLayout";
 import CreateArtistForm from "../components/CreateArtistForm";
-import { useEffect, useMemo, useState } from "react";
-import { Artista, artistsService } from "../services/artistsService";
-import { useLocation, useNavigate } from "react-router-dom";
-import { Page } from "../types/Page";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { SearchIcon } from "../components/icons";
 import { CardGrid } from "../components/common/CardGrid";
 import { ListToolbar } from "../components/common/ListToolbar";
+import { useArtists } from "../hooks/useArtists";
 
 export default function HomePage() {
-    const { addToast } = useToast();
     const navigate = useNavigate();
-    const location = useLocation();
-    const [artists, setArtists] = useState<Artista[]>([]);
-    const [pageData, setPageData] = useState<Page<Artista> | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [search, setSearch] = useState("");
-    const [debouncedSearch, setDebouncedSearch] = useState("");
     const [showCreate, setShowCreate] = useState(false);
-    const [page, setPage] = useState(0);
-    const size = 10;
-    const [dir, setDir] = useState<"asc" | "desc">("asc");
-    const [tipo, setTipo] = useState<string>("TODOS");
 
-    useEffect(() => {
-        const t = setTimeout(() => setDebouncedSearch(search), 300);
-        return () => clearTimeout(t);
-    }, [search]);
-
-    useEffect(() => {
-        setPage(0);
-    }, [debouncedSearch, tipo]);
-
-    useEffect(() => {
-        fetchArtists();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [debouncedSearch, page, size, dir, tipo, location.key]);
-
-    const totalPages = useMemo(() => pageData?.totalPages ?? 0, [pageData]);
-
-    const fetchArtists = async () => {
-        setLoading(true);
-        try {
-            const data = await artistsService.getAll(page, size, debouncedSearch, "nome", dir, tipo);
-            setArtists(data.content);
-            setPageData(data);
-        } catch (error) {
-            console.error("Failed to fetch artists", error);
-            addToast("Falha ao carregar artistas", "error");
-        } finally {
-            setLoading(false);
-        }
-    };
+    const {
+        artists,
+        loading,
+        page,
+        totalPages,
+        search,
+        tipo,
+        dir,
+        setPage,
+        setSearch,
+        setTipo,
+        setDir,
+        refresh
+    } = useArtists();
 
     return (
         <PageLayout>
@@ -88,7 +60,7 @@ export default function HomePage() {
                 )}
             />
 
-            <CreateArtistForm isOpen={showCreate} onClose={() => setShowCreate(false)} onCreated={() => { fetchArtists(); }} />
+            <CreateArtistForm isOpen={showCreate} onClose={() => setShowCreate(false)} onCreated={refresh} />
 
             <CardGrid
                 loading={loading}
@@ -117,7 +89,7 @@ export default function HomePage() {
                 ))}
             </CardGrid>
 
-            {pageData && totalPages >= 1 && (
+            {totalPages >= 1 && (
                 <div className="flex justify-center mt-8">
                     <Pagination
                         currentPage={page + 1}

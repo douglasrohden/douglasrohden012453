@@ -7,27 +7,32 @@ import { useToast } from "../contexts/ToastContext";
 import { LoadingSpinner } from "../components/common/LoadingSpinner";
 import { EmptyState } from "../components/common/EmptyState";
 import { CardGrid } from "../components/common/CardGrid";
+import CreateAlbumForm from "../components/CreateAlbumForm";
+import { Button } from "flowbite-react";
 
 export default function ArtistDetailPage() {
   const { id } = useParams();
   const { addToast } = useToast();
   const [artist, setArtist] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showAddAlbumModal, setShowAddAlbumModal] = useState(false);
+
+  const fetchArtist = async () => {
+    if (!id) return;
+    setLoading(true);
+    try {
+      const data = await artistsService.getById(Number(id));
+      setArtist(data);
+    } catch (e) {
+      console.error(e);
+      addToast("Erro ao carregar detalhes do artista", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (!id) return;
-    (async () => {
-      setLoading(true);
-      try {
-        const data = await artistsService.getById(Number(id));
-        setArtist(data);
-      } catch (e) {
-        console.error(e);
-        addToast("Erro ao carregar detalhes do artista", "error");
-      } finally {
-        setLoading(false);
-      }
-    })();
+    fetchArtist();
   }, [id]);
 
   return (
@@ -41,7 +46,17 @@ export default function ArtistDetailPage() {
           <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">{artist.nome}</h2>
           <p className="text-gray-600 dark:text-gray-400 mb-6">Gênero: {artist.genero}</p>
 
-          <h3 className="text-xl font-semibold mb-3 text-gray-900 dark:text-white">Álbuns</h3>
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Álbuns</h3>
+            <Button size="sm" onClick={() => setShowAddAlbumModal(true)}>Adicionar Álbum</Button>
+          </div>
+
+          <CreateAlbumForm
+            artistId={artist.id}
+            show={showAddAlbumModal}
+            onClose={() => setShowAddAlbumModal(false)}
+            onSuccess={fetchArtist}
+          />
 
           <CardGrid
             isEmpty={!artist.albuns || artist.albuns.length === 0}

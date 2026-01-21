@@ -2,7 +2,10 @@ package com.douglasrohden.backend.service;
 
 import com.douglasrohden.backend.model.Artista;
 import com.douglasrohden.backend.repository.ArtistaRepository;
+import com.douglasrohden.backend.repository.AlbumRepository;
 import com.douglasrohden.backend.dto.ArtistaDto;
+import com.douglasrohden.backend.dto.CreateAlbumRequest;
+import com.douglasrohden.backend.model.Album;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,9 +19,11 @@ import com.douglasrohden.backend.model.ArtistaTipo;
 public class ArtistaService {
 
     private final ArtistaRepository repository;
+    private final AlbumRepository albumRepository;
 
     private static ArtistaTipo parseTipo(String tipo) {
-        if (tipo == null || tipo.isBlank()) return null;
+        if (tipo == null || tipo.isBlank())
+            return null;
         try {
             return ArtistaTipo.valueOf(tipo.toUpperCase());
         } catch (IllegalArgumentException ignored) {
@@ -76,5 +81,18 @@ public class ArtistaService {
 
     public void delete(Long id) {
         repository.deleteById(id);
+    }
+
+    @Transactional
+    public Artista addAlbum(Long id, CreateAlbumRequest request) {
+        Artista artista = findById(id);
+        Album album = new Album();
+        album.setTitulo(request.titulo());
+        album.setAno(request.ano());
+        album.setImageUrl(request.imageUrl());
+
+        album = albumRepository.save(album);
+        artista.getAlbuns().add(album);
+        return repository.save(artista);
     }
 }

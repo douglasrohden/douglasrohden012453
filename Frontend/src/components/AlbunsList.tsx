@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { HiSearch } from 'react-icons/hi';
 import { CardGrid } from './common/CardGrid';
 import { ListToolbar } from './common/ListToolbar';
+import CreateAlbumForm from './CreateAlbumForm';
 
 export default function AlbunsList() {
   const { albuns, loading, error, page, totalPages, setPage } = useAlbuns();
@@ -19,6 +20,7 @@ export default function AlbunsList() {
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState("titulo");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const visibleAlbuns = useMemo(() => {
     const normalizedQuery = search.trim().toLowerCase();
@@ -71,7 +73,7 @@ export default function AlbunsList() {
         sortDirId="sort-dir-albuns"
         sortDirLabel="Ordem"
         addLabel="Adicionar"
-        onAdd={() => addToast("Funcionalidade em breve", "warning")}
+        onAdd={() => setShowCreateModal(true)}
       />
 
       <CardGrid
@@ -113,6 +115,12 @@ export default function AlbunsList() {
           />
         </div>
       )}
+
+      <CreateAlbumForm
+        show={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={() => setPage(page)}
+      />
     </div>
   );
 }

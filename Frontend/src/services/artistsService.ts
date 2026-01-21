@@ -37,4 +37,8 @@ export const artistsService = {
         const response = await api.post<Artista>("/artistas", payload);
         return response.data;
     },
+    addAlbum: async (id: number, payload: { titulo: string; ano?: number; imageUrl?: string }) => {
+        const response = await api.post<Artista>(`/artistas/${id}/albuns`, payload);
+        return response.data;
+    },
 };

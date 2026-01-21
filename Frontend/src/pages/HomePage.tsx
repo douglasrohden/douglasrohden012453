@@ -83,7 +83,7 @@ export default function HomePage() {
                             {artist.genero}
                         </p>
                         {typeof artist.albumCount === "number" && (
-                            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{artist.albumCount} album(s)</p>
+                            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{artist.albumCount} {artist.albumCount === 1 ? 'álbum' : 'álbuns'}</p>
                         )}
                     </Card>
                 ))}

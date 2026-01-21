@@ -1,4 +1,4 @@
-import axios from '../config/axiosConfig'
+import api from '../config/axiosConfig'
 import { Page } from '../types/Page'
 
 export interface Album {
@@ -8,6 +8,7 @@ export interface Album {
   imageUrl?: string;
 }
 
-export const getAlbuns = (page = 0, size = 10) => {
-  return axios.get<Page<Album>>('/albuns', { params: { page, size } }).then(response => response.data)
+export async function getAlbuns(page = 0, size = 10): Promise<Page<Album>> {
+  const response = await api.get<Page<Album>>('/albuns', { params: { page, size } })
+  return response.data
 }

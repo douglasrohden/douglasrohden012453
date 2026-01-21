@@ -1,9 +1,10 @@
-import { Pagination, Card, TextInput, Select, Button } from 'flowbite-react';
+import { Pagination, Card } from 'flowbite-react';
 import { useAlbuns } from '../hooks/useAlbuns';
 import { useToast } from '../contexts/ToastContext';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { HiSearch } from 'react-icons/hi';
 import { CardGrid } from './common/CardGrid';
+import { ListToolbar } from './common/ListToolbar';
 
 export default function AlbunsList() {
   const { albuns, loading, error, page, totalPages, setPage } = useAlbuns();
@@ -16,7 +17,32 @@ export default function AlbunsList() {
   }, [error, addToast]);
 
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState("titulo");
+  const [sortField, setSortField] = useState("titulo");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  const visibleAlbuns = useMemo(() => {
+    const normalizedQuery = search.trim().toLowerCase();
+    const filtered = normalizedQuery
+      ? albuns.filter((a: any) => (a?.titulo ?? "").toLowerCase().includes(normalizedQuery))
+      : albuns;
+
+    const sorted = [...filtered].sort((a: any, b: any) => {
+      const aValue = a?.[sortField];
+      const bValue = b?.[sortField];
+
+      if (aValue == null && bValue == null) return 0;
+      if (aValue == null) return 1;
+      if (bValue == null) return -1;
+
+      if (typeof aValue === "number" && typeof bValue === "number") {
+        return aValue - bValue;
+      }
+
+      return String(aValue).localeCompare(String(bValue), "pt-BR", { sensitivity: "base" });
+    });
+
+    return sortDir === "asc" ? sorted : sorted.reverse();
+  }, [albuns, search, sortField, sortDir]);
 
   if (error) return <div className="text-red-500">{error}</div>;
 
@@ -26,38 +52,35 @@ export default function AlbunsList() {
         <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Álbuns</h2>
       </div>
 
-      <div className="mb-6 flex flex-col items-center justify-between gap-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 md:flex-row">
-        <div className="w-full md:w-1/3">
-          <TextInput
-            id="search-albuns"
-            type="text"
-            icon={HiSearch}
-            placeholder="Buscar álbum..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row md:items-center">
-          <Select
-            value={sort}
-            onChange={(e) => setSort(e.target.value)}
-          >
-            <option value="titulo">Ordenar por Título</option>
-            <option value="ano">Ordenar por Ano</option>
-          </Select>
-          <Button color="light" onClick={() => addToast("Funcionalidade em breve", "warning")}>
-            Filtrar
-          </Button>
-        </div>
-      </div>
+      <ListToolbar
+        query={search}
+        onQueryChange={setSearch}
+        queryPlaceholder="Buscar álbum..."
+        queryId="search-albuns"
+        searchIcon={HiSearch}
+        sortField={sortField}
+        onSortFieldChange={setSortField}
+        sortFieldId="sort-albuns"
+        sortFieldLabel="Ordenar por"
+        sortFieldOptions={[
+          { value: "titulo", label: "Título" },
+          { value: "ano", label: "Ano" },
+        ]}
+        sortDir={sortDir}
+        onSortDirChange={setSortDir}
+        sortDirId="sort-dir-albuns"
+        sortDirLabel="Ordem"
+        addLabel="Adicionar"
+        onAdd={() => addToast("Funcionalidade em breve", "warning")}
+      />
 
       <CardGrid
         loading={loading}
-        isEmpty={albuns.length === 0}
+        isEmpty={visibleAlbuns.length === 0}
         emptyMessage="Nenhum álbum encontrado."
         loadingMessage="Carregando álbuns..."
       >
-        {albuns.map((album: any) => (
+        {visibleAlbuns.map((album: any) => (
           <Card
             key={album.id}
             className="h-full transition-shadow hover:shadow-lg"

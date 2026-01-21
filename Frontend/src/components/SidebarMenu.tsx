@@ -8,6 +8,7 @@ export function SidebarMenu() {
     const pathname = location.pathname;
 
     const isActive = (path: string) => pathname === path || pathname.startsWith(`${path}/`);
+    const activeClass = "bg-gray-300 dark:bg-gray-700 font-semibold";
 
     const handleNavigate = (path: string) => {
         const alreadyHere = isActive(path);
@@ -34,7 +35,7 @@ export function SidebarMenu() {
                                 e.preventDefault();
                                 handleNavigate("/artista");
                             }}
-                            className="hover:bg-gray-200 dark:hover:bg-gray-600"
+                            className={`hover:bg-gray-200 dark:hover:bg-gray-600 ${isActive("/artista") ? activeClass : ""}`}
                         >
                             Artistas
                         </SidebarItem>
@@ -47,7 +48,7 @@ export function SidebarMenu() {
                                 e.preventDefault();
                                 handleNavigate("/albuns");
                             }}
-                            className="hover:bg-gray-200 dark:hover:bg-gray-600"
+                            className={`hover:bg-gray-200 dark:hover:bg-gray-600 ${isActive("/albuns") ? activeClass : ""}`}
                         >
                             Álbuns
                         </SidebarItem>

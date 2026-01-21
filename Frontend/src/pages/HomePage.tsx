@@ -1,4 +1,4 @@
-import { Button, Pagination, Select, TextInput, Card } from "flowbite-react";
+import { Pagination, Select, Card, Label } from "flowbite-react";
 import { useToast } from "../contexts/ToastContext";
 import { PageLayout } from "../components/layout/PageLayout";
 import CreateArtistForm from "../components/CreateArtistForm";
@@ -6,8 +6,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Artista, artistsService } from "../services/artistsService";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Page } from "../types/Page";
-import { SearchIcon, SortIcon } from "../components/icons";
+import { SearchIcon } from "../components/icons";
 import { CardGrid } from "../components/common/CardGrid";
+import { ListToolbar } from "../components/common/ListToolbar";
 
 export default function HomePage() {
     const { addToast } = useToast();
@@ -60,42 +61,33 @@ export default function HomePage() {
                 <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Artistas</h2>
             </div>
 
-            <div className="mb-6 flex flex-col items-center justify-between gap-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 md:flex-row">
-                <div className="w-full md:w-1/3">
-                    <TextInput
-                        id="search"
-                        type="text"
-                        icon={SearchIcon}
-                        placeholder="Buscar artista..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
-                </div>
-                <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row md:items-center">
-                    <Select
-                        value={tipo}
-                        onChange={(e) => setTipo(e.target.value)}
-                    >
-                        <option value="TODOS">Todos os tipos</option>
-                        <option value="CANTOR">Cantor</option>
-                        <option value="BANDA">Banda</option>
-                    </Select>
-                    <div className="flex gap-2">
-                        <Button
-                            color="gray"
-                            className="w-full md:w-auto"
-                            onClick={() => setDir(dir === "asc" ? "desc" : "asc")}
-                            title={dir === "asc" ? "Ordenar Z-A" : "Ordenar A-Z"}
-                        >
-                            {dir === "asc" ? "A-Z" : "Z-A"}
-                            <SortIcon dir={dir} />
-                        </Button>
-                        <Button className="w-full md:w-auto" onClick={() => setShowCreate(true)}>
-                            Criar artista
-                        </Button>
+            <ListToolbar
+                query={search}
+                onQueryChange={setSearch}
+                queryPlaceholder="Buscar artista..."
+                queryId="search"
+                searchIcon={SearchIcon}
+                sortDir={dir}
+                onSortDirChange={(value) => setDir(value)}
+                sortDirId="sort-artistas"
+                sortDirLabel="Ordem"
+                addLabel="Adicionar"
+                onAdd={() => setShowCreate(true)}
+                extra={(
+                    <div className="w-full md:w-56">
+                        <Label
+                            htmlFor="tipo"
+                            value="Tipo"
+                            className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300"
+                        />
+                        <Select id="tipo" value={tipo} onChange={(e) => setTipo(e.target.value)}>
+                            <option value="TODOS">Todos os tipos</option>
+                            <option value="CANTOR">Cantor</option>
+                            <option value="BANDA">Banda</option>
+                        </Select>
                     </div>
-                </div>
-            </div>
+                )}
+            />
 
             <CreateArtistForm isOpen={showCreate} onClose={() => setShowCreate(false)} onCreated={() => { fetchArtists(); }} />
 

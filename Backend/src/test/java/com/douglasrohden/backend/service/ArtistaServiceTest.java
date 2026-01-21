@@ -76,13 +76,13 @@ class ArtistaServiceTest {
         when(r.getAlbumCount()).thenReturn(0L);
 
         Page<ArtistaRepository.ArtistaComAlbumCount> page = new PageImpl<>(Arrays.asList(r));
-        when(repository.searchWithAlbumCount("test", pageable)).thenReturn(page);
+        when(repository.searchWithAlbumCount("test", null, pageable)).thenReturn(page);
 
-        Page<ArtistaDto> result = service.search("test", pageable);
+        Page<ArtistaDto> result = service.search("test", null, pageable);
 
         assertEquals(1, result.getContent().size());
         assertEquals(dto, result.getContent().get(0));
-        verify(repository).searchWithAlbumCount("test", pageable);
+        verify(repository).searchWithAlbumCount("test", null, pageable);
     }
 
     @Test

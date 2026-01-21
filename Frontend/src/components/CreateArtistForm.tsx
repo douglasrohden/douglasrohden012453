@@ -1,4 +1,4 @@
-import { Button, Modal, ModalBody, ModalFooter, ModalHeader, TextInput } from "flowbite-react";
+import { Button, Modal, ModalBody, ModalFooter, ModalHeader, TextInput, Select } from "flowbite-react";
 import { useState } from "react";
 import { artistsService } from "../services/artistsService";
 
@@ -12,6 +12,7 @@ export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) 
     const [nome, setNome] = useState("");
     const [genero, setGenero] = useState("");
     const [imageUrl, setImageUrl] = useState("");
+    const [tipo, setTipo] = useState("CANTOR");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -24,12 +25,18 @@ export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) 
         }
         setLoading(true);
         try {
-            await artistsService.create({ nome: nome.trim(), genero: genero.trim() || undefined, imageUrl: imageUrl.trim() || undefined });
+            await artistsService.create({
+                nome: nome.trim(),
+                genero: genero.trim() || undefined,
+                imageUrl: imageUrl.trim() || undefined,
+                tipo: tipo
+            });
             onCreated?.();
             onClose();
             setNome("");
             setGenero("");
             setImageUrl("");
+            setTipo("CANTOR");
         } catch (err: any) {
             setError(err?.response?.data?.error || err?.response?.data || err?.message || "Erro ao criar artista");
         } finally {
@@ -51,6 +58,15 @@ export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) 
                         <div>
                             <label htmlFor="artist-genero" className="block text-sm font-medium text-gray-700">Gênero</label>
                             <TextInput id="artist-genero" value={genero} onChange={(e) => setGenero((e.target as HTMLInputElement).value)} />
+                        </div>
+
+                        <div>
+                            <label htmlFor="artist-tipo" className="block text-sm font-medium text-gray-700">Tipo</label>
+                            <Select id="artist-tipo" value={tipo} onChange={(e) => setTipo(e.target.value)}>
+                                <option value="CANTOR">Cantor</option>
+                                <option value="BANDA">Banda</option>
+                                <option value="DUPLA">Dupla</option>
+                            </Select>
                         </div>
 
                         <div>

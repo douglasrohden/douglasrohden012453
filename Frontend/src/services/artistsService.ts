@@ -17,11 +17,12 @@ export interface Album {
 }
 
 export const artistsService = {
-    getAll: async (page = 0, size = 10, search?: string, sort?: string, dir?: string) => {
+    getAll: async (page = 0, size = 10, search?: string, sort?: string, dir?: string, tipo?: string) => {
         const params: any = { page, size };
         if (search) {
             params.q = search;
         }
+        if (tipo && tipo !== 'TODOS') params.tipo = tipo;
         if (sort) params.sort = sort;
         if (dir) params.dir = dir;
         const response = await api.get<Page<Artista>>("/artistas", { params });
@@ -30,9 +31,9 @@ export const artistsService = {
 
     getById: async (id: number) => {
         const response = await api.get<Artista>(`/artistas/${id}`);
-            return response.data as Artista & { albuns?: Album[] };
+        return response.data as Artista & { albuns?: Album[] };
     },
-    create: async (payload: { nome: string; genero?: string; imageUrl?: string }) => {
+    create: async (payload: { nome: string; genero?: string; imageUrl?: string; tipo?: string }) => {
         const response = await api.post<Artista>("/artistas", payload);
         return response.data;
     },

@@ -29,24 +29,24 @@ public interface ArtistaRepository extends JpaRepository<Artista, Long> {
     @EntityGraph(attributePaths = "albuns")
     Optional<Artista> findById(Long id);
 
-        @Query(
-            value = """
-                SELECT
-                a.id       AS id,
-                a.nome     AS nome,
-                a.genero   AS genero,
-                a.imageUrl AS imageUrl,
-                COUNT(al)  AS albumCount
-                FROM Artista a
-                LEFT JOIN a.albuns al
-                WHERE (:q = '' OR LOWER(a.nome) LIKE LOWER(CONCAT('%', :q, '%')))
-                GROUP BY a.id, a.nome, a.genero, a.imageUrl
-                """,
-            countQuery = """
-                SELECT COUNT(a)
-                FROM Artista a
-                WHERE (:q = '' OR LOWER(a.nome) LIKE LOWER(CONCAT('%', :q, '%')))
-                """
-        )
-        Page<ArtistaComAlbumCount> searchWithAlbumCount(@Param("q") String q, Pageable pageable);
+    @Query(value = """
+            SELECT
+            a.id       AS id,
+            a.nome     AS nome,
+            a.genero   AS genero,
+            a.imageUrl AS imageUrl,
+            COUNT(al)  AS albumCount
+            FROM Artista a
+            LEFT JOIN a.albuns al
+            WHERE (:q = '' OR LOWER(a.nome) LIKE LOWER(CONCAT('%', :q, '%')))
+            AND (:tipo IS NULL OR a.tipo = :tipo)
+            GROUP BY a.id, a.nome, a.genero, a.imageUrl
+            """, countQuery = """
+            SELECT COUNT(a)
+            FROM Artista a
+            WHERE (:q = '' OR LOWER(a.nome) LIKE LOWER(CONCAT('%', :q, '%')))
+            AND (:tipo IS NULL OR a.tipo = :tipo)
+            """)
+    Page<ArtistaComAlbumCount> searchWithAlbumCount(@Param("q") String q,
+            @Param("tipo") com.douglasrohden.backend.model.ArtistaTipo tipo, Pageable pageable);
 }

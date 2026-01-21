@@ -8,6 +8,6 @@ export interface Album {
   imageUrl?: string;
 }
 
-export const getAlbuns = (page = 0, size = 12) => {
+export const getAlbuns = (page = 0, size = 10) => {
   return axios.get<Page<Album>>('/albuns', { params: { page, size } }).then(response => response.data)
 }

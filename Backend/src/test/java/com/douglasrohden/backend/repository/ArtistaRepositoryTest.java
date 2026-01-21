@@ -49,7 +49,7 @@ class ArtistaRepositoryTest {
     void searchWithAlbumCount_ShouldReturnPageWithAlbumCount() {
         Pageable pageable = PageRequest.of(0, 10);
 
-        Page<ArtistaRepository.ArtistaComAlbumCount> result = repository.searchWithAlbumCount("test", pageable);
+        Page<ArtistaRepository.ArtistaComAlbumCount> result = repository.searchWithAlbumCount("test", null, pageable);
         assertEquals(1, result.getTotalElements());
         var r = result.getContent().get(0);
         ArtistaDto dto = new ArtistaDto(r.getId(), r.getNome(), r.getGenero(), r.getImageUrl(), r.getAlbumCount());
@@ -61,7 +61,7 @@ class ArtistaRepositoryTest {
     void searchWithAlbumCount_ShouldHandleNullQuery() {
         Pageable pageable = PageRequest.of(0, 10);
 
-        Page<ArtistaRepository.ArtistaComAlbumCount> result = repository.searchWithAlbumCount("", pageable);
+        Page<ArtistaRepository.ArtistaComAlbumCount> result = repository.searchWithAlbumCount("", null, pageable);
         assertEquals(2, result.getTotalElements());
     }
 

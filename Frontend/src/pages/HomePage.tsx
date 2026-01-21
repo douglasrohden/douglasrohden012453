@@ -28,6 +28,12 @@ const SearchIcon = () => (
     </svg>
 );
 
+const SortIcon = ({ dir }: { dir: "asc" | "desc" }) => (
+    <svg className="w-5 h-5 ml-2 -mr-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={dir === 'asc' ? "M12 19V5m0 14-4-4m4 4 4-4" : "M12 5v14m0-14 4 4m-4-4-4 4"} />
+    </svg>
+);
+
 export default function HomePage() {
     const { user, logout } = useAuthFacade();
     const navigate = useNavigate();
@@ -38,8 +44,9 @@ export default function HomePage() {
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [showCreate, setShowCreate] = useState(false);
     const [page, setPage] = useState(0);
-    const [size, setSize] = useState(12);
+    const size = 10;
     const [dir, setDir] = useState<"asc" | "desc">("asc");
+    const [tipo, setTipo] = useState<string>("TODOS");
 
     useEffect(() => {
         const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -48,19 +55,19 @@ export default function HomePage() {
 
     useEffect(() => {
         setPage(0);
-    }, [debouncedSearch]);
+    }, [debouncedSearch, tipo]);
 
     useEffect(() => {
         fetchArtists();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [debouncedSearch, page, size, dir]);
+    }, [debouncedSearch, page, size, dir, tipo]);
 
     const totalPages = useMemo(() => pageData?.totalPages ?? 0, [pageData]);
 
     const fetchArtists = async () => {
         setLoading(true);
         try {
-            const data = await artistsService.getAll(page, size, debouncedSearch, "nome", dir);
+            const data = await artistsService.getAll(page, size, debouncedSearch, "nome", dir, tipo);
             setArtists(data.content);
             setPageData(data);
         } catch (error) {
@@ -98,21 +105,22 @@ export default function HomePage() {
                             <Button size="sm" onClick={() => setShowCreate(true)}>Criar artista</Button>
                             <Select
                                 sizing="sm"
-                                value={dir}
-                                onChange={(e) => setDir(e.target.value as "asc" | "desc")}
+                                value={tipo}
+                                onChange={(e) => setTipo(e.target.value)}
                             >
-                                <option value="asc">Nome (A-Z)</option>
-                                <option value="desc">Nome (Z-A)</option>
+                                <option value="TODOS">Todos os tipos</option>
+                                <option value="CANTOR">Cantor</option>
+                                <option value="BANDA">Banda</option>
                             </Select>
-                            <Select
-                                sizing="sm"
-                                value={String(size)}
-                                onChange={(e) => setSize(Number(e.target.value))}
+                            <Button
+                                color="light"
+                                size="sm"
+                                onClick={() => setDir(dir === "asc" ? "desc" : "asc")}
+                                title={dir === "asc" ? "Ordenar Z-A" : "Ordenar A-Z"}
                             >
-                                <option value="8">8 / página</option>
-                                <option value="12">12 / página</option>
-                                <option value="24">24 / página</option>
-                            </Select>
+                                {dir === "asc" ? "A-Z" : "Z-A"}
+                                <SortIcon dir={dir} />
+                            </Button>
                             <div className="w-64">
                                 <TextInput
                                     id="search"
@@ -151,13 +159,15 @@ export default function HomePage() {
                         </div>
                     )}
 
-                    {pageData && totalPages > 1 && (
-                        <div className="flex justify-center mt-6">
+                    {pageData && totalPages >= 1 && (
+                        <div className="flex justify-center mt-8">
                             <Pagination
                                 currentPage={page + 1}
                                 totalPages={totalPages}
                                 onPageChange={(p) => setPage(p - 1)}
                                 showIcons
+                                previousLabel="Anterior"
+                                nextLabel="Próxima"
                             />
                         </div>
                     )}

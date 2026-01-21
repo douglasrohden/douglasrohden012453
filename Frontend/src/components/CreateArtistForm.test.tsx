@@ -26,6 +26,11 @@ vi.mock('flowbite-react', () => {
     TextInput: ({ value, onChange, ...props }: any) => (
       <input value={value} onChange={onChange} {...props} />
     ),
+    Select: ({ children, value, onChange, ...props }: any) => (
+      <select value={value} onChange={onChange} {...props}>
+        {children}
+      </select>
+    ),
   };
 });
 
@@ -86,7 +91,8 @@ describe('CreateArtistForm', () => {
       expect(artistsService.create).toHaveBeenCalledWith({
         nome: 'Test Artist',
         genero: 'Rock',
-        imageUrl: 'http://example.com/image.jpg'
+        imageUrl: 'http://example.com/image.jpg',
+        tipo: 'CANTOR'
       });
       expect(mockProps.onCreated).toHaveBeenCalled();
       expect(mockProps.onClose).toHaveBeenCalled();
@@ -109,7 +115,8 @@ describe('CreateArtistForm', () => {
       expect(artistsService.create).toHaveBeenCalledWith({
         nome: 'Test Artist',
         genero: undefined,
-        imageUrl: undefined
+        imageUrl: undefined,
+        tipo: 'CANTOR'
       });
     });
   });
@@ -134,7 +141,7 @@ describe('CreateArtistForm', () => {
 
   it('should disable buttons during loading', async () => {
     const user = userEvent.setup();
-    (artistsService.create as any).mockImplementation(() => new Promise(() => {})); // Never resolves
+    (artistsService.create as any).mockImplementation(() => new Promise(() => { })); // Never resolves
 
     render(<CreateArtistForm {...mockProps} />);
 

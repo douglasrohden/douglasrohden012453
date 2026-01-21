@@ -23,6 +23,7 @@ public class ArtistaController {
     @GetMapping
     public ResponseEntity<Page<ArtistaDto>> list(
             @RequestParam(required = false, name = "q") String q,
+            @RequestParam(required = false, name = "tipo") String tipo,
             @RequestParam(required = false) String sort,
             @RequestParam(required = false) String dir,
             Pageable pageable) {
@@ -30,7 +31,7 @@ public class ArtistaController {
             Sort s = Sort.by("asc".equalsIgnoreCase(dir) ? Sort.Direction.ASC : Sort.Direction.DESC, sort);
             pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), s);
         }
-        return ResponseEntity.ok(service.search(q, pageable));
+        return ResponseEntity.ok(service.search(q, tipo, pageable));
     }
 
     @GetMapping("/{id}")

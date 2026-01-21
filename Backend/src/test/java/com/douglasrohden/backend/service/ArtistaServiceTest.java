@@ -15,7 +15,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -68,14 +67,21 @@ class ArtistaServiceTest {
     @Test
     void search_ShouldReturnPageOfArtistaDto() {
         ArtistaDto dto = new ArtistaDto(1L, "Test Artist", "Rock", null, 0L);
-        Object[] row = new Object[]{1L, "Test Artist", "Rock", null, 0L};
-        Page<Object[]> rawPage = new PageImpl<>(Collections.singletonList(row));
-        when(repository.searchWithAlbumCount("test", pageable)).thenReturn(rawPage);
+
+        ArtistaRepository.ArtistaComAlbumCount r = mock(ArtistaRepository.ArtistaComAlbumCount.class);
+        when(r.getId()).thenReturn(1L);
+        when(r.getNome()).thenReturn("Test Artist");
+        when(r.getGenero()).thenReturn("Rock");
+        when(r.getImageUrl()).thenReturn(null);
+        when(r.getAlbumCount()).thenReturn(0L);
+
+        Page<ArtistaRepository.ArtistaComAlbumCount> page = new PageImpl<>(Arrays.asList(r));
+        when(repository.searchWithAlbumCount("test", pageable)).thenReturn(page);
 
         Page<ArtistaDto> result = service.search("test", pageable);
 
-        Page<ArtistaDto> expectedPage = new PageImpl<>(Arrays.asList(dto));
-        assertEquals(expectedPage.getContent(), result.getContent());
+        assertEquals(1, result.getContent().size());
+        assertEquals(dto, result.getContent().get(0));
         verify(repository).searchWithAlbumCount("test", pageable);
     }
 

@@ -49,10 +49,10 @@ class ArtistaRepositoryTest {
     void searchWithAlbumCount_ShouldReturnPageWithAlbumCount() {
         Pageable pageable = PageRequest.of(0, 10);
 
-        Page<Object[]> raw = repository.searchWithAlbumCount("test", pageable);
-        assertEquals(1, raw.getTotalElements());
-        Object[] row = raw.getContent().get(0);
-        ArtistaDto dto = new ArtistaDto(((Number) row[0]).longValue(), (String) row[1], (String) row[2], (String) row[3], ((Number) row[4]).longValue());
+        Page<ArtistaRepository.ArtistaComAlbumCount> result = repository.searchWithAlbumCount("test", pageable);
+        assertEquals(1, result.getTotalElements());
+        var r = result.getContent().get(0);
+        ArtistaDto dto = new ArtistaDto(r.getId(), r.getNome(), r.getGenero(), r.getImageUrl(), r.getAlbumCount());
         assertEquals("Test Artist 1", dto.getNome());
         assertEquals(0L, dto.getAlbumCount()); // Assuming no albums
     }
@@ -61,8 +61,8 @@ class ArtistaRepositoryTest {
     void searchWithAlbumCount_ShouldHandleNullQuery() {
         Pageable pageable = PageRequest.of(0, 10);
 
-        Page<Object[]> raw = repository.searchWithAlbumCount("", pageable);
-        assertEquals(2, raw.getTotalElements());
+        Page<ArtistaRepository.ArtistaComAlbumCount> result = repository.searchWithAlbumCount("", pageable);
+        assertEquals(2, result.getTotalElements());
     }
 
     @Test

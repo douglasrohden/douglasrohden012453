@@ -15,36 +15,34 @@ public class ArtistaService {
 
     private final ArtistaRepository repository;
 
+    @Transactional(readOnly = true)
     public Page<Artista> findAll(Pageable pageable) {
         return repository.findAll(pageable);
     }
 
+    @Transactional(readOnly = true)
     public Page<Artista> searchByName(String nome, Pageable pageable) {
         return repository.findByNomeContainingIgnoreCase(nome, pageable);
     }
 
+    @Transactional(readOnly = true)
     public Page<ArtistaDto> search(String q, Pageable pageable) {
-        String normalizedQ = (q == null) ? "" : q.trim();
+        String query = (q == null) ? "" : q.trim();
 
-        return repository.searchWithAlbumCount(normalizedQ, pageable)
-            .map(row -> new ArtistaDto(
-                row[0] instanceof Number ? ((Number) row[0]).longValue() : null,
-                (String) row[1],
-                (String) row[2],
-                (String) row[3],
-                row[4] instanceof Number ? ((Number) row[4]).longValue() : 0L
-            ));
+        return repository.searchWithAlbumCount(query, pageable)
+                .map(r -> new ArtistaDto(
+                        r.getId(),
+                        r.getNome(),
+                        r.getGenero(),
+                        r.getImageUrl(),
+                        r.getAlbumCount()
+                ));
     }
 
     @Transactional(readOnly = true)
     public Artista findById(Long id) {
-        Artista artista = repository.findById(id)
+        return repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Artista não encontrado"));
-        // ensure albums are initialized within transaction so JSON serialization can include them
-        if (artista.getAlbuns() != null) {
-            artista.getAlbuns().size();
-        }
-        return artista;
     }
 
     public Artista create(Artista artista) {

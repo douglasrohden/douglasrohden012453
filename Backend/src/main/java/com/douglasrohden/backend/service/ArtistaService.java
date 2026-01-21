@@ -24,7 +24,16 @@ public class ArtistaService {
     }
 
     public Page<ArtistaDto> search(String q, Pageable pageable) {
-        return repository.searchWithAlbumCount(q, pageable);
+        String normalizedQ = (q == null) ? "" : q.trim();
+
+        return repository.searchWithAlbumCount(normalizedQ, pageable)
+            .map(row -> new ArtistaDto(
+                row[0] instanceof Number ? ((Number) row[0]).longValue() : null,
+                (String) row[1],
+                (String) row[2],
+                (String) row[3],
+                row[4] instanceof Number ? ((Number) row[4]).longValue() : 0L
+            ));
     }
 
     @Transactional(readOnly = true)

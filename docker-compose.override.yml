@@ -15,7 +15,7 @@ services:
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin123}
     ports:
-      - "3001:8080"
+      - "3001:3001"
     depends_on:
       db:
         condition: service_healthy

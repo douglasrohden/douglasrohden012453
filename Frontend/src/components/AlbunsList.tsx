@@ -1,9 +1,9 @@
-
-import { Pagination, Card, Spinner, TextInput, Select, Button } from 'flowbite-react';
+import { Pagination, Card, TextInput, Select, Button } from 'flowbite-react';
 import { useAlbuns } from '../hooks/useAlbuns';
 import { useToast } from '../contexts/ToastContext';
 import { useEffect, useState } from 'react';
 import { HiSearch } from 'react-icons/hi';
+import { CardGrid } from './common/CardGrid';
 
 export default function AlbunsList() {
   const { albuns, loading, error, page, totalPages, setPage } = useAlbuns();
@@ -17,12 +17,6 @@ export default function AlbunsList() {
 
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("titulo");
-
-  if (loading) return (
-    <div className="flex justify-center p-10">
-      <Spinner size="xl" aria-label="Carregando álbuns..." />
-    </div>
-  );
 
   if (error) return <div className="text-red-500">{error}</div>;
 
@@ -57,45 +51,44 @@ export default function AlbunsList() {
         </div>
       </div>
 
-      {albuns.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-10">
-          <p className="text-gray-500 dark:text-gray-400">Nenhum álbum encontrado.</p>
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-6">
-            {albuns.map((album: any) => (
-              <Card
-                key={album.id}
-                className="max-w-sm transition-shadow hover:shadow-lg"
-                imgAlt={album.titulo}
-                imgSrc={album.imageUrl || "https://flowbite.com/docs/images/blog/image-1.jpg"}
-              >
-                <h5 className="truncate text-xl font-bold tracking-tight text-gray-900 dark:text-white" title={album.titulo}>
-                  {album.titulo}
-                </h5>
-                {album.ano && (
-                  <p className="font-normal text-gray-700 dark:text-gray-400">
-                    {album.ano}
-                  </p>
-                )}
-              </Card>
-            ))}
-          </div>
-
-          {totalPages > 1 && (
-            <div className="flex justify-center mt-8">
-              <Pagination
-                currentPage={page + 1}
-                totalPages={totalPages}
-                onPageChange={(p) => setPage(p - 1)}
-                showIcons
-                previousLabel="Anterior"
-                nextLabel="Próxima"
-              />
+      <CardGrid
+        loading={loading}
+        isEmpty={albuns.length === 0}
+        emptyMessage="Nenhum álbum encontrado."
+        loadingMessage="Carregando álbuns..."
+      >
+        {albuns.map((album: any) => (
+          <Card
+            key={album.id}
+            className="h-full transition-shadow hover:shadow-lg"
+            imgAlt={album.titulo}
+            imgSrc={album.imageUrl || "https://flowbite.com/docs/images/blog/image-1.jpg"}
+          >
+            <h5 className="truncate text-xl font-bold tracking-tight text-gray-900 dark:text-white line-clamp-1" title={album.titulo}>
+              {album.titulo}
+            </h5>
+            <div className="h-6">
+              {album.ano && (
+                <p className="font-normal text-gray-700 dark:text-gray-400">
+                  {album.ano}
+                </p>
+              )}
             </div>
-          )}
-        </>
+          </Card>
+        ))}
+      </CardGrid>
+
+      {totalPages > 1 && (
+        <div className="flex justify-center mt-8">
+          <Pagination
+            currentPage={page + 1}
+            totalPages={totalPages}
+            onPageChange={(p) => setPage(p - 1)}
+            showIcons
+            previousLabel="Anterior"
+            nextLabel="Próxima"
+          />
+        </div>
       )}
     </div>
   );

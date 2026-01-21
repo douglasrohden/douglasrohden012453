@@ -3,3 +3,10 @@
 @source "../.flowbite-react/class-list.json";
 
 @custom-variant dark (&:where(.dark, .dark *));
+
+/* Garantir que todas as imagens dos cards tenham altura fixa */
+[data-testid="flowbite-card"] img {
+  height: 12rem; /* 192px / h-48 */
+  width: 100%;
+  object-fit: cover;
+}

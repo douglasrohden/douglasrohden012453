@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { SidebarMenu } from "../components/SidebarMenu";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuthFacade } from "../hooks/useAuthFacade";
 import { artistsService } from "../services/artistsService";
 import { AlbumCard } from "../components/AlbumCard";
 
 export default function ArtistDetailPage() {
   const { id } = useParams();
-  const { user, logout } = useAuth();
+  const { user, logout } = useAuthFacade();
   const [artist, setArtist] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 

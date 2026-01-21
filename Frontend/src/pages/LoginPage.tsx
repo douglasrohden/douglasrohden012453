@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Button, Card, Label, TextInput, Alert, Spinner } from "flowbite-react";
-import { useAuth } from "../contexts/AuthContext";
-import { authService } from "../services/authService";
+import { useAuthFacade } from "../hooks/useAuthFacade";
 import { useNavigate } from "react-router-dom";
 
 export default function LoginPage() {
@@ -10,7 +9,7 @@ export default function LoginPage() {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
-    const { login } = useAuth();
+    const { login } = useAuthFacade();
     const navigate = useNavigate();
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -19,10 +18,8 @@ export default function LoginPage() {
         setLoading(true);
 
         try {
-            const data = await authService.login(username, password);
-            // Pass the token, refreshToken, and username to context login
-            login(data.accessToken, data.refreshToken, username);
-            navigate("/");
+            await login(username, password);
+            navigate("/artista", { replace: true });
         } catch (err) {
             console.error(err);
             setError("Falha no login. Verifique suas credenciais.");

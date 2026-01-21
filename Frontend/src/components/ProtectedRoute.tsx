@@ -1,8 +1,8 @@
 import { Navigate, Outlet } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuthFacade } from "../hooks/useAuthFacade";
 
 export const ProtectedRoute = () => {
-    const { isAuthenticated, initializing } = useAuth();
+    const { isAuthenticated, initializing } = useAuthFacade();
 
     // While we are determining auth state (refresh in progress), render nothing / loading
     if (initializing) {
@@ -17,3 +17,4 @@ export const ProtectedRoute = () => {
     // If authenticated, render child routes
     return <Outlet />;
 };
+

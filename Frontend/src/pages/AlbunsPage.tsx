@@ -1,11 +1,11 @@
 
 import { Button, DarkThemeToggle } from "flowbite-react";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuthFacade } from "../hooks/useAuthFacade";
 import { SidebarMenu } from "../components/SidebarMenu";
 import AlbunsList from "../components/AlbunsList";
 
 export default function AlbunsPage() {
-    const { user, logout } = useAuth();
+    const { user, logout } = useAuthFacade();
 
     return (
         <main className="flex min-h-screen bg-gray-50 dark:bg-gray-900">

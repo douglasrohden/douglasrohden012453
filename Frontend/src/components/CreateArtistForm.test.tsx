@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import CreateArtistForm from '../components/CreateArtistForm';
 import { artistsService } from '../services/artistsService';
@@ -7,7 +7,14 @@ import { artistsService } from '../services/artistsService';
 // Mock flowbite-react
 vi.mock('flowbite-react', () => ({
   Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
-  Modal: ({ children, show, onClose }: any) => show ? <div data-testid="modal">{children}</div> : null,
+  Modal: Object.assign(
+    ({ children, show }: any) => (show ? <div data-testid="modal">{children}</div> : null),
+    {
+      Header: ({ children }: any) => <div>{children}</div>,
+      Body: ({ children }: any) => <div>{children}</div>,
+      Footer: ({ children }: any) => <div>{children}</div>,
+    },
+  ),
   TextInput: ({ value, onChange, ...props }: any) => <input value={value} onChange={onChange} {...props} />
 }));
 

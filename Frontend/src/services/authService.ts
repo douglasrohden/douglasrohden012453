@@ -1,4 +1,4 @@
-import api from "../config/axiosConfig";
+import { rawApi } from "../api/client";
 
 export interface LoginRequest {
     username: string;
@@ -13,33 +13,16 @@ export interface LoginResponse {
 
 export const authService = {
     login: async (username: string, password: string): Promise<LoginResponse> => {
-        const response = await api.post("/autenticacao/login", { username, password });
-        if (response.data.accessToken) {
-            localStorage.setItem("accessToken", response.data.accessToken);
-            localStorage.setItem("refreshToken", response.data.refreshToken);
-            localStorage.setItem("user", username);
-        }
-        return response.data;
+        const response = await rawApi.post("/autenticacao/login", { username, password });
+        return response.data as LoginResponse;
     },
 
     refresh: async (refreshToken: string): Promise<LoginResponse> => {
-        // Use raw axios base URL to avoid interceptors
-        const resp = await api.post("/autenticacao/refresh", { refreshToken });
-        if (resp.data.accessToken) {
-            localStorage.setItem("accessToken", resp.data.accessToken);
-            if (resp.data.refreshToken) {
-                localStorage.setItem("refreshToken", resp.data.refreshToken);
-            }
-        }
-        return resp.data;
+        const resp = await rawApi.post("/autenticacao/refresh", { refreshToken });
+        return resp.data as LoginResponse;
     },
 
-    logout: () => {
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("user");
-        window.location.href = "/login";
-    },
+    logout: () => {},
 
     getCurrentUser: () => {
         return localStorage.getItem("user");

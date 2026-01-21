@@ -1,5 +1,5 @@
 import { Button, DarkThemeToggle, TextInput, Spinner } from "flowbite-react";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuthFacade } from "../hooks/useAuthFacade";
 import { SidebarMenu } from "../components/SidebarMenu";
 import { ArtistCard } from "../components/ArtistCard";
 import CreateArtistForm from "../components/CreateArtistForm";
@@ -27,7 +27,7 @@ const SearchIcon = () => (
 );
 
 export default function HomePage() {
-    const { user, logout } = useAuth();
+    const { user, logout } = useAuthFacade();
     const [artists, setArtists] = useState<Artista[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");

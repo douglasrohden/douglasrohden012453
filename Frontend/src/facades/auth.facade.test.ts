@@ -1,47 +1,42 @@
-import { describe, it, expect, vi, beforeEach, Mocked } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { firstValueFrom, take } from 'rxjs';
 import { authFacade } from '../facades/auth.facade';
 import { authStore } from '../store/auth.store';
 import { authService } from '../services/authService';
 
-// Mock dependencies
-vi.mock('../store/auth.store');
 vi.mock('../services/authService');
-
-const mockAuthStore = authStore as Mocked<typeof authStore>;
-const mockAuthService = authService as Mocked<typeof authService>;
 
 describe('AuthFacade', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
+    authStore.clearAuthentication();
   });
 
   describe('authState$', () => {
-    it('should return authStore state$', () => {
-      const mockState$ = {};
-      mockAuthStore.state$ = mockState$ as any;
-
-      expect(authFacade.authState$).toBe(mockState$);
+    it('should emit current auth state', async () => {
+      const state = await firstValueFrom(authFacade.authState$.pipe(take(1)));
+      expect(state.isAuthenticated).toBe(false);
     });
   });
 
   describe('currentAuthState', () => {
     it('should return current auth state', () => {
-      const mockState = { isAuthenticated: true, user: 'test' };
-      mockAuthStore.currentState = mockState;
-
-      expect(authFacade.currentAuthState).toBe(mockState);
+      authStore.setAuthenticated('token', 'refresh', 'test');
+      expect(authFacade.currentAuthState.user).toBe('test');
+      expect(authFacade.currentAuthState.isAuthenticated).toBe(true);
     });
   });
 
   describe('isAuthenticated', () => {
     it('should return true when authenticated', () => {
-      mockAuthStore.currentState = { isAuthenticated: true };
+      authStore.setAuthenticated('token', 'refresh', 'user');
 
       expect(authFacade.isAuthenticated).toBe(true);
     });
 
     it('should return false when not authenticated', () => {
-      mockAuthStore.currentState = { isAuthenticated: false };
+      authStore.clearAuthentication();
 
       expect(authFacade.isAuthenticated).toBe(false);
     });
@@ -49,7 +44,7 @@ describe('AuthFacade', () => {
 
   describe('currentUser', () => {
     it('should return current user', () => {
-      mockAuthStore.currentState = { user: 'testuser' };
+      authStore.setAuthenticated('token', 'refresh', 'testuser');
 
       expect(authFacade.currentUser).toBe('testuser');
     });
@@ -62,23 +57,23 @@ describe('AuthFacade', () => {
         refreshToken: 'refresh',
         expiresIn: 3600
       };
-      mockAuthService.login.mockResolvedValue(mockResponse);
-      mockAuthStore.setAuthenticated.mockImplementation(() => {});
+      (authService.login as any).mockResolvedValue(mockResponse);
 
       const result = await authFacade.login('user', 'pass');
 
       expect(result).toBe(mockResponse);
-      expect(mockAuthService.login).toHaveBeenCalledWith('user', 'pass');
-      expect(mockAuthStore.setAuthenticated).toHaveBeenCalledWith('token', 'refresh', 'user');
+      expect(authService.login).toHaveBeenCalledWith('user', 'pass');
+      expect(authStore.currentState.accessToken).toBe('token');
+      expect(authStore.currentState.refreshToken).toBe('refresh');
+      expect(authStore.currentState.user).toBe('user');
     });
 
     it('should clear auth on login failure', async () => {
       const error = new Error('Login failed');
-      mockAuthService.login.mockRejectedValue(error);
-      mockAuthStore.clearAuthentication.mockImplementation(() => {});
+      (authService.login as any).mockRejectedValue(error);
 
       await expect(authFacade.login('user', 'pass')).rejects.toThrow('Login failed');
-      expect(mockAuthStore.clearAuthentication).toHaveBeenCalled();
+      expect(authStore.currentState.isAuthenticated).toBe(false);
     });
   });
 
@@ -89,18 +84,18 @@ describe('AuthFacade', () => {
         value: mockLocation,
         writable: true
       });
-      mockAuthStore.clearAuthentication.mockImplementation(() => {});
+      authStore.setAuthenticated('token', 'refresh', 'user');
 
       authFacade.logout();
 
-      expect(mockAuthStore.clearAuthentication).toHaveBeenCalled();
+      expect(authStore.currentState.isAuthenticated).toBe(false);
       expect(window.location.href).toBe('/login');
     });
   });
 
   describe('getAccessToken', () => {
     it('should return access token', () => {
-      mockAuthStore.currentState = { accessToken: 'token' };
+      authStore.setAuthenticated('token', 'refresh', 'user');
 
       expect(authFacade.getAccessToken()).toBe('token');
     });
@@ -108,7 +103,7 @@ describe('AuthFacade', () => {
 
   describe('getRefreshToken', () => {
     it('should return refresh token', () => {
-      mockAuthStore.currentState = { refreshToken: 'refresh' };
+      authStore.setAuthenticated('token', 'refresh', 'user');
 
       expect(authFacade.getRefreshToken()).toBe('refresh');
     });
@@ -116,39 +111,41 @@ describe('AuthFacade', () => {
 
   describe('updateTokens', () => {
     it('should update tokens with provided username', () => {
-      mockAuthStore.currentState = { user: 'olduser' };
-      mockAuthStore.setAuthenticated.mockImplementation(() => {});
+      authStore.setAuthenticated('oldtoken', 'oldrefresh', 'olduser');
 
       authFacade.updateTokens('newtoken', 'newrefresh', 'newuser');
 
-      expect(mockAuthStore.setAuthenticated).toHaveBeenCalledWith('newtoken', 'newrefresh', 'newuser');
+      expect(authStore.currentState.accessToken).toBe('newtoken');
+      expect(authStore.currentState.refreshToken).toBe('newrefresh');
+      expect(authStore.currentState.user).toBe('newuser');
     });
 
     it('should use current user if no username provided', () => {
-      mockAuthStore.currentState = { user: 'currentuser' };
-      mockAuthStore.setAuthenticated.mockImplementation(() => {});
+      authStore.setAuthenticated('oldtoken', 'oldrefresh', 'currentuser');
 
       authFacade.updateTokens('newtoken', 'newrefresh');
 
-      expect(mockAuthStore.setAuthenticated).toHaveBeenCalledWith('newtoken', 'newrefresh', 'currentuser');
+      expect(authStore.currentState.accessToken).toBe('newtoken');
+      expect(authStore.currentState.refreshToken).toBe('newrefresh');
+      expect(authStore.currentState.user).toBe('currentuser');
     });
   });
 
   describe('hasValidTokens', () => {
     it('should return true when both tokens exist', () => {
-      mockAuthStore.currentState = { accessToken: 'token', refreshToken: 'refresh' };
+      authStore.setAuthenticated('token', 'refresh', 'user');
 
       expect(authFacade.hasValidTokens()).toBe(true);
     });
 
     it('should return false when access token is missing', () => {
-      mockAuthStore.currentState = { accessToken: null, refreshToken: 'refresh' };
+      authStore.setState({ accessToken: null, refreshToken: 'refresh', isAuthenticated: false });
 
       expect(authFacade.hasValidTokens()).toBe(false);
     });
 
     it('should return false when refresh token is missing', () => {
-      mockAuthStore.currentState = { accessToken: 'token', refreshToken: null };
+      authStore.setState({ accessToken: 'token', refreshToken: null, isAuthenticated: false });
 
       expect(authFacade.hasValidTokens()).toBe(false);
     });

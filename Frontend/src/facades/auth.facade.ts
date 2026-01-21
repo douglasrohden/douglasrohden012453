@@ -1,4 +1,4 @@
-import { Observable } from 'rxjs';
+import { BehaviorSubject, Observable } from 'rxjs';
 import { authStore, AuthState } from '../store/auth.store';
 import { authService, LoginResponse } from '../services/authService';
 
@@ -7,11 +7,25 @@ import { authService, LoginResponse } from '../services/authService';
  * Simplifica a interface entre componentes React e camadas de serviço/estado
  */
 class AuthFacade {
+    private readonly initializingSubject = new BehaviorSubject<boolean>(true);
+    private initPromise: Promise<void> | null = null;
+
     /**
      * Observable do estado de autenticação
      */
     get authState$(): Observable<AuthState> {
         return authStore.state$;
+    }
+
+    /**
+     * Observable de inicialização (refresh on load)
+     */
+    get initializing$(): Observable<boolean> {
+        return this.initializingSubject.asObservable();
+    }
+
+    get isInitializing(): boolean {
+        return this.initializingSubject.getValue();
     }
 
     /**
@@ -66,6 +80,40 @@ class AuthFacade {
     logout(): void {
         authStore.clearAuthentication();
         window.location.href = '/login';
+    }
+
+    /**
+     * Inicializa autenticação no boot da aplicação.
+     * Se houver refreshToken e user (mas sem accessToken válido), tenta refresh antes de permitir ProtectedRoute decidir.
+     */
+    initialize(): Promise<void> {
+        if (this.initPromise) return this.initPromise;
+
+        this.initializingSubject.next(true);
+        this.initPromise = (async () => {
+            // Se já autenticou via localStorage, não precisa refresh.
+            if (authStore.currentState.isAuthenticated) return;
+
+            const refreshToken = authStore.currentState.refreshToken ?? localStorage.getItem('refreshToken');
+            const user = authStore.currentState.user ?? localStorage.getItem('user');
+
+            if (!refreshToken || !user) return;
+
+            try {
+                const data = await authService.refresh(refreshToken);
+                if (data.accessToken) {
+                    authStore.setAuthenticated(data.accessToken, data.refreshToken ?? refreshToken, user);
+                } else {
+                    authStore.clearAuthentication();
+                }
+            } catch {
+                authStore.clearAuthentication();
+            }
+        })().finally(() => {
+            this.initializingSubject.next(false);
+        });
+
+        return this.initPromise;
     }
 
     /**

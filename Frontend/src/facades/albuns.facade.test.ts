@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { albunsFacade } from '../facades/albuns.facade';
 import { getAlbuns } from '../services/albunsService';
 
@@ -24,7 +24,9 @@ describe('AlbunsFacade', () => {
       const error = new Error('Network error');
       (getAlbuns as any).mockRejectedValue(error);
 
-      await expect(albunsFacade.fetch()).rejects.toThrow('Network error');
+      await albunsFacade.fetch();
+
+      expect(albunsFacade.snapshot.error).toBe('Network error');
       expect(getAlbuns).toHaveBeenCalledWith(0, 100);
     });
 

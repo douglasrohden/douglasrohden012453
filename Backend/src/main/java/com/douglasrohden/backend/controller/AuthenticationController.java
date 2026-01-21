@@ -5,6 +5,7 @@ import com.douglasrohden.backend.dto.LoginResponse;
 import com.douglasrohden.backend.dto.RefreshTokenRequest;
 import com.douglasrohden.backend.service.AuthenticationService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -13,13 +14,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/v1/autenticacao")
+@RequiredArgsConstructor
 public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
-
-    public AuthenticationController(AuthenticationService authenticationService) {
-        this.authenticationService = authenticationService;
-    }
 
     @io.swagger.v3.oas.annotations.Operation(summary = "Login", description = "Autenticação - retorna access e refresh tokens", security = {})
     @io.swagger.v3.oas.annotations.responses.ApiResponses({

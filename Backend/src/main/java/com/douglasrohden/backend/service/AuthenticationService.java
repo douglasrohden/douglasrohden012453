@@ -8,8 +8,8 @@ import com.douglasrohden.backend.model.Usuario;
 import com.douglasrohden.backend.repository.RefreshTokenRepository;
 import com.douglasrohden.backend.repository.UsuarioRepository;
 import com.douglasrohden.backend.security.JwtUtil;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -24,12 +24,12 @@ import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class AuthenticationService {
 
     private final UsuarioRepository usuarioRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final JwtUtil jwtUtil;
-    private final AuthenticationManager authenticationManager;
     private final UserDetailsService userDetailsService;
     private final PasswordEncoder passwordEncoder;
 
@@ -39,32 +39,22 @@ public class AuthenticationService {
     @Value("${jwt.refresh.expiration}")
     private long refreshExpiration;
 
-    public AuthenticationService(UsuarioRepository usuarioRepository,
-            RefreshTokenRepository refreshTokenRepository,
-            JwtUtil jwtUtil,
-            AuthenticationManager authenticationManager,
-            UserDetailsService userDetailsService,
-            PasswordEncoder passwordEncoder) {
-        this.usuarioRepository = usuarioRepository;
-        this.refreshTokenRepository = refreshTokenRepository;
-        this.jwtUtil = jwtUtil;
-        this.authenticationManager = authenticationManager;
-        this.userDetailsService = userDetailsService;
-        this.passwordEncoder = passwordEncoder;
-    }
-
     public LoginResponse login(LoginRequest request) {
         Usuario usuario = usuarioRepository.findByUsername(request.getUsername())
             .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado"));
 
-        // Validate password using configured PasswordEncoder
         if (!passwordEncoder.matches(request.getPassword(), usuario.getPasswordHash())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciais inválidas");
         }
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(request.getUsername());
         String accessToken = jwtUtil.generateToken(userDetails);
-        RefreshToken refreshToken = createRefreshToken(usuario);
+
+        RefreshToken refreshToken = new RefreshToken();
+        refreshToken.setUsuario(usuario);
+        refreshToken.setTokenHash(UUID.randomUUID().toString());
+        refreshToken.setExpiresAt(LocalDateTime.now().plus(refreshExpiration, ChronoUnit.MILLIS));
+        refreshToken = refreshTokenRepository.save(refreshToken);
 
         return new LoginResponse(accessToken, refreshToken.getTokenHash(), jwtExpiration / 1000);
     }
@@ -83,22 +73,6 @@ public class AuthenticationService {
         UserDetails userDetails = userDetailsService.loadUserByUsername(usuario.getUsername());
         String accessToken = jwtUtil.generateToken(userDetails);
 
-        // Opcional: Rotacionar o refresh token
-        // refreshTokenRepository.delete(refreshToken);
-        // RefreshToken newRefreshToken = createRefreshToken(usuario);
-
         return new LoginResponse(accessToken, refreshToken.getTokenHash(), jwtExpiration / 1000);
-    }
-
-    private RefreshToken createRefreshToken(Usuario usuario) {
-        // Remove tokens antigos/expirados do usuário se necessário
-        // refreshTokenRepository.deleteByUsuario(usuario);
-
-        RefreshToken refreshToken = new RefreshToken();
-        refreshToken.setUsuario(usuario);
-        refreshToken.setTokenHash(UUID.randomUUID().toString());
-        refreshToken.setExpiresAt(LocalDateTime.now().plus(refreshExpiration, ChronoUnit.MILLIS));
-
-        return refreshTokenRepository.save(refreshToken);
     }
 }

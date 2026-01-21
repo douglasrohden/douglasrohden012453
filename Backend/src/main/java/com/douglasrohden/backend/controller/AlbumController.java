@@ -2,7 +2,7 @@ package com.douglasrohden.backend.controller;
 
 import com.douglasrohden.backend.model.Album;
 import com.douglasrohden.backend.repository.AlbumRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
@@ -12,9 +12,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/v1/albuns")
+@RequiredArgsConstructor
 public class AlbumController {
-    @Autowired
-    private AlbumRepository albumRepository;
+    private final AlbumRepository albumRepository;
 
     @io.swagger.v3.oas.annotations.Operation(summary = "Listar álbuns (paginated)", description = "Retorna página de álbuns. Paginação obrigatória.")
     @io.swagger.v3.oas.annotations.responses.ApiResponses({
@@ -28,7 +28,6 @@ public class AlbumController {
         if (pageable == null || !pageable.isPaged()) {
             return ResponseEntity.badRequest().build();
         }
-        Page<Album> page = albumRepository.findAll(pageable);
-        return ResponseEntity.ok(page);
+        return ResponseEntity.ok(albumRepository.findAll(pageable));
     }
 }

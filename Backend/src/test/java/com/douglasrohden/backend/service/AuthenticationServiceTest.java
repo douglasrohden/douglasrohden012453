@@ -14,7 +14,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -39,9 +38,6 @@ class AuthenticationServiceTest {
 
     @Mock
     private JwtUtil jwtUtil;
-
-    @Mock
-    private AuthenticationManager authenticationManager;
 
     @Mock
     private UserDetailsService userDetailsService;

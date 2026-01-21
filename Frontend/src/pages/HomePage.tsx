@@ -4,7 +4,7 @@ import { PageLayout } from "../components/layout/PageLayout";
 import CreateArtistForm from "../components/CreateArtistForm";
 import { useEffect, useMemo, useState } from "react";
 import { Artista, artistsService } from "../services/artistsService";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Page } from "../types/Page";
 import { SearchIcon, SortIcon } from "../components/icons";
 import { CardGrid } from "../components/common/CardGrid";
@@ -12,6 +12,7 @@ import { CardGrid } from "../components/common/CardGrid";
 export default function HomePage() {
     const { addToast } = useToast();
     const navigate = useNavigate();
+    const location = useLocation();
     const [artists, setArtists] = useState<Artista[]>([]);
     const [pageData, setPageData] = useState<Page<Artista> | null>(null);
     const [loading, setLoading] = useState(true);
@@ -35,7 +36,7 @@ export default function HomePage() {
     useEffect(() => {
         fetchArtists();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [debouncedSearch, page, size, dir, tipo]);
+    }, [debouncedSearch, page, size, dir, tipo, location.key]);
 
     const totalPages = useMemo(() => pageData?.totalPages ?? 0, [pageData]);
 

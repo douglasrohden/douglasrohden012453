@@ -1,16 +1,22 @@
 import { Sidebar, SidebarItem, SidebarItems, SidebarItemGroup } from "flowbite-react";
 import { HiCollection, HiMusicNote, HiUser } from "react-icons/hi";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 export function SidebarMenu() {
-    let pathname = '';
-    try {
-        const location = useLocation();
-        pathname = location.pathname;
-    } catch (e) {
-        // Not inside a Router, keep pathname empty
-    }
-    const isActive = (path: string) => pathname === path;
+    const location = useLocation();
+    const navigate = useNavigate();
+    const pathname = location.pathname;
+
+    const isActive = (path: string) => pathname === path || pathname.startsWith(`${path}/`);
+
+    const handleNavigate = (path: string) => {
+        const alreadyHere = isActive(path);
+        if (alreadyHere) {
+            navigate(path, { replace: true, state: { refreshAt: Date.now() } });
+            return;
+        }
+        navigate(path);
+    };
     return (
         <div className="h-full min-h-screen w-64 border-r border-gray-300 dark:border-gray-700">
             <Sidebar aria-label="Main Sidebar Navigation" className="w-full">
@@ -22,14 +28,26 @@ export function SidebarMenu() {
                         <SidebarItem
                             href="/artista"
                             icon={HiUser}
-                            className={`hover:bg-gray-200 dark:hover:bg-gray-600 ${isActive('/artista') ? 'bg-gray-300 dark:bg-gray-700 font-semibold' : ''}`}
+                            active={isActive("/artista")}
+                            onClick={(e) => {
+                                if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+                                e.preventDefault();
+                                handleNavigate("/artista");
+                            }}
+                            className="hover:bg-gray-200 dark:hover:bg-gray-600"
                         >
                             Artistas
                         </SidebarItem>
                         <SidebarItem
                             href="/albuns"
                             icon={HiCollection}
-                            className={`hover:bg-gray-200 dark:hover:bg-gray-600 ${isActive('/albuns') ? 'bg-gray-300 dark:bg-gray-700 font-semibold' : ''}`}
+                            active={isActive("/albuns")}
+                            onClick={(e) => {
+                                if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+                                e.preventDefault();
+                                handleNavigate("/albuns");
+                            }}
+                            className="hover:bg-gray-200 dark:hover:bg-gray-600"
                         >
                             Álbuns
                         </SidebarItem>

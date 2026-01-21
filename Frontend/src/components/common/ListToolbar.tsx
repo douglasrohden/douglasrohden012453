@@ -1,10 +1,10 @@
 import { Button, Label, Select, TextInput } from "flowbite-react";
-import type { ReactNode } from "react";
+import type { FC, ComponentProps, ReactNode } from "react";
 import { HiPlus, HiSearch } from "react-icons/hi";
 import { ToolbarCard } from "./ToolbarCard";
 import { SortIcon } from "../icons";
 
-type IconComponent = React.ComponentType<any>;
+type IconComponent = FC<ComponentProps<"svg">>;
 
 export interface ListToolbarOption {
   value: string;
@@ -83,9 +83,10 @@ export function ListToolbar({
             <div className="w-full md:w-56">
               <Label
                 htmlFor={sortFieldId}
-                value={sortFieldLabel}
                 className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300"
-              />
+              >
+                {sortFieldLabel}
+              </Label>
               <Select
                 id={sortFieldId}
                 value={sortField}
@@ -103,9 +104,10 @@ export function ListToolbar({
           <div className="w-full md:w-auto">
             <Label
               htmlFor={sortDirId}
-              value={sortDirLabel}
               className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300"
-            />
+            >
+              {sortDirLabel}
+            </Label>
             <Button
               id={sortDirId}
               color="gray"

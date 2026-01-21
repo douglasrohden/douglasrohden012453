@@ -77,9 +77,8 @@ export default function HomePage() {
                     <div className="w-full md:w-56">
                         <Label
                             htmlFor="tipo"
-                            value="Tipo"
                             className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300"
-                        />
+                        >Tipo</Label>
                         <Select id="tipo" value={tipo} onChange={(e) => setTipo(e.target.value)}>
                             <option value="TODOS">Todos os tipos</option>
                             <option value="CANTOR">Cantor</option>

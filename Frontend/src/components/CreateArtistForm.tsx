@@ -57,21 +57,21 @@ export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) 
                     <div className="space-y-4">
                         <div>
                             <div className="mb-2 block">
-                                <Label htmlFor="artist-nome" value="Nome" />
+                                <Label htmlFor="artist-nome">Nome</Label>
                             </div>
                             <TextInput id="artist-nome" value={nome} onChange={(e) => setNome((e.target as HTMLInputElement).value)} />
                         </div>
 
                         <div>
                             <div className="mb-2 block">
-                                <Label htmlFor="artist-genero" value="Gênero" />
+                                <Label htmlFor="artist-genero">Gênero</Label>
                             </div>
                             <TextInput id="artist-genero" value={genero} onChange={(e) => setGenero((e.target as HTMLInputElement).value)} />
                         </div>
 
                         <div>
                             <div className="mb-2 block">
-                                <Label htmlFor="artist-tipo" value="Tipo" />
+                                <Label htmlFor="artist-tipo">Tipo</Label>
                             </div>
                             <Select id="artist-tipo" value={tipo} onChange={(e) => setTipo(e.target.value)}>
                                 <option value="CANTOR">Cantor</option>
@@ -82,7 +82,7 @@ export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) 
 
                         <div>
                             <div className="mb-2 block">
-                                <Label htmlFor="artist-imageUrl" value="Image URL" />
+                                <Label htmlFor="artist-imageUrl">Image URL</Label>
                             </div>
                             <TextInput id="artist-imageUrl" value={imageUrl} onChange={(e) => setImageUrl((e.target as HTMLInputElement).value)} />
                         </div>

@@ -17,6 +17,15 @@ public class ArtistaService {
 
     private final ArtistaRepository repository;
 
+    private static ArtistaTipo parseTipo(String tipo) {
+        if (tipo == null || tipo.isBlank()) return null;
+        try {
+            return ArtistaTipo.valueOf(tipo.toUpperCase());
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
+    }
+
     @Transactional(readOnly = true)
     public Page<Artista> findAll(Pageable pageable) {
         return repository.findAll(pageable);
@@ -30,14 +39,7 @@ public class ArtistaService {
     @Transactional(readOnly = true)
     public Page<ArtistaDto> search(String q, String tipo, Pageable pageable) {
         String query = (q == null) ? "" : q.trim();
-        ArtistaTipo artistaTipo = null;
-        if (tipo != null && !tipo.isBlank()) {
-            try {
-                artistaTipo = ArtistaTipo.valueOf(tipo.toUpperCase());
-            } catch (IllegalArgumentException e) {
-                // ignore invalid type or throw? For filter usually ignore or treat as null
-            }
-        }
+        ArtistaTipo artistaTipo = parseTipo(tipo);
 
         return repository.searchWithAlbumCount(query, artistaTipo, pageable)
                 .map(r -> new ArtistaDto(

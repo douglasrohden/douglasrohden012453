@@ -34,38 +34,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         authStore.clearAuthentication();
     };
 
-    // Attempt automatic refresh on app load if we have a refresh token but no access token
-    // This prevents immediate redirect to /login on page reload when tokens are expired
+    // Requisito: não renovar automaticamente token no frontend.
+    // Se expirou, deve forçar novo login.
     useEffect(() => {
-        let mounted = true;
-        const tryRefreshOnLoad = async () => {
-            const refreshToken = localStorage.getItem("refreshToken");
-            const user = localStorage.getItem("user");
-
-            if (authState.isAuthenticated) {
-                // Already authenticated from local storage
-                if (mounted) setInitializing(false);
-                return;
-            }
-
-            if (refreshToken && user && mounted) {
-                try {
-                    // dynamic import to avoid circular dependencies at module load time
-                    const { authService } = await import("../services/authService");
-                    const data = await authService.refresh(refreshToken);
-                    if (data.accessToken && mounted) {
-                        authStore.setAuthenticated(data.accessToken, data.refreshToken ?? refreshToken, user);
-                    }
-                } catch (e) {
-                    // If refresh fails, clear authentication
-                    authStore.clearAuthentication();
-                }
-            }
-
-            if (mounted) setInitializing(false);
-        };
-        tryRefreshOnLoad();
-        return () => { mounted = false; };
+        setInitializing(false);
     }, [authState.isAuthenticated]);
 
     const value: AuthContextType = {

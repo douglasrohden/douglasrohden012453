@@ -84,31 +84,20 @@ class AuthFacade {
 
     /**
      * Inicializa autenticação no boot da aplicação.
-     * Se houver refreshToken e user (mas sem accessToken válido), tenta refresh antes de permitir ProtectedRoute decidir.
+     * Requisito do edital: não fazer renovação automática de token no frontend.
+     * Se o token expirar, o usuário deve fazer login novamente.
      */
     initialize(): Promise<void> {
         if (this.initPromise) return this.initPromise;
 
         this.initializingSubject.next(true);
         this.initPromise = (async () => {
-            // Se já autenticou via localStorage, não precisa refresh.
+            // Se já autenticou via localStorage, não faz nada.
             if (authStore.currentState.isAuthenticated) return;
 
-            const refreshToken = authStore.currentState.refreshToken ?? localStorage.getItem('refreshToken');
-            const user = authStore.currentState.user ?? localStorage.getItem('user');
-
-            if (!refreshToken || !user) return;
-
-            try {
-                const data = await authService.refresh(refreshToken);
-                if (data.accessToken) {
-                    authStore.setAuthenticated(data.accessToken, data.refreshToken ?? refreshToken, user);
-                } else {
-                    authStore.clearAuthentication();
-                }
-            } catch {
-                authStore.clearAuthentication();
-            }
+            // Se não está autenticado, garante limpeza de tokens "órfãos".
+            // (ex.: refreshToken salvo sem accessToken) para forçar login.
+            authStore.clearAuthentication();
         })().finally(() => {
             this.initializingSubject.next(false);
         });

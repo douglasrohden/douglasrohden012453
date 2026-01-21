@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { SidebarMenu } from "../components/SidebarMenu";
 import { useAuthFacade } from "../hooks/useAuthFacade";
 import { artistsService } from "../services/artistsService";
+import { Spinner } from "flowbite-react";
 import { AlbumCard } from "../components/AlbumCard";
 
 export default function ArtistDetailPage() {
@@ -41,7 +42,9 @@ export default function ArtistDetailPage() {
 
         <div className="p-6 overflow-y-auto h-[calc(100vh-73px)]">
           {loading ? (
-            <div>Carregando...</div>
+            <div className="flex justify-center p-10">
+              <Spinner size="xl" aria-label="Carregando detalhes..." />
+            </div>
           ) : !artist ? (
             <div>Artista não encontrado</div>
           ) : (

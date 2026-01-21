@@ -1,12 +1,13 @@
-import { Button, DarkThemeToggle, Pagination, Select, Spinner, TextInput, Card } from "flowbite-react";
-import { useAuthFacade } from "../hooks/useAuthFacade";
+import { Button, Pagination, Select, Spinner, TextInput, Card } from "flowbite-react";
 import { useToast } from "../contexts/ToastContext";
 import { SidebarMenu } from "../components/SidebarMenu";
+import { PageHeader } from "../components/PageHeader";
 import CreateArtistForm from "../components/CreateArtistForm";
 import { useEffect, useMemo, useState } from "react";
 import { Artista, artistsService } from "../services/artistsService";
 import { useNavigate } from "react-router-dom";
 import { Page } from "../types/Page";
+import { useAuthFacade } from "../hooks/useAuthFacade";
 
 
 
@@ -35,7 +36,7 @@ const SortIcon = ({ dir }: { dir: "asc" | "desc" }) => (
 );
 
 export default function HomePage() {
-    const { user, logout } = useAuthFacade();
+    const { user } = useAuthFacade();
     const { addToast } = useToast();
     const navigate = useNavigate();
     const [artists, setArtists] = useState<Artista[]>([]);
@@ -85,28 +86,26 @@ export default function HomePage() {
 
             <div className="flex-1 flex flex-col">
                 {/* Header Area */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-                    <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                        Bem-vindo, {user}!
-                    </h1>
-                    <div className="flex gap-2">
-                        <DarkThemeToggle />
-                        <Button color="light" size="sm" onClick={logout}>
-                            Sair
-                        </Button>
-
-
-                    </div>
-                </div>
+                <PageHeader title={`Bem-vindo, ${user}!`} />
 
                 {/* Content Area */}
                 <div className="p-6 overflow-y-auto h-[calc(100vh-73px)]">
-                    <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Artistas</h2>
-                        <div className="flex items-center gap-2">
-                            <Button size="sm" onClick={() => setShowCreate(true)}>Criar artista</Button>
+                    <div className="mb-4 flex items-center justify-between">
+                        <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Artistas</h2>
+                    </div>
+                    <div className="mb-6 flex flex-col items-center justify-between gap-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 md:flex-row">
+                        <div className="w-full md:w-1/3">
+                            <TextInput
+                                id="search"
+                                type="text"
+                                icon={SearchIcon}
+                                placeholder="Buscar artista..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
+                        </div>
+                        <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row md:items-center">
                             <Select
-                                sizing="sm"
                                 value={tipo}
                                 onChange={(e) => setTipo(e.target.value)}
                             >
@@ -114,24 +113,19 @@ export default function HomePage() {
                                 <option value="CANTOR">Cantor</option>
                                 <option value="BANDA">Banda</option>
                             </Select>
-                            <Button
-                                color="light"
-                                size="sm"
-                                onClick={() => setDir(dir === "asc" ? "desc" : "asc")}
-                                title={dir === "asc" ? "Ordenar Z-A" : "Ordenar A-Z"}
-                            >
-                                {dir === "asc" ? "A-Z" : "Z-A"}
-                                <SortIcon dir={dir} />
-                            </Button>
-                            <div className="w-64">
-                                <TextInput
-                                    id="search"
-                                    type="text"
-                                    icon={SearchIcon}
-                                    placeholder="Buscar artista..."
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                />
+                            <div className="flex gap-2">
+                                <Button
+                                    color="gray"
+                                    className="w-full md:w-auto"
+                                    onClick={() => setDir(dir === "asc" ? "desc" : "asc")}
+                                    title={dir === "asc" ? "Ordenar Z-A" : "Ordenar A-Z"}
+                                >
+                                    {dir === "asc" ? "A-Z" : "Z-A"}
+                                    <SortIcon dir={dir} />
+                                </Button>
+                                <Button className="w-full md:w-auto" onClick={() => setShowCreate(true)}>
+                                    Criar artista
+                                </Button>
                             </div>
                         </div>
                     </div>

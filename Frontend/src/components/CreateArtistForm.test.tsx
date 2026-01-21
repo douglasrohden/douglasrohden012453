@@ -9,9 +9,11 @@ vi.mock('flowbite-react', () => {
   const ModalHeader = ({ children }: any) => <div>{children}</div>;
   const ModalBody = ({ children }: any) => <div>{children}</div>;
   const ModalFooter = ({ children }: any) => <div>{children}</div>;
+  const Label = ({ htmlFor, value, children, ...props }: any) => <label htmlFor={htmlFor} {...props}>{children || value}</label>;
 
   return {
     Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
+    Label,
     Modal: Object.assign(
       ({ children, show }: any) => (show ? <div data-testid="modal">{children}</div> : null),
       {

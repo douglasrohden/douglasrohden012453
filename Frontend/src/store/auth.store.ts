@@ -1,4 +1,4 @@
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BaseStore } from './base.store';
 
 export interface AuthState {
     isAuthenticated: boolean;
@@ -18,34 +18,10 @@ const initialState: AuthState = {
  * AuthStore - Gerenciador de estado de autenticação usando BehaviorSubject
  * Implementa o padrão Observable para gestão reativa de estado
  */
-class AuthStore {
-    private readonly _state$ = new BehaviorSubject<AuthState>(initialState);
-
+class AuthStore extends BaseStore<AuthState> {
     constructor() {
+        super(initialState);
         this.loadStateFromLocalStorage();
-    }
-
-    /**
-     * Observable do estado de autenticação
-     */
-    get state$(): Observable<AuthState> {
-        return this._state$.asObservable();
-    }
-
-    /**
-     * Obtém o estado atual (snapshot)
-     */
-    get currentState(): AuthState {
-        return this._state$.getValue();
-    }
-
-    /**
-     * Atualiza o estado de autenticação
-     */
-    setState(partialState: Partial<AuthState>): void {
-        const newState = { ...this.currentState, ...partialState };
-        this._state$.next(newState);
-        this.saveStateToLocalStorage(newState);
     }
 
     /**
@@ -58,6 +34,7 @@ class AuthStore {
             accessToken,
             refreshToken,
         });
+        this.saveStateToLocalStorage(this.currentState);
     }
 
     /**
@@ -68,6 +45,13 @@ class AuthStore {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
+    }
+
+    /**
+     * Reseta o estado para o inicial
+     */
+    reset(): void {
+        this.clearAuthentication();
     }
 
     /**
@@ -106,3 +90,4 @@ class AuthStore {
 
 // Singleton instance
 export const authStore = new AuthStore();
+

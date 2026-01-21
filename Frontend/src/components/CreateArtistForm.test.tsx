@@ -5,18 +5,29 @@ import CreateArtistForm from '../components/CreateArtistForm';
 import { artistsService } from '../services/artistsService';
 
 // Mock flowbite-react
-vi.mock('flowbite-react', () => ({
-  Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
-  Modal: Object.assign(
-    ({ children, show }: any) => (show ? <div data-testid="modal">{children}</div> : null),
-    {
-      Header: ({ children }: any) => <div>{children}</div>,
-      Body: ({ children }: any) => <div>{children}</div>,
-      Footer: ({ children }: any) => <div>{children}</div>,
-    },
-  ),
-  TextInput: ({ value, onChange, ...props }: any) => <input value={value} onChange={onChange} {...props} />
-}));
+vi.mock('flowbite-react', () => {
+  const ModalHeader = ({ children }: any) => <div>{children}</div>;
+  const ModalBody = ({ children }: any) => <div>{children}</div>;
+  const ModalFooter = ({ children }: any) => <div>{children}</div>;
+
+  return {
+    Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
+    Modal: Object.assign(
+      ({ children, show }: any) => (show ? <div data-testid="modal">{children}</div> : null),
+      {
+        Header: ModalHeader,
+        Body: ModalBody,
+        Footer: ModalFooter,
+      },
+    ),
+    ModalHeader,
+    ModalBody,
+    ModalFooter,
+    TextInput: ({ value, onChange, ...props }: any) => (
+      <input value={value} onChange={onChange} {...props} />
+    ),
+  };
+});
 
 // Mock the service
 vi.mock('../services/artistsService');

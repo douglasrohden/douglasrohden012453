@@ -9,6 +9,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.douglasrohden.backend.model.ArtistaTipo;
+
 @Service
 @RequiredArgsConstructor
 public class ArtistaService {
@@ -46,6 +48,9 @@ public class ArtistaService {
     }
 
     public Artista create(Artista artista) {
+        if (artista.getTipo() == null) {
+            artista.setTipo(ArtistaTipo.CANTOR);
+        }
         return repository.save(artista);
     }
 
@@ -54,6 +59,9 @@ public class ArtistaService {
         existing.setNome(artista.getNome());
         existing.setGenero(artista.getGenero());
         existing.setImageUrl(artista.getImageUrl());
+        if (artista.getTipo() != null) {
+            existing.setTipo(artista.getTipo());
+        }
         return repository.save(existing);
     }
 

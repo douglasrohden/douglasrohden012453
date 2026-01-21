@@ -1,11 +1,21 @@
 
 import { Button, DarkThemeToggle } from "flowbite-react";
+import { useCallback } from "react";
 import { useAuthFacade } from "../hooks/useAuthFacade";
 import { SidebarMenu } from "../components/SidebarMenu";
 import AlbunsList from "../components/AlbunsList";
+import { useAlbumCreatedWebSocket } from "../hooks/useAlbumCreatedWebSocket";
+import { albunsFacade } from "../facades/albuns.facade";
 
 export default function AlbunsPage() {
     const { user, logout } = useAuthFacade();
+
+    const onAlbumCreated = useCallback(() => {
+        // Keep it simple: refresh list when any new album is created
+        albunsFacade.fetch();
+    }, []);
+
+    useAlbumCreatedWebSocket(onAlbumCreated);
 
     return (
         <main className="flex min-h-screen bg-gray-50 dark:bg-gray-900">

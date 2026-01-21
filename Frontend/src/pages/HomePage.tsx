@@ -60,7 +60,7 @@ export default function HomePage() {
     const fetchArtists = async () => {
         setLoading(true);
         try {
-            const data = await artistsService.getAll(page, size, debouncedSearch, "name", dir);
+            const data = await artistsService.getAll(page, size, debouncedSearch, "nome", dir);
             setArtists(data.content);
             setPageData(data);
         } catch (error) {
@@ -114,14 +114,14 @@ export default function HomePage() {
                                 <option value="24">24 / página</option>
                             </Select>
                             <div className="w-64">
-                            <TextInput
-                                id="search"
-                                type="text"
-                                icon={SearchIcon}
-                                placeholder="Buscar artista..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                            />
+                                <TextInput
+                                    id="search"
+                                    type="text"
+                                    icon={SearchIcon}
+                                    placeholder="Buscar artista..."
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                />
                             </div>
                         </div>
                     </div>

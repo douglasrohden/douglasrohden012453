@@ -17,6 +17,8 @@ import jakarta.persistence.JoinTable;
 import java.util.Set;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 
 @Data
 @Builder
@@ -39,14 +41,15 @@ public class Artista {
     private String genero;
 
     // Will handle image storage via MinIO separately or as a URL string for now
-    @Size(max = 255, message = "imageUrl deve ter no máximo 255 caracteres")
+    @Column(columnDefinition = "TEXT")
     private String imageUrl;
 
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private ArtistaTipo tipo = ArtistaTipo.CANTOR;
+
     @ManyToMany
-    @JoinTable(
-        name = "artista_album",
-        joinColumns = @JoinColumn(name = "artista_id"),
-        inverseJoinColumns = @JoinColumn(name = "album_id")
-    )
+    @JoinTable(name = "artista_album", joinColumns = @JoinColumn(name = "artista_id"), inverseJoinColumns = @JoinColumn(name = "album_id"))
     private Set<Album> albuns;
 }

@@ -1,4 +1,4 @@
-import { Button, Modal, TextInput } from "flowbite-react";
+import { Button, Modal, ModalBody, ModalFooter, ModalHeader, TextInput } from "flowbite-react";
 import { useState } from "react";
 import { artistsService } from "../services/artistsService";
 
@@ -40,8 +40,8 @@ export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) 
     return (
         <Modal show={isOpen} size="md" onClose={onClose}>
             <form onSubmit={submit}>
-                <Modal.Header> Criar artista </Modal.Header>
-                <Modal.Body>
+                <ModalHeader> Criar artista </ModalHeader>
+                <ModalBody>
                     <div className="space-y-4">
                         <div>
                             <label htmlFor="artist-nome" className="block text-sm font-medium text-gray-700">Nome</label>
@@ -60,13 +60,13 @@ export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) 
 
                         {error && <div className="text-sm text-red-600">{String(error)}</div>}
                     </div>
-                </Modal.Body>
-                <Modal.Footer>
+                </ModalBody>
+                <ModalFooter>
                     <div className="flex gap-2">
                         <Button color="gray" onClick={onClose} disabled={loading}>Cancelar</Button>
                         <Button type="submit" disabled={loading}>{loading ? 'Salvando...' : 'Criar'}</Button>
                     </div>
-                </Modal.Footer>
+                </ModalFooter>
             </form>
         </Modal>
     );

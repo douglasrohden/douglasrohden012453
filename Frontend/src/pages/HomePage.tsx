@@ -1,10 +1,12 @@
-import { Button, DarkThemeToggle, TextInput, Spinner } from "flowbite-react";
+import { Button, DarkThemeToggle, Pagination, Select, Spinner, TextInput } from "flowbite-react";
 import { useAuthFacade } from "../hooks/useAuthFacade";
 import { SidebarMenu } from "../components/SidebarMenu";
 import { ArtistCard } from "../components/ArtistCard";
 import CreateArtistForm from "../components/CreateArtistForm";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Artista, artistsService } from "../services/artistsService";
+import { useNavigate } from "react-router-dom";
+import { Page } from "../types/Page";
 
 
 
@@ -28,20 +30,39 @@ const SearchIcon = () => (
 
 export default function HomePage() {
     const { user, logout } = useAuthFacade();
+    const navigate = useNavigate();
     const [artists, setArtists] = useState<Artista[]>([]);
+    const [pageData, setPageData] = useState<Page<Artista> | null>(null);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
     const [showCreate, setShowCreate] = useState(false);
+    const [page, setPage] = useState(0);
+    const [size, setSize] = useState(12);
+    const [dir, setDir] = useState<"asc" | "desc">("asc");
+
+    useEffect(() => {
+        const t = setTimeout(() => setDebouncedSearch(search), 300);
+        return () => clearTimeout(t);
+    }, [search]);
+
+    useEffect(() => {
+        setPage(0);
+    }, [debouncedSearch]);
 
     useEffect(() => {
         fetchArtists();
-    }, [search]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [debouncedSearch, page, size, dir]);
+
+    const totalPages = useMemo(() => pageData?.totalPages ?? 0, [pageData]);
 
     const fetchArtists = async () => {
         setLoading(true);
         try {
-            const data = await artistsService.getAll(0, 10, search);
+            const data = await artistsService.getAll(page, size, debouncedSearch, "name", dir);
             setArtists(data.content);
+            setPageData(data);
         } catch (error) {
             console.error("Failed to fetch artists", error);
         } finally {
@@ -75,6 +96,23 @@ export default function HomePage() {
                         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Artistas</h2>
                         <div className="flex items-center gap-2">
                             <Button size="sm" onClick={() => setShowCreate(true)}>Criar artista</Button>
+                            <Select
+                                sizing="sm"
+                                value={dir}
+                                onChange={(e) => setDir(e.target.value as "asc" | "desc")}
+                            >
+                                <option value="asc">Nome (A-Z)</option>
+                                <option value="desc">Nome (Z-A)</option>
+                            </Select>
+                            <Select
+                                sizing="sm"
+                                value={String(size)}
+                                onChange={(e) => setSize(Number(e.target.value))}
+                            >
+                                <option value="8">8 / página</option>
+                                <option value="12">12 / página</option>
+                                <option value="24">24 / página</option>
+                            </Select>
                             <div className="w-64">
                             <TextInput
                                 id="search"
@@ -97,13 +135,30 @@ export default function HomePage() {
                     ) : (
                         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                             {artists.map((artist) => (
-                                <ArtistCard
+                                <div
                                     key={artist.id}
-                                    name={artist.nome}
-                                    genre={artist.genero}
-                                    imageUrl={artist.imageUrl}
-                                />
+                                    className="cursor-pointer"
+                                    onClick={() => navigate(`/artista/${artist.id}`)}
+                                >
+                                    <ArtistCard
+                                        name={artist.nome}
+                                        genre={artist.genero}
+                                        imageUrl={artist.imageUrl}
+                                        albumCount={artist.albumCount}
+                                    />
+                                </div>
                             ))}
+                        </div>
+                    )}
+
+                    {pageData && totalPages > 1 && (
+                        <div className="flex justify-center mt-6">
+                            <Pagination
+                                currentPage={page + 1}
+                                totalPages={totalPages}
+                                onPageChange={(p) => setPage(p - 1)}
+                                showIcons
+                            />
                         </div>
                     )}
                 </div>

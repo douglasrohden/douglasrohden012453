@@ -44,18 +44,18 @@ export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) 
                 <Modal.Body>
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Nome</label>
-                            <TextInput value={nome} onChange={(e) => setNome((e.target as HTMLInputElement).value)} required />
+                            <label htmlFor="artist-nome" className="block text-sm font-medium text-gray-700">Nome</label>
+                            <TextInput id="artist-nome" value={nome} onChange={(e) => setNome((e.target as HTMLInputElement).value)} />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Gênero</label>
-                            <TextInput value={genero} onChange={(e) => setGenero((e.target as HTMLInputElement).value)} />
+                            <label htmlFor="artist-genero" className="block text-sm font-medium text-gray-700">Gênero</label>
+                            <TextInput id="artist-genero" value={genero} onChange={(e) => setGenero((e.target as HTMLInputElement).value)} />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Image URL</label>
-                            <TextInput value={imageUrl} onChange={(e) => setImageUrl((e.target as HTMLInputElement).value)} />
+                            <label htmlFor="artist-imageUrl" className="block text-sm font-medium text-gray-700">Image URL</label>
+                            <TextInput id="artist-imageUrl" value={imageUrl} onChange={(e) => setImageUrl((e.target as HTMLInputElement).value)} />
                         </div>
 
                         {error && <div className="text-sm text-red-600">{String(error)}</div>}

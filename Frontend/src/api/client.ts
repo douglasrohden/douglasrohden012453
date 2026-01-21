@@ -47,6 +47,17 @@ api.interceptors.response.use(
     const url: string = originalRequest?.url ?? "";
     const isAuthRequest = url.includes("/autenticacao/login") || url.includes("/autenticacao/refresh");
 
+    const message: unknown = error?.response?.data?.message ?? error?.response?.data?.error;
+    const msg = typeof message === "string" ? message.toLowerCase() : "";
+    const backendSaysExpired = msg.includes("expir") || msg.includes("expired") || msg.includes("token invál") || msg.includes("invalid token");
+
+    // If backend says the token is expired/invalid, force logoff and go to login.
+    if (backendSaysExpired && !isAuthRequest) {
+      authStore.clearAuthentication();
+      window.location.href = "/login";
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthRequest) {
       originalRequest._retry = true;
       const refreshToken = authStore.currentState.refreshToken;

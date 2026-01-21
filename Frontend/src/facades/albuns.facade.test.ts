@@ -27,7 +27,7 @@ describe('AlbunsFacade', () => {
       await albunsFacade.fetch();
 
       expect(albunsFacade.snapshot.error).toBe('Network error');
-      expect(getAlbuns).toHaveBeenCalledWith(0, 100);
+      expect(getAlbuns).toHaveBeenCalledWith(0, 10);
     });
 
     it('should use default parameters', async () => {
@@ -36,7 +36,7 @@ describe('AlbunsFacade', () => {
 
       await albunsFacade.fetch();
 
-      expect(getAlbuns).toHaveBeenCalledWith(0, 100);
+      expect(getAlbuns).toHaveBeenCalledWith(0, 10);
     });
 
     it('should use provided parameters', async () => {

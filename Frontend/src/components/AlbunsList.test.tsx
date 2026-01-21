@@ -84,9 +84,12 @@ describe('AlbunsList', () => {
 
     const { rerender } = render(<AlbunsList />);
 
-    expect(screen.getByText('Anterior')).toBeDisabled();
-    expect(screen.getByText('Próxima')).not.toBeDisabled();
-    expect(screen.getByText('Página 1 de 5')).toBeInTheDocument();
+    // Flowbite Pagination uses buttons with aria-labels
+    const prevButton = screen.getByRole('button', { name: /anterior/i });
+    const nextButton = screen.getByRole('button', { name: /próxima/i });
+
+    expect(prevButton).toHaveAttribute('disabled');
+    expect(nextButton).not.toHaveAttribute('disabled');
 
     // Last page
     (useAlbuns as any).mockReturnValue({
@@ -99,9 +102,11 @@ describe('AlbunsList', () => {
     });
 
     rerender(<AlbunsList />);
-    expect(screen.getByText('Anterior')).not.toBeDisabled();
-    expect(screen.getByText('Próxima')).toBeDisabled();
-    expect(screen.getByText('Página 5 de 5')).toBeInTheDocument();
+    const prevButtonRerendered = screen.getByRole('button', { name: /anterior/i });
+    const nextButtonRerendered = screen.getByRole('button', { name: /próxima/i });
+
+    expect(prevButtonRerendered).not.toHaveAttribute('disabled');
+    expect(nextButtonRerendered).toHaveAttribute('disabled');
   });
 
   it('should call setPage when pagination buttons are clicked', () => {

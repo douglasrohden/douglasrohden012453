@@ -1,7 +1,7 @@
-import { Button, DarkThemeToggle, Pagination, Select, Spinner, TextInput } from "flowbite-react";
+import { Button, DarkThemeToggle, Pagination, Select, Spinner, TextInput, Card } from "flowbite-react";
 import { useAuthFacade } from "../hooks/useAuthFacade";
+import { useToast } from "../contexts/ToastContext";
 import { SidebarMenu } from "../components/SidebarMenu";
-import { ArtistCard } from "../components/ArtistCard";
 import CreateArtistForm from "../components/CreateArtistForm";
 import { useEffect, useMemo, useState } from "react";
 import { Artista, artistsService } from "../services/artistsService";
@@ -36,6 +36,7 @@ const SortIcon = ({ dir }: { dir: "asc" | "desc" }) => (
 
 export default function HomePage() {
     const { user, logout } = useAuthFacade();
+    const { addToast } = useToast();
     const navigate = useNavigate();
     const [artists, setArtists] = useState<Artista[]>([]);
     const [pageData, setPageData] = useState<Page<Artista> | null>(null);
@@ -72,6 +73,7 @@ export default function HomePage() {
             setPageData(data);
         } catch (error) {
             console.error("Failed to fetch artists", error);
+            addToast("Falha ao carregar artistas", "error");
         } finally {
             setLoading(false);
         }
@@ -148,12 +150,21 @@ export default function HomePage() {
                                     className="cursor-pointer"
                                     onClick={() => navigate(`/artista/${artist.id}`)}
                                 >
-                                    <ArtistCard
-                                        name={artist.nome}
-                                        genre={artist.genero}
-                                        imageUrl={artist.imageUrl}
-                                        albumCount={artist.albumCount}
-                                    />
+                                    <Card
+                                        className="max-w-sm"
+                                        imgAlt={artist.nome}
+                                        imgSrc={artist.imageUrl || "https://flowbite.com/docs/images/blog/image-1.jpg"}
+                                    >
+                                        <h5 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+                                            {artist.nome}
+                                        </h5>
+                                        <p className="font-normal text-gray-700 dark:text-gray-400">
+                                            {artist.genero}
+                                        </p>
+                                        {typeof artist.albumCount === "number" && (
+                                            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{artist.albumCount} album(s)</p>
+                                        )}
+                                    </Card>
                                 </div>
                             ))}
                         </div>

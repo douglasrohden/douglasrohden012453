@@ -1,14 +1,22 @@
 
-import { Pagination } from 'flowbite-react';
+import { Pagination, Card, Spinner } from 'flowbite-react';
 import { useAlbuns } from '../hooks/useAlbuns';
-import { AlbumCard } from './AlbumCard';
+import { useToast } from '../contexts/ToastContext';
+import { useEffect } from 'react';
 
 export default function AlbunsList() {
   const { albuns, loading, error, page, totalPages, setPage } = useAlbuns();
+  const { addToast } = useToast();
+
+  useEffect(() => {
+    if (error) {
+      addToast(error, "error");
+    }
+  }, [error, addToast]);
 
   if (loading) return (
     <div className="flex justify-center p-10">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"></div>
+      <Spinner size="xl" aria-label="Carregando álbuns..." />
     </div>
   );
 
@@ -24,11 +32,21 @@ export default function AlbunsList() {
         <>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-6">
             {albuns.map((album: any) => (
-              <AlbumCard
+              <Card
                 key={album.id}
-                title={album.titulo}
-                year={album.ano}
-              />
+                className="max-w-sm"
+                imgAlt={album.titulo}
+                imgSrc={album.imageUrl || "https://flowbite.com/docs/images/blog/image-1.jpg"}
+              >
+                <h5 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+                  {album.titulo}
+                </h5>
+                {album.ano && (
+                  <p className="font-normal text-gray-700 dark:text-gray-400">
+                    {album.ano}
+                  </p>
+                )}
+              </Card>
             ))}
           </div>
 

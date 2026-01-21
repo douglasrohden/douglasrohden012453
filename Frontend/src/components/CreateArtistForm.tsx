@@ -1,6 +1,7 @@
-import { Button, Modal, ModalBody, ModalFooter, ModalHeader, TextInput, Select } from "flowbite-react";
+import { Button, Modal, ModalBody, ModalFooter, ModalHeader, TextInput, Select, Label } from "flowbite-react";
 import { useState } from "react";
 import { artistsService } from "../services/artistsService";
+import { useToast } from "../contexts/ToastContext";
 
 interface Props {
     isOpen: boolean;
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) {
+    const { addToast } = useToast();
     const [nome, setNome] = useState("");
     const [genero, setGenero] = useState("");
     const [imageUrl, setImageUrl] = useState("");
@@ -31,6 +33,7 @@ export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) 
                 imageUrl: imageUrl.trim() || undefined,
                 tipo: tipo
             });
+            addToast("Artista criado com sucesso!", "success");
             onCreated?.();
             onClose();
             setNome("");
@@ -38,7 +41,9 @@ export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) 
             setImageUrl("");
             setTipo("CANTOR");
         } catch (err: any) {
-            setError(err?.response?.data?.error || err?.response?.data || err?.message || "Erro ao criar artista");
+            const msg = err?.response?.data?.error || err?.response?.data || err?.message || "Erro ao criar artista";
+            setError(msg);
+            addToast(msg, "error");
         } finally {
             setLoading(false);
         }
@@ -51,17 +56,23 @@ export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) 
                 <ModalBody>
                     <div className="space-y-4">
                         <div>
-                            <label htmlFor="artist-nome" className="block text-sm font-medium text-gray-700">Nome</label>
+                            <div className="mb-2 block">
+                                <Label htmlFor="artist-nome" value="Nome" />
+                            </div>
                             <TextInput id="artist-nome" value={nome} onChange={(e) => setNome((e.target as HTMLInputElement).value)} />
                         </div>
 
                         <div>
-                            <label htmlFor="artist-genero" className="block text-sm font-medium text-gray-700">Gênero</label>
+                            <div className="mb-2 block">
+                                <Label htmlFor="artist-genero" value="Gênero" />
+                            </div>
                             <TextInput id="artist-genero" value={genero} onChange={(e) => setGenero((e.target as HTMLInputElement).value)} />
                         </div>
 
                         <div>
-                            <label htmlFor="artist-tipo" className="block text-sm font-medium text-gray-700">Tipo</label>
+                            <div className="mb-2 block">
+                                <Label htmlFor="artist-tipo" value="Tipo" />
+                            </div>
                             <Select id="artist-tipo" value={tipo} onChange={(e) => setTipo(e.target.value)}>
                                 <option value="CANTOR">Cantor</option>
                                 <option value="BANDA">Banda</option>
@@ -70,7 +81,9 @@ export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) 
                         </div>
 
                         <div>
-                            <label htmlFor="artist-imageUrl" className="block text-sm font-medium text-gray-700">Image URL</label>
+                            <div className="mb-2 block">
+                                <Label htmlFor="artist-imageUrl" value="Image URL" />
+                            </div>
                             <TextInput id="artist-imageUrl" value={imageUrl} onChange={(e) => setImageUrl((e.target as HTMLInputElement).value)} />
                         </div>
 

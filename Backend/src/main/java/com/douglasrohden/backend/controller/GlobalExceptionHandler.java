@@ -16,16 +16,20 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> handleValidationExceptions(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getFieldErrors().forEach(error ->
-                errors.put(error.getField(), error.getDefaultMessage())
-        );
+        ex.getBindingResult().getFieldErrors()
+                .forEach(error -> errors.put(error.getField(), error.getDefaultMessage()));
         return ResponseEntity.badRequest().body(errors);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, String>> handleDataIntegrity(DataIntegrityViolationException ex) {
         Map<String, String> resp = new HashMap<>();
-        resp.put("error", "Requisição viola restrição de integridade de dados");
+        String msg = ex.getMostSpecificCause().getMessage();
+        if (msg != null && msg.contains("duplicate key")) {
+            resp.put("error", "Já existe um registro com esse nome.");
+        } else {
+            resp.put("error", "Requisição viola restrição de integridade de dados");
+        }
         return ResponseEntity.status(HttpStatus.CONFLICT).body(resp);
     }
 }

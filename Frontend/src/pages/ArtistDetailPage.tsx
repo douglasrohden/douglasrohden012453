@@ -3,12 +3,13 @@ import { useParams } from "react-router-dom";
 import { SidebarMenu } from "../components/SidebarMenu";
 import { useAuthFacade } from "../hooks/useAuthFacade";
 import { artistsService } from "../services/artistsService";
-import { Spinner } from "flowbite-react";
-import { AlbumCard } from "../components/AlbumCard";
+import { Spinner, Card } from "flowbite-react";
+import { useToast } from "../contexts/ToastContext";
 
 export default function ArtistDetailPage() {
   const { id } = useParams();
   const { user, logout } = useAuthFacade();
+  const { addToast } = useToast();
   const [artist, setArtist] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -21,6 +22,7 @@ export default function ArtistDetailPage() {
         setArtist(data);
       } catch (e) {
         console.error(e);
+        addToast("Erro ao carregar detalhes do artista", "error");
       } finally {
         setLoading(false);
       }
@@ -58,7 +60,21 @@ export default function ArtistDetailPage() {
               ) : (
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {artist.albuns.map((alb: any) => (
-                    <AlbumCard key={alb.id} title={alb.titulo} year={alb.ano} coverUrl={alb.imageUrl} />
+                    <Card
+                      key={alb.id}
+                      className="max-w-sm"
+                      imgAlt={alb.titulo}
+                      imgSrc={alb.imageUrl || "https://flowbite.com/docs/images/blog/image-1.jpg"}
+                    >
+                      <h5 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+                        {alb.titulo}
+                      </h5>
+                      {alb.ano && (
+                        <p className="font-normal text-gray-700 dark:text-gray-400">
+                          {alb.ano}
+                        </p>
+                      )}
+                    </Card>
                   ))}
                 </div>
               )}

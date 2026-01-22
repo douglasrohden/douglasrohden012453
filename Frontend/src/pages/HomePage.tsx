@@ -3,7 +3,6 @@ import { PageLayout } from "../components/layout/PageLayout";
 import CreateArtistForm from "../components/CreateArtistForm";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { SearchIcon } from "../components/icons";
 import { CardGrid } from "../components/common/CardGrid";
 import { ListToolbar } from "../components/common/ListToolbar";
 import { useArtists } from "../hooks/useArtists";
@@ -38,7 +37,6 @@ export default function HomePage() {
                 onQueryChange={setSearch}
                 queryPlaceholder="Buscar artista..."
                 queryId="search"
-                searchIcon={SearchIcon}
                 sortDir={dir}
                 onSortDirChange={(value) => setDir(value)}
                 sortDirId="sort-artistas"

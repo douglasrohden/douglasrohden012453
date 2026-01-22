@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Button, Label, TextInput, Modal, ModalBody, ModalHeader, ModalFooter } from 'flowbite-react';
 import { useToast } from '../contexts/ToastContext';
 import { artistsService } from '../services/artistsService';
-import { getErrorMessage } from '../api/types';
+import { getErrorMessage } from '../api/client';
 
 interface CreateAlbumFormProps {
     artistId: number;

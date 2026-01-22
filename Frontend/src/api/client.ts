@@ -78,4 +78,16 @@ api.interceptors.response.use(
   },
 );
 
+
+export function getErrorMessage(err: unknown, fallback = 'Erro inesperado'): string {
+  if (!err) return fallback;
+
+  const anyErr = err as any;
+  const axiosMessage = anyErr?.response?.data?.message ?? anyErr?.response?.data?.error;
+  if (typeof axiosMessage === 'string' && axiosMessage.trim()) return axiosMessage;
+
+  if (typeof anyErr?.message === 'string' && anyErr.message.trim()) return anyErr.message;
+  return fallback;
+}
+
 export default api;

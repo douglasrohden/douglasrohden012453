@@ -1,4 +1,4 @@
-import api from "../config/axiosConfig";
+import api from "../api/client";
 import { Page } from "../types/Page";
 
 export interface Artista {

@@ -1,8 +1,7 @@
 import { Button, Label, Select, TextInput } from "flowbite-react";
 import type { FC, ComponentProps, ReactNode } from "react";
-import { HiPlus, HiSearch } from "react-icons/hi";
+import { HiArrowDown, HiArrowUp, HiPlus, HiSearch } from "react-icons/hi";
 import { ToolbarCard } from "./ToolbarCard";
-import { SortIcon } from "../icons";
 
 type IconComponent = FC<ComponentProps<"svg">>;
 
@@ -120,7 +119,11 @@ export function ListToolbar({
               title={sortDir === "asc" ? "Ordenar Z-A" : "Ordenar A-Z"}
             >
               {sortDir === "asc" ? "A-Z" : "Z-A"}
-              <SortIcon dir={sortDir} />
+              {sortDir === "asc" ? (
+                <HiArrowUp className="ml-2 -mr-1 h-5 w-5" />
+              ) : (
+                <HiArrowDown className="ml-2 -mr-1 h-5 w-5" />
+              )}
             </Button>
           </div>
 

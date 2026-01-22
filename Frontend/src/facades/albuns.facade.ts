@@ -15,15 +15,33 @@ const INITIAL_PAGE: Page<Album> = {
     empty: true
 };
 
+interface CacheEntry {
+    data: Page<Album>;
+    timestamp: number;
+}
+
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 export class AlbunsFacade extends BaseFacade<Page<Album>> {
+    private cache = new Map<string, CacheEntry>();
+
     constructor() {
         super(INITIAL_PAGE);
     }
 
     async fetch(page = 0, size = 10) {
+        const cacheKey = `${page}-${size}`;
+        const cached = this.cache.get(cacheKey);
+
+        if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+            this.setData(cached.data);
+            return;
+        }
+
         try {
             this.setLoading(true);
             const data = await getAlbuns(page, size);
+            this.cache.set(cacheKey, { data, timestamp: Date.now() });
             this.setData(data);
         } catch (e) {
             const errorMessage = e instanceof Error ? e.message : 'Erro ao carregar álbuns';
@@ -31,6 +49,10 @@ export class AlbunsFacade extends BaseFacade<Page<Album>> {
         } finally {
             this.setLoading(false);
         }
+    }
+
+    invalidateCache() {
+        this.cache.clear();
     }
 }
 

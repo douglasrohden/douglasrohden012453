@@ -11,7 +11,7 @@ export function PageHeader({ title, subtitle, onToggleSidebar }: PageHeaderProps
     const { logout } = useAuthFacade();
 
     return (
-        <nav className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <nav className="flex items-center justify-between px-4 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 md:px-6">
             <div className="flex items-center gap-3">
                 <Button
                     onClick={onToggleSidebar}

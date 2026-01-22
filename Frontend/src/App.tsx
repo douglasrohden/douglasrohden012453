@@ -10,23 +10,44 @@ const HomePage = lazy(() => import("./pages/HomePage"));
 const AlbunsPage = lazy(() => import("./pages/AlbunsPage"));
 const ArtistDetailPage = lazy(() => import("./pages/ArtistDetailPage"));
 
+const ROUTES = {
+  login: "/login",
+  artists: "/artista",
+  artistDetail: "/artista/:id",
+  albuns: "/albuns",
+} as const;
+
+function FullScreenFallback() {
+  return (
+    <div className="min-h-screen w-full flex items-center justify-center">
+      <LoadingSpinner />
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <ToastProvider>
-        <Suspense fallback={<div className="h-screen w-full flex items-center justify-center"><LoadingSpinner /></div>}>
+        <Suspense fallback={<FullScreenFallback />}>
           <Routes>
+            {/* rota raiz */}
+            <Route path="/" element={<Navigate to={ROUTES.artists} replace />} />
+
+            {/* rotas públicas */}
             <Route element={<PublicRoute />}>
-              <Route path="/login" element={<LoginPage />} />
+              <Route path={ROUTES.login} element={<LoginPage />} />
             </Route>
 
+            {/* rotas protegidas */}
             <Route element={<ProtectedRoute />}>
-              <Route path="/artista" element={<HomePage />} />
-              <Route path="/artista/:id" element={<ArtistDetailPage />} />
-              <Route path="/albuns" element={<AlbunsPage />} />
+              <Route path={ROUTES.artists} element={<HomePage />} />
+              <Route path={ROUTES.artistDetail} element={<ArtistDetailPage />} />
+              <Route path={ROUTES.albuns} element={<AlbunsPage />} />
             </Route>
 
-            <Route path="*" element={<Navigate to="/artista" replace />} />
+            {/* fallback */}
+            <Route path="*" element={<Navigate to={ROUTES.artists} replace />} />
           </Routes>
         </Suspense>
       </ToastProvider>

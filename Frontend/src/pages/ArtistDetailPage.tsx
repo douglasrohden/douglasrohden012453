@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { useDebounce } from "../hooks/useDebounce";
 import { useParams } from "react-router-dom";
 import { PageLayout } from "../components/layout/PageLayout";
 import { artistsService } from "../services/artistsService";
@@ -53,10 +54,12 @@ export default function ArtistDetailPage() {
     fetchArtist();
   }, [id]);
 
+  const debouncedSearch = useDebounce(search, 300);
+
   const visibleAlbuns = useMemo(() => {
     if (!artist?.albuns) return [];
 
-    const normalizedQuery = search.trim().toLowerCase();
+    const normalizedQuery = debouncedSearch.trim().toLowerCase();
     const filtered = normalizedQuery
       ? artist.albuns.filter((a) => (a?.titulo ?? "").toLowerCase().includes(normalizedQuery))
       : artist.albuns;
@@ -77,7 +80,7 @@ export default function ArtistDetailPage() {
     });
 
     return sortDir === "asc" ? sorted : sorted.reverse();
-  }, [artist?.albuns, search, sortField, sortDir]);
+  }, [artist?.albuns, debouncedSearch, sortField, sortDir]);
 
   return (
     <PageLayout>

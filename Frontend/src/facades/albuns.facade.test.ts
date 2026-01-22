@@ -8,6 +8,7 @@ vi.mock('../services/albunsService');
 describe('AlbunsFacade', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    albunsFacade.invalidateCache();
   });
 
   describe('fetch', () => {

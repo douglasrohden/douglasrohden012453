@@ -64,7 +64,6 @@ export default function HomePage() {
                 loading={loading}
                 isEmpty={artists.length === 0}
                 emptyMessage="Nenhum artista encontrado."
-                loadingMessage="Carregando artistas..."
             >
                 {artists.map((artist) => (
                     <Card

@@ -6,6 +6,7 @@ import { HiSearch } from 'react-icons/hi';
 import { CardGrid } from './common/CardGrid';
 import { ListToolbar } from './common/ListToolbar';
 import CreateAlbumForm from './CreateAlbumForm';
+import { useDebounce } from '../hooks/useDebounce';
 
 interface Album {
   id: number;
@@ -29,9 +30,10 @@ export default function AlbunsList() {
   const [sortField, setSortField] = useState("titulo");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const debouncedSearch = useDebounce(search, 300);
 
   const visibleAlbuns = useMemo(() => {
-    const normalizedQuery = search.trim().toLowerCase();
+    const normalizedQuery = debouncedSearch.trim().toLowerCase();
     const filtered = normalizedQuery
       ? albuns.filter((a) => (a?.titulo ?? "").toLowerCase().includes(normalizedQuery))
       : albuns;
@@ -88,7 +90,6 @@ export default function AlbunsList() {
         loading={loading}
         isEmpty={visibleAlbuns.length === 0}
         emptyMessage="Nenhum álbum encontrado."
-        loadingMessage="Carregando álbuns..."
       >
         {visibleAlbuns.map((album) => (
           <Card

@@ -29,7 +29,7 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="flex min-h-screen flex-col items-center justify-center px-6 py-8 mx-auto md:h-screen lg:py-0 bg-gray-50 dark:bg-gray-900">
+        <div className="flex min-h-screen flex-col items-center justify-center px-4 py-8 mx-auto md:h-screen lg:py-0 bg-gray-50 dark:bg-gray-900">
             <Card className="w-full md:mt-0 sm:max-w-md xl:p-0">
                 <h1 className="text-xl font-bold leading-tight tracking-tight text-gray-900 md:text-2xl dark:text-white">
                     Acesse sua conta

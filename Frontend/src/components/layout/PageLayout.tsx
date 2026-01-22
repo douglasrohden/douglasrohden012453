@@ -21,7 +21,7 @@ export function PageLayout({ children }: PageLayoutProps) {
                     onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
                 />
 
-                <div className="p-6 overflow-y-auto h-[calc(100vh-73px)]">
+                <div className="p-4 overflow-y-auto h-[calc(100vh-73px)] md:p-6">
                     {children}
                 </div>
             </div>

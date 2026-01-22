@@ -36,7 +36,7 @@ export function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
 
             {/* Sidebar Container */}
             <div
-                className={`fixed inset-y-0 left-0 z-40 w-64 transform border-r border-gray-300 bg-white transition-transform duration-300 dark:border-gray-700 dark:bg-gray-800 md:static md:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"
+                className={`fixed inset-y-0 left-0 z-40 w-64 transform border-r border-gray-200 bg-white transition-transform duration-300 dark:border-gray-700 dark:bg-gray-800 md:static md:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"
                     }`}
             >
                 <Sidebar aria-label="Main Sidebar Navigation" className="w-full">

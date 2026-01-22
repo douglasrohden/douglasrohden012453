@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useDebounce } from "./useDebounce";
 import { useLocation } from "react-router-dom";
 import { Artista, artistsService } from "../services/artistsService";
 import { Page } from "../types/Page";
@@ -28,19 +29,14 @@ export function useArtists(): UseArtistsReturn {
     const [pageData, setPageData] = useState<Page<Artista> | null>(null);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
-    const [debouncedSearch, setDebouncedSearch] = useState("");
     const [page, setPage] = useState(0);
     const [dir, setDir] = useState<"asc" | "desc">("asc");
     const [tipo, setTipo] = useState<string>("TODOS");
 
     // Constants
     const size = 10;
-
     // Debounce search
-    useEffect(() => {
-        const t = setTimeout(() => setDebouncedSearch(search), 300);
-        return () => clearTimeout(t);
-    }, [search]);
+    const debouncedSearch = useDebounce(search, 300);
 
     // Reset page on filter change
     useEffect(() => {

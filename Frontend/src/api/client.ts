@@ -61,6 +61,20 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    // Handle 429 Too Many Requests (Rate Limit)
+    if (error.response?.status === 429) {
+      const retryAfter = error.response.headers?.['retry-after']
+        || error.response.headers?.['x-ratelimit-reset'];
+
+      // Enhance error with rate limit information
+      error.rateLimitInfo = {
+        retryAfter: retryAfter ? parseInt(retryAfter, 10) : 60, // Default to 60 seconds
+        message: typeof message === "string" ? message : "Muitas requisições. Por favor, aguarde antes de tentar novamente."
+      };
+
+      return Promise.reject(error);
+    }
+
     // Handle 401 Unauthorized
     if (error.response?.status === 401) {
       // If this is an auth request (login/refresh), don't retry - just reject

@@ -1,16 +1,66 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button, Card, Label, TextInput, Alert, Spinner } from "flowbite-react";
 import { useAuthFacade } from "../hooks/useAuthFacade";
 import { useNavigate } from "react-router-dom";
+import { HiClock } from "react-icons/hi";
+
+interface RateLimitError extends Error {
+    response?: {
+        status: number;
+    };
+    rateLimitInfo?: {
+        retryAfter: number;
+        message: string;
+    };
+}
 
 export default function LoginPage() {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+    const [rateLimited, setRateLimited] = useState(false);
+    const [retryAfter, setRetryAfter] = useState(0);
 
     const { login } = useAuthFacade();
     const navigate = useNavigate();
+    const intervalRef = useRef<number | null>(null);
+
+    // Cleanup interval on unmount
+    useEffect(() => {
+        return () => {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+            }
+        };
+    }, []);
+
+    // Countdown timer for rate limit
+    useEffect(() => {
+        if (retryAfter > 0) {
+            intervalRef.current = setInterval(() => {
+                setRetryAfter((prev) => {
+                    if (prev <= 1) {
+                        setRateLimited(false);
+                        setError("");
+                        if (intervalRef.current) {
+                            clearInterval(intervalRef.current);
+                            intervalRef.current = null;
+                        }
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+
+            return () => {
+                if (intervalRef.current) {
+                    clearInterval(intervalRef.current);
+                    intervalRef.current = null;
+                }
+            };
+        }
+    }, [retryAfter]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -22,10 +72,32 @@ export default function LoginPage() {
             navigate("/artista", { replace: true });
         } catch (err) {
             console.error(err);
-            setError("Falha no login. Verifique suas credenciais.");
+
+            // Check if it's a rate limit error (429)
+            const rateLimitErr = err as RateLimitError;
+            if (rateLimitErr.response?.status === 429) {
+                setRateLimited(true);
+                const retrySeconds = rateLimitErr.rateLimitInfo?.retryAfter || 60;
+                setRetryAfter(retrySeconds);
+                setError(
+                    rateLimitErr.rateLimitInfo?.message ||
+                    "Limite de tentativas excedido. Por favor, aguarde antes de tentar novamente."
+                );
+            } else {
+                setRateLimited(false);
+                setError("Falha no login. Verifique suas credenciais.");
+            }
         } finally {
             setLoading(false);
         }
+    };
+
+    const formatTime = (seconds: number): string => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return mins > 0
+            ? `${mins}:${secs.toString().padStart(2, '0')}`
+            : `${secs}s`;
     };
 
     return (
@@ -36,8 +108,20 @@ export default function LoginPage() {
                 </h1>
 
                 {error && (
-                    <Alert color="failure">
-                        <span className="font-medium">Erro!</span> {error}
+                    <Alert color={rateLimited ? "warning" : "failure"} icon={rateLimited ? HiClock : undefined}>
+                        <div className="flex flex-col gap-2">
+                            <div>
+                                <span className="font-medium">
+                                    {rateLimited ? "Aguarde!" : "Erro!"}
+                                </span>{" "}
+                                {error}
+                            </div>
+                            {rateLimited && retryAfter > 0 && (
+                                <div className="text-sm font-semibold">
+                                    Tente novamente em: <span className="font-mono text-lg">{formatTime(retryAfter)}</span>
+                                </div>
+                            )}
+                        </div>
                     </Alert>
                 )}
 
@@ -52,6 +136,7 @@ export default function LoginPage() {
                             required
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
+                            disabled={loading || rateLimited}
                         />
                     </div>
                     <div>
@@ -65,12 +150,17 @@ export default function LoginPage() {
                             required
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
+                            disabled={loading || rateLimited}
                         />
                     </div>
 
-                    <Button type="submit" className="w-full" disabled={loading}>
+                    <Button
+                        type="submit"
+                        className="w-full"
+                        disabled={loading || rateLimited}
+                    >
                         {loading && <Spinner size="sm" aria-label="Loading" className="me-3" light />}
-                        Entrar
+                        {rateLimited && retryAfter > 0 ? `Aguarde ${formatTime(retryAfter)}` : "Entrar"}
                     </Button>
                 </form>
             </Card>

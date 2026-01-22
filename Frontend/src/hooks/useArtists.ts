@@ -4,8 +4,10 @@ import { useLocation } from "react-router-dom";
 import { Artista, artistsService } from "../services/artistsService";
 import { Page } from "../types/Page";
 import { useToast } from "../contexts/ToastContext";
-import { getErrorMessage } from "../api/client";
-import axios from "axios";
+import { getErrorMessage, getHttpStatus } from "../api/client";
+
+let lastFetchKey = "";
+let lastFetchAtMs = 0;
 
 interface UseArtistsReturn {
     artists: Artista[];
@@ -47,6 +49,17 @@ export function useArtists(): UseArtistsReturn {
 
     // Fetch Data
     const fetchArtists = useCallback(async () => {
+        const fetchKey = `${page}|${size}|${debouncedSearch}|${dir}|${tipo}`;
+        const now = Date.now();
+
+        // React 18 StrictMode (dev) mounts/unmounts components twice; without a guard,
+        // this can look like a single click but produce duplicate API calls.
+        if (import.meta.env.DEV && fetchKey === lastFetchKey && now - lastFetchAtMs < 800) {
+            return;
+        }
+        lastFetchKey = fetchKey;
+        lastFetchAtMs = now;
+
         setLoading(true);
         try {
             const data = await artistsService.getAll(page, size, debouncedSearch, "nome", dir, tipo);
@@ -54,7 +67,7 @@ export function useArtists(): UseArtistsReturn {
             setPageData(data);
         } catch (error) {
             console.error("Failed to fetch artists", error);
-            const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+            const status = getHttpStatus(error);
             const msg = getErrorMessage(error, "Falha ao carregar artistas");
             // 429 already triggers a global warning toast
             if (status !== 429) addToast(msg, "error");

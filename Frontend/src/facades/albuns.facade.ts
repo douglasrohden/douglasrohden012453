@@ -25,6 +25,7 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 export class AlbunsFacade extends BaseFacade<Page<Album>> {
     private cache = new Map<string, CacheEntry>();
+    private inFlight = new Map<string, Promise<void>>();
 
     constructor() {
         super(INITIAL_PAGE);
@@ -34,22 +35,34 @@ export class AlbunsFacade extends BaseFacade<Page<Album>> {
         const cacheKey = `${page}-${size}`;
         const cached = this.cache.get(cacheKey);
 
+        const pending = this.inFlight.get(cacheKey);
+        if (pending) {
+            await pending;
+            return;
+        }
+
         if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
             this.setData(cached.data);
             return;
         }
 
-        try {
-            this.setLoading(true);
-            const data = await getAlbuns(page, size);
-            this.cache.set(cacheKey, { data, timestamp: Date.now() });
-            this.setData(data);
-        } catch (e) {
-            const errorMessage = getErrorMessage(e, 'Erro ao carregar álbuns');
-            this.setError(errorMessage);
-        } finally {
-            this.setLoading(false);
-        }
+        const job = (async () => {
+            try {
+                this.setLoading(true);
+                const data = await getAlbuns(page, size);
+                this.cache.set(cacheKey, { data, timestamp: Date.now() });
+                this.setData(data);
+            } catch (e) {
+                const errorMessage = getErrorMessage(e, 'Erro ao carregar álbuns');
+                this.setError(errorMessage);
+            } finally {
+                this.setLoading(false);
+                this.inFlight.delete(cacheKey);
+            }
+        })();
+
+        this.inFlight.set(cacheKey, job);
+        await job;
     }
 
     invalidateCache() {

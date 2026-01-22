@@ -1,5 +1,6 @@
 package com.douglasrohden.backend.config;
 
+import com.douglasrohden.backend.config.filter.ApiRateLimitFilter;
 import com.douglasrohden.backend.security.JwtAuthenticationFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
@@ -21,27 +22,32 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
-import com.douglasrohden.backend.config.filter.RateLimitFilter;
-import com.douglasrohden.backend.config.filter.LoginRateLimitFilter;
 import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
+    private static final String[] PERMIT_ALL = {
+            "/v1/autenticacao/**",
+            "/v1/dev/**",
+            "/api/db/**",
+            "/ws/**",
+            "/actuator/**",
+            "/error",
+            "/swagger-ui/**",
+            "/v3/api-docs/**"
+    };
+
     private final JwtAuthenticationFilter jwtAuthFilter;
-    private final RateLimitFilter rateLimitFilter;
-    private final LoginRateLimitFilter loginRateLimitFilter;
+    private final ApiRateLimitFilter apiRateLimitFilter;
     private final UserDetailsService userDetailsService;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter,
-            RateLimitFilter rateLimitFilter,
-            LoginRateLimitFilter loginRateLimitFilter,
+            ApiRateLimitFilter apiRateLimitFilter,
             UserDetailsService userDetailsService) {
         this.jwtAuthFilter = jwtAuthFilter;
-        this.rateLimitFilter = rateLimitFilter;
-        this.loginRateLimitFilter = loginRateLimitFilter;
+        this.apiRateLimitFilter = apiRateLimitFilter;
         this.userDetailsService = userDetailsService;
     }
 
@@ -52,13 +58,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/v1/autenticacao/**").permitAll()
-                        .requestMatchers("/v1/dev/**").permitAll()
-                        .requestMatchers("/api/db/**").permitAll()
-                        .requestMatchers("/ws/**").permitAll()
-                        .requestMatchers("/actuator/**").permitAll()
-                        .requestMatchers("/error").permitAll()
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                    .requestMatchers(PERMIT_ALL).permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, authException) -> response
@@ -68,9 +68,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(loginRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(rateLimitFilter, JwtAuthenticationFilter.class);
+                .addFilterAfter(apiRateLimitFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }

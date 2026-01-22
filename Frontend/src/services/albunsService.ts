@@ -6,6 +6,7 @@ export interface Album {
   titulo: string;
   ano?: number;
   imageUrl?: string;
+  artistaNome?: string;
 }
 
 export async function getAlbuns(page = 0, size = 10): Promise<Page<Album>> {

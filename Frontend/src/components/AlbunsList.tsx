@@ -86,8 +86,22 @@ export default function AlbunsList() {
           <Card
             key={album.id}
             className="h-full transition-shadow hover:shadow-lg"
-            imgAlt={album.titulo}
-            imgSrc={album.imageUrl || "https://flowbite.com/docs/images/blog/image-1.jpg"}
+            renderImage={() => (
+              <div>
+                {album.artistaNome && (
+                  <div className="px-4 pt-4 pb-2">
+                    <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                      {album.artistaNome}
+                    </p>
+                  </div>
+                )}
+                <img
+                  src={album.imageUrl || "https://flowbite.com/docs/images/blog/image-1.jpg"}
+                  alt={album.titulo}
+                  className="h-auto w-full object-cover"
+                />
+              </div>
+            )}
           >
             <h5 className="truncate text-xl font-bold tracking-tight text-gray-900 dark:text-white line-clamp-1" title={album.titulo}>
               {album.titulo}

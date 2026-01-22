@@ -121,3 +121,6 @@ export default function AlbunsList() {
         onClose={() => setShowCreateModal(false)}
         onSuccess={() => setPage(page)}
       />
+    </div>
+  );
+}

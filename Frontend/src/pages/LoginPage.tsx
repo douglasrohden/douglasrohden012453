@@ -11,6 +11,8 @@ interface RateLimitError extends Error {
     rateLimitInfo?: {
         retryAfter: number;
         message: string;
+        limitPerMinute?: number;
+        remaining?: number;
     };
 }
 
@@ -79,9 +81,12 @@ export default function LoginPage() {
                 setRateLimited(true);
                 const retrySeconds = rateLimitErr.rateLimitInfo?.retryAfter || 60;
                 setRetryAfter(retrySeconds);
+
+                const limit = rateLimitErr.rateLimitInfo?.limitPerMinute;
+                const suffix = typeof limit === "number" && limit > 0 ? ` (limite: ${limit}/min)` : "";
                 setError(
-                    rateLimitErr.rateLimitInfo?.message ||
-                    "Limite de tentativas excedido. Por favor, aguarde antes de tentar novamente."
+                    (rateLimitErr.rateLimitInfo?.message ||
+                        "Muitas requisições. Por favor, aguarde antes de tentar novamente.") + suffix,
                 );
             } else {
                 setRateLimited(false);
@@ -112,7 +117,7 @@ export default function LoginPage() {
                         <div className="flex flex-col gap-2">
                             <div>
                                 <span className="font-medium">
-                                    {rateLimited ? "Aguarde!" : "Erro!"}
+                                    {rateLimited ? "Atenção!" : "Erro!"}
                                 </span>{" "}
                                 {error}
                             </div>

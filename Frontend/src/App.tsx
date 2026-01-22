@@ -4,6 +4,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { PublicRoute } from "./components/PublicRoute";
 import { ToastProvider } from "./contexts/ToastContext";
 import { LoadingSpinner } from "./components/common/LoadingSpinner";
+import { ApiGlobalToasts } from "./components/ApiGlobalToasts";
 
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const HomePage = lazy(() => import("./pages/HomePage"));
@@ -29,6 +30,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <ToastProvider>
+        <ApiGlobalToasts />
         <Suspense fallback={<FullScreenFallback />}>
           <Routes>
             {/* rota raiz */}

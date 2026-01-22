@@ -1,5 +1,6 @@
 import axios, { type AxiosInstance } from "axios";
 import { authStore } from "../store/auth.store";
+import { emitApiRateLimit } from "./apiEvents";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/v1";
 
@@ -63,14 +64,58 @@ api.interceptors.response.use(
 
     // Handle 429 Too Many Requests (Rate Limit)
     if (error.response?.status === 429) {
-      const retryAfter = error.response.headers?.['retry-after']
-        || error.response.headers?.['x-ratelimit-reset'];
+      const data = error?.response?.data as any;
+
+      const retryAfterFromBody =
+        typeof data?.retryAfter === "number"
+          ? data.retryAfter
+          : typeof data?.retryAfter === "string"
+            ? parseInt(data.retryAfter, 10)
+            : undefined;
+
+      const retryAfterHeader = error.response.headers?.["retry-after"];
+      const retryAfterFromHeader =
+        typeof retryAfterHeader === "string" ? parseInt(retryAfterHeader, 10) : undefined;
+
+      const retryAfterSeconds =
+        Number.isFinite(retryAfterFromBody) && (retryAfterFromBody as number) > 0
+          ? (retryAfterFromBody as number)
+          : Number.isFinite(retryAfterFromHeader) && (retryAfterFromHeader as number) > 0
+            ? (retryAfterFromHeader as number)
+            : 60;
+
+      const limitHeader = error.response.headers?.["x-rate-limit-limit"];
+      const remainingHeader = error.response.headers?.["x-rate-limit-remaining"];
+      const limitPerMinute = typeof limitHeader === "string" ? parseInt(limitHeader, 10) : undefined;
+      const remaining = typeof remainingHeader === "string" ? parseInt(remainingHeader, 10) : undefined;
+
+      const friendlyMessage =
+        typeof data?.message === "string" && data.message.trim()
+          ? data.message
+          : typeof message === "string" && message.trim()
+            ? message
+            : "Muitas requisições. Por favor, aguarde antes de tentar novamente.";
 
       // Enhance error with rate limit information
       error.rateLimitInfo = {
-        retryAfter: retryAfter ? parseInt(retryAfter, 10) : 60, // Default to 60 seconds
-        message: typeof message === "string" ? message : "Muitas requisições. Por favor, aguarde antes de tentar novamente."
+        retryAfter: retryAfterSeconds,
+        message: friendlyMessage,
+        limitPerMinute,
+        remaining,
       };
+
+      // Global toast/event for all screens (avoid duplicating on login/refresh page)
+      if (!isAuthRequest) {
+        emitApiRateLimit({
+          status: 429,
+          message: friendlyMessage,
+          retryAfterSeconds,
+          limitPerMinute,
+          remaining,
+          endpoint: url,
+          method: originalRequest?.method,
+        });
+      }
 
       return Promise.reject(error);
     }
@@ -97,6 +142,13 @@ export function getErrorMessage(err: unknown, fallback = 'Erro inesperado'): str
   if (!err) return fallback;
 
   const anyErr = err as any;
+  const rateLimitInfo = anyErr?.rateLimitInfo;
+  if (rateLimitInfo?.message && typeof rateLimitInfo.message === "string") {
+    const retryAfter = typeof rateLimitInfo.retryAfter === "number" ? rateLimitInfo.retryAfter : undefined;
+    if (retryAfter && retryAfter > 0) return `${rateLimitInfo.message} (aguarde ${retryAfter}s)`;
+    return rateLimitInfo.message;
+  }
+
   const axiosMessage = anyErr?.response?.data?.message ?? anyErr?.response?.data?.error;
   if (typeof axiosMessage === 'string' && axiosMessage.trim()) return axiosMessage;
 

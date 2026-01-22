@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { PageLayout } from "../components/layout/PageLayout";
 import { artistsService } from "../services/artistsService";
@@ -8,14 +8,32 @@ import { LoadingSpinner } from "../components/common/LoadingSpinner";
 import { EmptyState } from "../components/common/EmptyState";
 import { CardGrid } from "../components/common/CardGrid";
 import CreateAlbumForm from "../components/CreateAlbumForm";
-import { Button } from "flowbite-react";
+import { ListToolbar } from "../components/common/ListToolbar";
+
+interface Album {
+  id: number;
+  titulo: string;
+  ano?: number;
+  imageUrl?: string;
+}
+
+interface ArtistaDetalhado {
+  id: number;
+  nome: string;
+  genero: string;
+  imageUrl?: string;
+  albuns?: Album[];
+}
 
 export default function ArtistDetailPage() {
   const { id } = useParams();
   const { addToast } = useToast();
-  const [artist, setArtist] = useState<any | null>(null);
+  const [artist, setArtist] = useState<ArtistaDetalhado | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAddAlbumModal, setShowAddAlbumModal] = useState(false);
+  const [search, setSearch] = useState("");
+  const [sortField, setSortField] = useState("titulo");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const fetchArtist = async () => {
     if (!id) return;
@@ -35,6 +53,32 @@ export default function ArtistDetailPage() {
     fetchArtist();
   }, [id]);
 
+  const visibleAlbuns = useMemo(() => {
+    if (!artist?.albuns) return [];
+
+    const normalizedQuery = search.trim().toLowerCase();
+    const filtered = normalizedQuery
+      ? artist.albuns.filter((a) => (a?.titulo ?? "").toLowerCase().includes(normalizedQuery))
+      : artist.albuns;
+
+    const sorted = [...filtered].sort((a, b) => {
+      const aValue = a?.[sortField as keyof Album];
+      const bValue = b?.[sortField as keyof Album];
+
+      if (aValue == null && bValue == null) return 0;
+      if (aValue == null) return 1;
+      if (bValue == null) return -1;
+
+      if (typeof aValue === "number" && typeof bValue === "number") {
+        return aValue - bValue;
+      }
+
+      return String(aValue).localeCompare(String(bValue), "pt-BR", { sensitivity: "base" });
+    });
+
+    return sortDir === "asc" ? sorted : sorted.reverse();
+  }, [artist?.albuns, search, sortField, sortDir]);
+
   return (
     <PageLayout>
       {loading ? (
@@ -43,13 +87,31 @@ export default function ArtistDetailPage() {
         <EmptyState message="Artista não encontrado" />
       ) : (
         <div>
-          <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">{artist.nome}</h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">Gênero: {artist.genero}</p>
-
-          <div className="flex justify-between items-center mb-3">
+          
+          <div className="mb-4 flex items-center justify-between">
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Álbuns</h3>
-            <Button size="sm" onClick={() => setShowAddAlbumModal(true)}>Adicionar Álbum</Button>
           </div>
+
+          <ListToolbar
+            query={search}
+            onQueryChange={setSearch}
+            queryPlaceholder="Buscar álbum..."
+            queryId="search-albuns-artista"
+            sortField={sortField}
+            onSortFieldChange={setSortField}
+            sortFieldId="sort-albuns-artista"
+            sortFieldLabel="Ordenar por"
+            sortFieldOptions={[
+              { value: "titulo", label: "Título" },
+              { value: "ano", label: "Ano" },
+            ]}
+            sortDir={sortDir}
+            onSortDirChange={setSortDir}
+            sortDirId="sort-dir-albuns-artista"
+            sortDirLabel="Ordem"
+            addLabel="Adicionar Álbum"
+            onAdd={() => setShowAddAlbumModal(true)}
+          />
 
           <CreateAlbumForm
             artistId={artist.id}
@@ -59,17 +121,31 @@ export default function ArtistDetailPage() {
           />
 
           <CardGrid
-            isEmpty={!artist.albuns || artist.albuns.length === 0}
-            emptyMessage="Nenhum álbum associado."
+            isEmpty={visibleAlbuns.length === 0}
+            emptyMessage="Nenhum álbum encontrado."
           >
-            {artist.albuns?.map((alb: any) => (
+            {visibleAlbuns.map((alb) => (
               <Card
                 key={alb.id}
-                className="h-full"
-                imgAlt={alb.titulo}
-                imgSrc={alb.imageUrl || "https://flowbite.com/docs/images/blog/image-1.jpg"}
+                className="h-full transition-shadow hover:shadow-lg"
+                renderImage={() => (
+                  <div>
+                    {artist.nome && (
+                      <div className="px-4 pt-4 pb-2">
+                        <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                          {artist.nome}
+                        </p>
+                      </div>
+                    )}
+                    <img
+                      src={alb.imageUrl || "https://flowbite.com/docs/images/blog/image-1.jpg"}
+                      alt={alb.titulo}
+                      className="h-auto w-full object-cover"
+                    />
+                  </div>
+                )}
               >
-                <h5 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white line-clamp-1" title={alb.titulo}>
+                <h5 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white line-clamp-1" title={alb.titulo}>
                   {alb.titulo}
                 </h5>
                 <div className="h-6">

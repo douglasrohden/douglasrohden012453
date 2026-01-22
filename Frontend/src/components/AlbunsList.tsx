@@ -7,6 +7,14 @@ import { CardGrid } from './common/CardGrid';
 import { ListToolbar } from './common/ListToolbar';
 import CreateAlbumForm from './CreateAlbumForm';
 
+interface Album {
+  id: number;
+  titulo: string;
+  ano?: number;
+  imageUrl?: string;
+  artistaNome?: string;
+}
+
 export default function AlbunsList() {
   const { albuns, loading, error, page, totalPages, setPage } = useAlbuns();
   const { addToast } = useToast();
@@ -25,12 +33,12 @@ export default function AlbunsList() {
   const visibleAlbuns = useMemo(() => {
     const normalizedQuery = search.trim().toLowerCase();
     const filtered = normalizedQuery
-      ? albuns.filter((a: any) => (a?.titulo ?? "").toLowerCase().includes(normalizedQuery))
+      ? albuns.filter((a) => (a?.titulo ?? "").toLowerCase().includes(normalizedQuery))
       : albuns;
 
-    const sorted = [...filtered].sort((a: any, b: any) => {
-      const aValue = a?.[sortField];
-      const bValue = b?.[sortField];
+    const sorted = [...filtered].sort((a, b) => {
+      const aValue = a?.[sortField as keyof Album];
+      const bValue = b?.[sortField as keyof Album];
 
       if (aValue == null && bValue == null) return 0;
       if (aValue == null) return 1;
@@ -82,7 +90,7 @@ export default function AlbunsList() {
         emptyMessage="Nenhum álbum encontrado."
         loadingMessage="Carregando álbuns..."
       >
-        {visibleAlbuns.map((album: any) => (
+        {visibleAlbuns.map((album) => (
           <Card
             key={album.id}
             className="h-full transition-shadow hover:shadow-lg"

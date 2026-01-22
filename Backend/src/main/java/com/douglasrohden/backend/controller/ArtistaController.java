@@ -44,33 +44,13 @@ public class ArtistaController {
 
     @PostMapping
     public ResponseEntity<Artista> create(@Valid @RequestBody ArtistaRequest request) {
-        Artista artista = new Artista();
-        artista.setNome(request.getNome());
-        artista.setGenero(request.getGenero());
-        artista.setImageUrl(request.getImageUrl());
-        if (request.getTipo() != null) {
-            try {
-                artista.setTipo(ArtistaTipo.valueOf(request.getTipo()));
-            } catch (IllegalArgumentException e) {
-                // Ignore invalid type, service defaults to CANTOR if null
-            }
-        }
+        Artista artista = criarArtistaFromRequest(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(artista));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Artista> update(@PathVariable Long id, @Valid @RequestBody ArtistaRequest request) {
-        Artista artista = new Artista();
-        artista.setNome(request.getNome());
-        artista.setGenero(request.getGenero());
-        artista.setImageUrl(request.getImageUrl());
-        if (request.getTipo() != null) {
-            try {
-                artista.setTipo(ArtistaTipo.valueOf(request.getTipo()));
-            } catch (IllegalArgumentException e) {
-                // Ignore invalid type
-            }
-        }
+        Artista artista = criarArtistaFromRequest(request);
         return ResponseEntity.ok(service.update(id, artista));
     }
 
@@ -83,5 +63,26 @@ public class ArtistaController {
     @PostMapping("/{id}/albuns")
     public ResponseEntity<Artista> addAlbum(@PathVariable Long id, @Valid @RequestBody CreateAlbumRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.addAlbum(id, request));
+    }
+
+    /**
+     * Converte um ArtistaRequest em uma entidade Artista.
+     * Este método trata a conversão do tipo de artista de forma segura.
+     */
+    private Artista criarArtistaFromRequest(ArtistaRequest request) {
+        Artista artista = new Artista();
+        artista.setNome(request.getNome());
+        artista.setGenero(request.getGenero());
+        artista.setImageUrl(request.getImageUrl());
+
+        // Tenta converter o tipo de artista, se fornecido
+        if (request.getTipo() != null) {
+            try {
+                artista.setTipo(ArtistaTipo.valueOf(request.getTipo()));
+            } catch (IllegalArgumentException e) {
+                // Tipo inválido será ignorado; o service define CANTOR como padrão
+            }
+        }
+        return artista;
     }
 }

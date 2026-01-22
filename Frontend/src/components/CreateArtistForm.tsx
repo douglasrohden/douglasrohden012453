@@ -2,6 +2,7 @@ import { Button, Modal, ModalBody, ModalFooter, ModalHeader, TextInput, Select, 
 import { useState } from "react";
 import { artistsService } from "../services/artistsService";
 import { useToast } from "../contexts/ToastContext";
+import { getErrorMessage } from "../api/client";
 
 interface Props {
     isOpen: boolean;
@@ -55,8 +56,8 @@ export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) 
             setGenero("");
             setImageUrl("");
             setTipo("CANTOR");
-        } catch (err: any) {
-            const msg = err?.response?.data?.error || err?.response?.data || err?.message || "Erro ao criar artista";
+        } catch (err) {
+            const msg = getErrorMessage(err, "Erro ao criar artista");
             setError(msg);
             addToast(msg, "error");
         } finally {

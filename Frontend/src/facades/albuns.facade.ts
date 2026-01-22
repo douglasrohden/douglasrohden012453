@@ -25,8 +25,9 @@ export class AlbunsFacade extends BaseFacade<Page<Album>> {
             this.setLoading(true);
             const data = await getAlbuns(page, size);
             this.setData(data);
-        } catch (e: any) {
-            this.setError(e?.message ?? 'Erro ao carregar álbuns');
+        } catch (e) {
+            const errorMessage = e instanceof Error ? e.message : 'Erro ao carregar álbuns';
+            this.setError(errorMessage);
         } finally {
             this.setLoading(false);
         }

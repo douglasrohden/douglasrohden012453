@@ -38,7 +38,7 @@ export default function HomePage() {
                 queryPlaceholder="Buscar artista..."
                 queryId="search"
                 sortDir={dir}
-                onSortDirChange={(value) => setDir(value)}
+                onSortDirChange={setDir}
                 sortDirId="sort-artistas"
                 sortDirLabel="Ordem"
                 addLabel="Adicionar"

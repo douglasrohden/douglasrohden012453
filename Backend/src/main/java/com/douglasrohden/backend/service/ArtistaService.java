@@ -2,6 +2,7 @@ package com.douglasrohden.backend.service;
 
 import com.douglasrohden.backend.model.Artista;
 import com.douglasrohden.backend.repository.ArtistaRepository;
+import com.douglasrohden.backend.repository.ArtistaRepository.ArtistaComAlbumCount;
 import com.douglasrohden.backend.repository.AlbumRepository;
 import com.douglasrohden.backend.dto.ArtistaDto;
 import com.douglasrohden.backend.dto.CreateAlbumRequest;
@@ -46,13 +47,21 @@ public class ArtistaService {
         String query = (q == null) ? "" : q.trim();
         ArtistaTipo artistaTipo = parseTipo(tipo);
 
-        return repository.searchWithAlbumCount(query, artistaTipo, pageable)
-                .map(r -> new ArtistaDto(
-                        r.getId(),
-                        r.getNome(),
-                        r.getGenero(),
-                        r.getImageUrl(),
-                        r.getAlbumCount()));
+        Page<ArtistaComAlbumCount> resultados = repository.searchWithAlbumCount(query, artistaTipo, pageable);
+        return resultados.map(this::converterParaDto);
+    }
+
+    /**
+     * Converte um resultado de projeção em um DTO de artista.
+     * Este método facilita a leitura ao dar um nome claro para a conversão.
+     */
+    private ArtistaDto converterParaDto(ArtistaComAlbumCount resultado) {
+        return new ArtistaDto(
+                resultado.getId(),
+                resultado.getNome(),
+                resultado.getGenero(),
+                resultado.getImageUrl(),
+                resultado.getAlbumCount());
     }
 
     @Transactional(readOnly = true)

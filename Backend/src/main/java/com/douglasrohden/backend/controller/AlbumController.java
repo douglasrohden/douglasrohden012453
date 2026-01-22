@@ -18,6 +18,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Controlador REST para gerenciar álbuns.
  * Este controlador recebe requisições HTTP e retorna respostas em formato JSON.
@@ -54,19 +57,25 @@ public class AlbumController {
         Page<Album> albumsPage = albumRepository.findAll(pageable);
 
         // Passo 2: Converte cada álbum (entidade) em um DTO com informações do artista
-        // - albumsPage.getContent() = lista de álbuns da página atual
-        // - .stream() = transforma a lista em um fluxo para processar cada item
-        // - .map() = para cada álbum, converte em AlbumWithArtistDTO
-        // - .toList() = converte o resultado de volta para uma lista
-        Page<AlbumWithArtistDTO> dtoPage = new PageImpl<>(
-                albumsPage.getContent().stream()
-                        .map(album -> AlbumWithArtistDTO.fromAlbum(album))
-                        .toList(),
-                pageable,
-                albumsPage.getTotalElements());
+        List<AlbumWithArtistDTO> dtos = converterParaDTOs(albumsPage.getContent());
+
+        // Passo 3: Cria a página de DTOs com os mesmos dados de paginação
+        Page<AlbumWithArtistDTO> dtoPage = new PageImpl<>(dtos, pageable, albumsPage.getTotalElements());
 
         // Retorna a página de DTOs com status 200 (OK)
         return ResponseEntity.ok(dtoPage);
+    }
+
+    /**
+     * Converte uma lista de álbuns em uma lista de DTOs.
+     * Este método percorre cada álbum e cria um DTO com informações do artista.
+     */
+    private List<AlbumWithArtistDTO> converterParaDTOs(List<Album> albums) {
+        List<AlbumWithArtistDTO> dtos = new ArrayList<>();
+        for (Album album : albums) {
+            dtos.add(AlbumWithArtistDTO.fromAlbum(album));
+        }
+        return dtos;
     }
 
     /**

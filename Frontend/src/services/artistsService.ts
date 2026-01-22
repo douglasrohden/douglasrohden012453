@@ -18,7 +18,7 @@ export interface Album {
 
 export const artistsService = {
     getAll: async (page = 0, size = 10, search?: string, sort?: string, dir?: string, tipo?: string) => {
-        const params: any = { page, size };
+        const params: Record<string, string | number> = { page, size };
         if (search) {
             params.q = search;
         }

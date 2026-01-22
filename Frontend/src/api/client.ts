@@ -159,8 +159,7 @@ export function getErrorMessage(err: unknown, fallback = 'Erro inesperado'): str
       ? ((err as Record<string, unknown>).rateLimitInfo as RateLimitInfo)
       : undefined;
   if (rateLimitInfo?.message && typeof rateLimitInfo.message === "string") {
-    const retryAfter = typeof rateLimitInfo.retryAfter === "number" ? rateLimitInfo.retryAfter : undefined;
-    if (retryAfter && retryAfter > 0) return `${rateLimitInfo.message} (aguarde ${retryAfter}s)`;
+    // Return the message as-is; toast/UI components handle retry time display
     return rateLimitInfo.message;
   }
 

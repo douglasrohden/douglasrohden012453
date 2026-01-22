@@ -39,7 +39,13 @@ export function ApiGlobalToasts() {
         ? detail.message
         : "Muitas requisições.";
 
-      const msg = `${msgBase}${limitText}${remainingText} (tente novamente em ${retryText})`;
+      // Check if message already contains retry time info to avoid duplication
+      const alreadyHasRetryInfo = msgBase.toLowerCase().includes("tente novamente em") ||
+        msgBase.toLowerCase().includes("aguarde");
+
+      const msg = alreadyHasRetryInfo
+        ? `${msgBase}${limitText}${remainingText}`
+        : `${msgBase}${limitText}${remainingText} (tente novamente em ${retryText})`;
 
       addToast(msg, "warning");
     });

@@ -33,6 +33,12 @@ vi.mock('flowbite-react', () => {
     const ModalFooter = ({ children }: any) => <div>{children}</div>;
     const Label = ({ htmlFor, value, children, ...props }: any) => <label htmlFor={htmlFor} {...props}>{children || value}</label>;
     const Spinner = () => <div>Loading...</div>;
+    const Toast = ({ children, ...props }: any) => <div {...props}>{children}</div>;
+    const ToastToggle = ({ onDismiss, ...props }: any) => (
+        <button type="button" onClick={onDismiss} {...props}>
+            x
+        </button>
+    );
 
     return {
         Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
@@ -52,6 +58,8 @@ vi.mock('flowbite-react', () => {
             <input value={value} onChange={onChange} onFocus={onFocus} {...props} />
         ),
         Spinner,
+        Toast,
+        ToastToggle,
     };
 });
 

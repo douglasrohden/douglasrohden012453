@@ -3,7 +3,6 @@ package com.douglasrohden.backend.service;
 import com.douglasrohden.backend.model.Artista;
 import com.douglasrohden.backend.repository.ArtistaRepository;
 import com.douglasrohden.backend.repository.ArtistaRepository.ArtistaComAlbumCount;
-import com.douglasrohden.backend.repository.AlbumRepository;
 import com.douglasrohden.backend.dto.ArtistaDto;
 import com.douglasrohden.backend.dto.CreateAlbumRequest;
 import com.douglasrohden.backend.model.Album;
@@ -20,7 +19,7 @@ import com.douglasrohden.backend.model.ArtistaTipo;
 public class ArtistaService {
 
     private final ArtistaRepository repository;
-    private final AlbumRepository albumRepository;
+    private final AlbumService albumService;
 
     private static ArtistaTipo parseTipo(String tipo) {
         if (tipo == null || tipo.isBlank())
@@ -100,7 +99,7 @@ public class ArtistaService {
         album.setAno(request.ano());
         album.setImageUrl(request.imageUrl());
 
-        album = albumRepository.save(album);
+        album = albumService.create(album);
         artista.getAlbuns().add(album);
         return repository.save(artista);
     }

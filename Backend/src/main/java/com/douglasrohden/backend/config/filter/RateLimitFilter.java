@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
@@ -27,32 +28,44 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
-            @NonNull HttpServletResponse response,
-            @NonNull FilterChain filterChain)
+                                    @NonNull HttpServletResponse response,
+                                    @NonNull FilterChain filterChain)
             throws ServletException, IOException {
 
-        // Skip rate limiting for static resources or public endpoints if desired
-        // For now, we apply to everything or based on authentication
-
-        String key = "anonymous";
+        // Edital: rate limit de 10 req/min por usuario.
+        // Portanto, só aplicamos rate limiting quando houver usuario autenticado.
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.isAuthenticated()
-                && !"anonymousUser".equals(authentication.getPrincipal())) {
-            key = authentication.getName();
-        } else {
-            // For anonymous, use IP
-            key = request.getRemoteAddr();
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || "anonymousUser".equals(authentication.getPrincipal())) {
+            filterChain.doFilter(request, response);
+            return;
         }
+
+        String key = authentication.getName();
 
         Bucket bucket = rateLimitingService.resolveBucket(key);
         ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
+        long limit = rateLimitingService.getRequestsPerMinutePerUser();
+
+        response.addHeader("X-Rate-Limit-Limit", String.valueOf(limit));
 
         if (probe.isConsumed()) {
             response.addHeader("X-Rate-Limit-Remaining", String.valueOf(probe.getRemainingTokens()));
             filterChain.doFilter(request, response);
         } else {
             response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+            response.addHeader("X-Rate-Limit-Remaining", "0");
+
+            long waitSeconds = TimeUnit.NANOSECONDS.toSeconds(probe.getNanosToWaitForRefill());
+            if (waitSeconds <= 0) {
+                waitSeconds = 1;
+            }
+            response.addHeader("Retry-After", String.valueOf(waitSeconds));
+            response.setContentType("text/plain");
+            response.setCharacterEncoding("UTF-8");
             response.getWriter().write("Too many requests");
         }
     }
+
 }

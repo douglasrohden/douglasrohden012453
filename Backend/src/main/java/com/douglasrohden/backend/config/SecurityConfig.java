@@ -23,6 +23,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.douglasrohden.backend.config.filter.RateLimitFilter;
+import com.douglasrohden.backend.config.filter.LoginRateLimitFilter;
 import java.util.List;
 
 @Configuration
@@ -31,12 +32,16 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final RateLimitFilter rateLimitFilter;
+    private final LoginRateLimitFilter loginRateLimitFilter;
     private final UserDetailsService userDetailsService;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter, RateLimitFilter rateLimitFilter,
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter,
+            RateLimitFilter rateLimitFilter,
+            LoginRateLimitFilter loginRateLimitFilter,
             UserDetailsService userDetailsService) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.rateLimitFilter = rateLimitFilter;
+        this.loginRateLimitFilter = loginRateLimitFilter;
         this.userDetailsService = userDetailsService;
     }
 
@@ -63,6 +68,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider())
+                .addFilterBefore(loginRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(rateLimitFilter, JwtAuthenticationFilter.class);
 
@@ -94,7 +100,14 @@ public class SecurityConfig {
         configuration.setAllowedOriginPatterns(List.of("http://localhost:*", "http://127.0.0.1:*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
-        configuration.setExposedHeaders(List.of("Authorization", "Content-Type"));
+        configuration.setExposedHeaders(
+            List.of(
+                "Authorization",
+                "Content-Type",
+                "X-Rate-Limit-Limit",
+                "X-Rate-Limit-Remaining",
+                "Retry-After")
+        );
         configuration.setMaxAge(3600L);
         configuration.setAllowCredentials(true);
 

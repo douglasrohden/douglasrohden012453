@@ -18,8 +18,23 @@ export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const submit = async (e?: React.FormEvent) => {
-        e?.preventDefault();
+    const handleNameChange = (value: string) => {
+        setNome(value);
+    };
+
+    const handleGeneroChange = (value: string) => {
+        setGenero(value);
+    };
+
+    const handleTipoChange = (value: string) => {
+        setTipo(value);
+    };
+
+    const handleImageUrlChange = (value: string) => {
+        setImageUrl(value);
+    };
+
+    const handleSave = async () => {
         setError(null);
         if (!nome.trim()) {
             setError("Nome é obrigatório");
@@ -51,7 +66,7 @@ export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) 
 
     return (
         <Modal show={isOpen} size="md" onClose={onClose}>
-            <form onSubmit={submit}>
+            <form onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
                 <ModalHeader> Criar artista </ModalHeader>
                 <ModalBody>
                     <div className="space-y-4">
@@ -59,21 +74,21 @@ export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) 
                             <div className="mb-2 block">
                                 <Label htmlFor="artist-nome">Nome</Label>
                             </div>
-                            <TextInput id="artist-nome" value={nome} onChange={(e) => setNome((e.target as HTMLInputElement).value)} />
+                            <TextInput id="artist-nome" value={nome} onChange={(e) => handleNameChange(e.target.value)} />
                         </div>
 
                         <div>
                             <div className="mb-2 block">
                                 <Label htmlFor="artist-genero">Gênero</Label>
                             </div>
-                            <TextInput id="artist-genero" value={genero} onChange={(e) => setGenero((e.target as HTMLInputElement).value)} />
+                            <TextInput id="artist-genero" value={genero} onChange={(e) => handleGeneroChange(e.target.value)} />
                         </div>
 
                         <div>
                             <div className="mb-2 block">
                                 <Label htmlFor="artist-tipo">Tipo</Label>
                             </div>
-                            <Select id="artist-tipo" value={tipo} onChange={(e) => setTipo(e.target.value)}>
+                            <Select id="artist-tipo" value={tipo} onChange={(e) => handleTipoChange(e.target.value)}>
                                 <option value="CANTOR">Cantor</option>
                                 <option value="BANDA">Banda</option>
                                 <option value="DUPLA">Dupla</option>
@@ -84,7 +99,7 @@ export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) 
                             <div className="mb-2 block">
                                 <Label htmlFor="artist-imageUrl">Image URL</Label>
                             </div>
-                            <TextInput id="artist-imageUrl" value={imageUrl} onChange={(e) => setImageUrl((e.target as HTMLInputElement).value)} />
+                            <TextInput id="artist-imageUrl" value={imageUrl} onChange={(e) => handleImageUrlChange(e.target.value)} />
                         </div>
 
                         {error && <div className="text-sm text-red-600">{String(error)}</div>}

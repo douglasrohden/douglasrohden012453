@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Button, Label, TextInput, Modal, ModalBody, ModalHeader, ModalFooter, Spinner } from 'flowbite-react';
+import { useState, useEffect } from 'react';
+import { Button, Label, TextInput, Modal, ModalBody, ModalHeader, ModalFooter } from 'flowbite-react';
 import { useToast } from '../contexts/ToastContext';
 import { artistsService, Artista } from '../services/artistsService';
 import { getErrorMessage } from '../api/client';
 import { useArtists } from '../hooks/useArtists';
+import ArtistSearchInput from './common/ArtistSearchInput';
 
 interface CreateAlbumFormProps {
     artistId?: number; // Made optional
@@ -22,9 +23,6 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
 
     // Artist selection state
     const [selectedArtist, setSelectedArtist] = useState<Artista | null>(null);
-    const [isSearchingArtist, setIsSearchingArtist] = useState(false);
-    const searchRef = useRef<HTMLDivElement>(null);
-
     // Use useArtists for searching
     const {
         artists: searchResults,
@@ -42,7 +40,6 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
             setImageUrl('');
             setError(null);
             setArtistSearch('');
-            setIsSearchingArtist(false);
             // If artistId is provided via props, we don't need to select one, 
             // but we don't necessarily have the full Artista object here. 
             // We'll rely on the prop for submission if present.
@@ -52,20 +49,8 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
         }
     }, [show, artistId, setArtistSearch]);
 
-    // Handle clicking outside search results
-    useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-                setIsSearchingArtist(false);
-            }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
-
-    const handleArtistSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setArtistSearch(e.target.value);
-        setIsSearchingArtist(true);
+    const handleArtistSearchChange = (value: string) => {
+        setArtistSearch(value);
         setArtistPage(0); // Reset to first page of results
         if (selectedArtist) {
             setSelectedArtist(null); // Clear selection if user types again
@@ -75,11 +60,21 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
     const selectArtist = (artist: Artista) => {
         setSelectedArtist(artist);
         setArtistSearch(artist.nome);
-        setIsSearchingArtist(false);
     };
 
-    const onSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleTitleChange = (value: string) => {
+        setTitulo(value);
+    };
+
+    const handleYearChange = (value: string) => {
+        setAno(value);
+    };
+
+    const handleImageUrlChange = (value: string) => {
+        setImageUrl(value);
+    };
+
+    const handleSave = async () => {
         setError(null);
 
         const targetArtistId = artistId || selectedArtist?.id;
@@ -127,7 +122,6 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
             const message = getErrorMessage(err, 'Erro ao adicionar álbum.');
             setError(message);
             addToast(message, 'error');
-            console.error(err);
         } finally {
             setIsSubmitting(false);
         }
@@ -135,51 +129,20 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
 
     return (
         <Modal show={show} onClose={onClose} size="md">
-            <form onSubmit={onSubmit}>
+            <form onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
                 <ModalHeader>Adicionar Álbum</ModalHeader>
                 <ModalBody>
                     <div className="flex flex-col gap-4">
                         {/* Artist Selection Field - Only show if artistId prop is missing */}
                         {!artistId && (
-                            <div className="relative" ref={searchRef}>
-                                <div className="mb-2 block">
-                                    <Label htmlFor="artist-search">Artista</Label>
-                                </div>
-                                <TextInput
-                                    id="artist-search"
-                                    placeholder="Buscar artista..."
-                                    value={artistSearch}
-                                    onChange={handleArtistSearchChange}
-                                    onFocus={() => setIsSearchingArtist(true)}
-                                    autoComplete="off"
-                                    color={error === 'Selecione um artista' ? 'failure' : 'gray'}
-                                />
-                                {isSearchingArtist && (
-                                    <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-600">
-                                        {searchLoading ? (
-                                            <div className="p-4 text-center text-sm text-gray-500">
-                                                <Spinner size="sm" /> Carregando...
-                                            </div>
-                                        ) : searchResults.length > 0 ? (
-                                            <ul className="py-1">
-                                                {searchResults.map((artist) => (
-                                                    <li
-                                                        key={artist.id}
-                                                        onClick={() => selectArtist(artist)}
-                                                        className="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer"
-                                                    >
-                                                        {artist.nome}
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        ) : (
-                                            <div className="p-4 text-center text-sm text-gray-500 dark:text-gray-400">
-                                                Nenhum artista encontrado
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
+                            <ArtistSearchInput
+                                value={artistSearch}
+                                results={searchResults}
+                                loading={searchLoading}
+                                onChange={handleArtistSearchChange}
+                                onSelect={selectArtist}
+                                hasError={error === 'Selecione um artista'}
+                            />
                         )}
 
                         <div>
@@ -190,7 +153,7 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
                                 id="titulo"
                                 placeholder="Ex: Hybrid Theory"
                                 value={titulo}
-                                onChange={(e) => setTitulo((e.target as HTMLInputElement).value)}
+                                onChange={(e) => handleTitleChange(e.target.value)}
                                 color={error?.toLowerCase().includes('título') ? 'failure' : 'gray'}
                             />
                         </div>
@@ -203,7 +166,7 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
                                 type="number"
                                 placeholder="Ex: 2000"
                                 value={ano}
-                                onChange={(e) => setAno((e.target as HTMLInputElement).value)}
+                                onChange={(e) => handleYearChange(e.target.value)}
                             />
                         </div>
                         <div>
@@ -214,7 +177,7 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
                                 id="imageUrl"
                                 placeholder="https://exemplo.com/capa.jpg"
                                 value={imageUrl}
-                                onChange={(e) => setImageUrl((e.target as HTMLInputElement).value)}
+                                onChange={(e) => handleImageUrlChange(e.target.value)}
                             />
                         </div>
                         {error && <div className="text-sm text-red-600">{String(error)}</div>}

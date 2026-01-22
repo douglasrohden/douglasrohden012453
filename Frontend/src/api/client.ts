@@ -1,6 +1,17 @@
-import axios, { type AxiosInstance } from "axios";
+import axios, { type AxiosError, type AxiosInstance } from "axios";
 import { authStore } from "../store/auth.store";
 import { emitApiRateLimit } from "./apiEvents";
+
+type RateLimitInfo = {
+  retryAfter: number;
+  message: string;
+  limitPerMinute?: number;
+  remaining?: number;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/v1";
 
@@ -47,12 +58,16 @@ api.interceptors.request.use(
 
 api.interceptors.response.use(
   (response) => response,
-  async (error) => {
+  async (error: unknown) => {
+    if (!axios.isAxiosError(error)) return Promise.reject(error);
+
     const originalRequest = error.config;
     const url: string = originalRequest?.url ?? "";
     const isAuthRequest = url.includes("/autenticacao/login") || url.includes("/autenticacao/refresh");
 
-    const message: unknown = error?.response?.data?.message ?? error?.response?.data?.error;
+    const responseData = error.response?.data;
+    const body = isRecord(responseData) ? responseData : {};
+    const message: unknown = body?.message ?? body?.error;
     const msg = typeof message === "string" ? message.toLowerCase() : "";
     const backendSaysExpired = msg.includes("expir") || msg.includes("expired") || msg.includes("token invál") || msg.includes("invalid token");
 
@@ -64,13 +79,11 @@ api.interceptors.response.use(
 
     // Handle 429 Too Many Requests (Rate Limit)
     if (error.response?.status === 429) {
-      const data = error?.response?.data as any;
-
       const retryAfterFromBody =
-        typeof data?.retryAfter === "number"
-          ? data.retryAfter
-          : typeof data?.retryAfter === "string"
-            ? parseInt(data.retryAfter, 10)
+        typeof body?.retryAfter === "number"
+          ? (body.retryAfter as number)
+          : typeof body?.retryAfter === "string"
+            ? parseInt(body.retryAfter as string, 10)
             : undefined;
 
       const retryAfterHeader = error.response.headers?.["retry-after"];
@@ -90,14 +103,14 @@ api.interceptors.response.use(
       const remaining = typeof remainingHeader === "string" ? parseInt(remainingHeader, 10) : undefined;
 
       const friendlyMessage =
-        typeof data?.message === "string" && data.message.trim()
-          ? data.message
+        typeof body?.message === "string" && (body.message as string).trim()
+          ? (body.message as string)
           : typeof message === "string" && message.trim()
             ? message
             : "Muitas requisições. Por favor, aguarde antes de tentar novamente.";
 
       // Enhance error with rate limit information
-      error.rateLimitInfo = {
+      (error as AxiosError & { rateLimitInfo?: RateLimitInfo }).rateLimitInfo = {
         retryAfter: retryAfterSeconds,
         message: friendlyMessage,
         limitPerMinute,
@@ -141,18 +154,24 @@ api.interceptors.response.use(
 export function getErrorMessage(err: unknown, fallback = 'Erro inesperado'): string {
   if (!err) return fallback;
 
-  const anyErr = err as any;
-  const rateLimitInfo = anyErr?.rateLimitInfo;
+  const rateLimitInfo: RateLimitInfo | undefined =
+    isRecord(err) && isRecord((err as Record<string, unknown>).rateLimitInfo)
+      ? ((err as Record<string, unknown>).rateLimitInfo as RateLimitInfo)
+      : undefined;
   if (rateLimitInfo?.message && typeof rateLimitInfo.message === "string") {
     const retryAfter = typeof rateLimitInfo.retryAfter === "number" ? rateLimitInfo.retryAfter : undefined;
     if (retryAfter && retryAfter > 0) return `${rateLimitInfo.message} (aguarde ${retryAfter}s)`;
     return rateLimitInfo.message;
   }
 
-  const axiosMessage = anyErr?.response?.data?.message ?? anyErr?.response?.data?.error;
-  if (typeof axiosMessage === 'string' && axiosMessage.trim()) return axiosMessage;
+  if (axios.isAxiosError(err)) {
+    const data = err.response?.data;
+    const obj = isRecord(data) ? data : {};
+    const axiosMessage: unknown = obj?.message ?? obj?.error;
+    if (typeof axiosMessage === 'string' && axiosMessage.trim()) return axiosMessage;
+  }
 
-  if (typeof anyErr?.message === 'string' && anyErr.message.trim()) return anyErr.message;
+  if (err instanceof Error && typeof err.message === 'string' && err.message.trim()) return err.message;
   return fallback;
 }
 

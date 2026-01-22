@@ -3,6 +3,7 @@ import { useState } from "react";
 import { artistsService } from "../services/artistsService";
 import { useToast } from "../contexts/ToastContext";
 import { getErrorMessage } from "../api/client";
+import axios from "axios";
 
 interface Props {
     isOpen: boolean;
@@ -59,7 +60,9 @@ export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) 
         } catch (err) {
             const msg = getErrorMessage(err, "Erro ao criar artista");
             setError(msg);
-            addToast(msg, "error");
+            const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+            // 429 already triggers a global warning toast
+            if (status !== 429) addToast(msg, "error");
         } finally {
             setLoading(false);
         }

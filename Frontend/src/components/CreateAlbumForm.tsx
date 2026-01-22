@@ -5,6 +5,7 @@ import { artistsService, Artista } from '../services/artistsService';
 import { getErrorMessage } from '../api/client';
 import { useArtists } from '../hooks/useArtists';
 import ArtistSearchInput from './common/ArtistSearchInput';
+import axios from 'axios';
 
 interface CreateAlbumFormProps {
     artistId?: number; // Made optional
@@ -121,7 +122,9 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
         } catch (err) {
             const message = getErrorMessage(err, 'Erro ao adicionar álbum.');
             setError(message);
-            addToast(message, 'error');
+            const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+            // 429 already triggers a global warning toast
+            if (status !== 429) addToast(message, 'error');
         } finally {
             setIsSubmitting(false);
         }

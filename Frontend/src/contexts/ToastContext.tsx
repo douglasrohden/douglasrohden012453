@@ -23,10 +23,12 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
         const id = Date.now();
         setToasts((prev) => [...prev, { id, message, type }]);
 
-        // Auto remove after 3 seconds
+        const durationMs = type === "warning" ? 5000 : type === "error" ? 4500 : 3000;
+
+        // Auto remove
         setTimeout(() => {
             setToasts((prev) => prev.filter((t) => t.id !== id));
-        }, 3000);
+        }, durationMs);
     }, []);
 
     const removeToast = (id: number) => {
@@ -82,7 +84,7 @@ export const useToast = () => {
     const context = useContext(ToastContext);
     if (!context) {
         // Return a no-op implementation when no provider is present (e.g., in tests)
-        return { addToast: () => { } } as any;
+        return { addToast: () => { } } as ToastContextType;
     }
     return context;
 };

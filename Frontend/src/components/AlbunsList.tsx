@@ -1,8 +1,8 @@
-import { Pagination, Card } from 'flowbite-react';
+import { Pagination, Card, Alert } from 'flowbite-react';
 import { useAlbuns } from '../hooks/useAlbuns';
-import { useToast } from '../contexts/ToastContext';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { HiSearch } from 'react-icons/hi';
+import { HiClock } from 'react-icons/hi';
 import { CardGrid } from './common/CardGrid';
 import { ListToolbar } from './common/ListToolbar';
 import CreateAlbumForm from './CreateAlbumForm';
@@ -18,13 +18,6 @@ interface Album {
 
 export default function AlbunsList() {
   const { albuns, loading, error, page, totalPages, setPage } = useAlbuns();
-  const { addToast } = useToast();
-
-  useEffect(() => {
-    if (error) {
-      addToast(error, "error");
-    }
-  }, [error, addToast]);
 
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState("titulo");
@@ -54,9 +47,18 @@ export default function AlbunsList() {
     });
 
     return sortDir === "asc" ? sorted : sorted.reverse();
-  }, [albuns, search, sortField, sortDir]);
+  }, [albuns, debouncedSearch, sortField, sortDir]);
 
-  if (error) return <div className="text-red-500">{error}</div>;
+  if (error) {
+    const lower = String(error).toLowerCase();
+    const isRateLimit = lower.includes("muitas requisi") || lower.includes("rate") && lower.includes("limit") || lower.includes("429");
+
+    return (
+      <Alert color={isRateLimit ? "warning" : "failure"} icon={isRateLimit ? HiClock : undefined}>
+        {String(error)}
+      </Alert>
+    );
+  }
 
   return (
     <div>

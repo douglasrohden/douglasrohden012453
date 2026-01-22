@@ -1,6 +1,7 @@
 import { BaseFacade } from './base.facade';
 import { getAlbuns, Album } from '../services/albunsService';
 import { Page } from '../types/Page';
+import { getErrorMessage } from '../api/client';
 
 const INITIAL_PAGE: Page<Album> = {
     content: [],
@@ -44,7 +45,7 @@ export class AlbunsFacade extends BaseFacade<Page<Album>> {
             this.cache.set(cacheKey, { data, timestamp: Date.now() });
             this.setData(data);
         } catch (e) {
-            const errorMessage = e instanceof Error ? e.message : 'Erro ao carregar álbuns';
+            const errorMessage = getErrorMessage(e, 'Erro ao carregar álbuns');
             this.setError(errorMessage);
         } finally {
             this.setLoading(false);

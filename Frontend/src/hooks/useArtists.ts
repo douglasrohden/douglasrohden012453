@@ -4,6 +4,8 @@ import { useLocation } from "react-router-dom";
 import { Artista, artistsService } from "../services/artistsService";
 import { Page } from "../types/Page";
 import { useToast } from "../contexts/ToastContext";
+import { getErrorMessage } from "../api/client";
+import axios from "axios";
 
 interface UseArtistsReturn {
     artists: Artista[];
@@ -52,7 +54,10 @@ export function useArtists(): UseArtistsReturn {
             setPageData(data);
         } catch (error) {
             console.error("Failed to fetch artists", error);
-            addToast("Falha ao carregar artistas", "error");
+            const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+            const msg = getErrorMessage(error, "Falha ao carregar artistas");
+            // 429 already triggers a global warning toast
+            if (status !== 429) addToast(msg, "error");
         } finally {
             setLoading(false);
         }

@@ -10,6 +10,8 @@ import { EmptyState } from "../components/common/EmptyState";
 import { CardGrid } from "../components/common/CardGrid";
 import CreateAlbumForm from "../components/CreateAlbumForm";
 import { ListToolbar } from "../components/common/ListToolbar";
+import { getErrorMessage } from "../api/client";
+import axios from "axios";
 
 interface Album {
   id: number;
@@ -44,7 +46,10 @@ export default function ArtistDetailPage() {
       setArtist(data);
     } catch (e) {
       console.error(e);
-      addToast("Erro ao carregar detalhes do artista", "error");
+      const status = axios.isAxiosError(e) ? e.response?.status : undefined;
+      const msg = getErrorMessage(e, "Erro ao carregar detalhes do artista");
+      // 429 already triggers a global warning toast
+      if (status !== 429) addToast(msg, "error");
     } finally {
       setLoading(false);
     }

@@ -1,13 +1,10 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useDebounce } from "./useDebounce";
 import { useLocation } from "react-router-dom";
-import { Artista, artistsService } from "../services/artistsService";
-import { Page } from "../types/Page";
+import { Artista } from "../services/artistsService";
 import { useToast } from "../contexts/ToastContext";
-import { getErrorMessage, getHttpStatus } from "../api/client";
-
-let lastFetchKey = "";
-let lastFetchAtMs = 0;
+import { useObservable } from "./useObservable";
+import { artistasFacade } from "../facades/artistas.facade";
 
 interface UseArtistsReturn {
     artists: Artista[];
@@ -27,11 +24,11 @@ interface UseArtistsReturn {
 export function useArtists(): UseArtistsReturn {
     const { addToast } = useToast();
     const location = useLocation();
+    const lastToastErrorRef = useRef<string | null>(null);
 
-    // State
-    const [artists, setArtists] = useState<Artista[]>([]);
-    const [pageData, setPageData] = useState<Page<Artista> | null>(null);
-    const [loading, setLoading] = useState(true);
+    const state = useObservable(artistasFacade.state$, artistasFacade.snapshot);
+
+    // UI State (filters)
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(0);
     const [dir, setDir] = useState<"asc" | "desc">("asc");
@@ -47,45 +44,39 @@ export function useArtists(): UseArtistsReturn {
         setPage(0);
     }, [debouncedSearch, tipo]);
 
-    // Fetch Data
-    const fetchArtists = useCallback(async () => {
-        const fetchKey = `${page}|${size}|${debouncedSearch}|${dir}|${tipo}`;
-        const now = Date.now();
-
-        // React 18 StrictMode (dev) mounts/unmounts components twice; without a guard,
-        // this can look like a single click but produce duplicate API calls.
-        if (import.meta.env.DEV && fetchKey === lastFetchKey && now - lastFetchAtMs < 800) {
-            return;
-        }
-        lastFetchKey = fetchKey;
-        lastFetchAtMs = now;
-
-        setLoading(true);
-        try {
-            const data = await artistsService.getAll(page, size, debouncedSearch, "nome", dir, tipo);
-            setArtists(data.content);
-            setPageData(data);
-        } catch (error) {
-            console.error("Failed to fetch artists", error);
-            const status = getHttpStatus(error);
-            const msg = getErrorMessage(error, "Falha ao carregar artistas");
-            // 429 already triggers a global warning toast
-            if (status !== 429) addToast(msg, "error");
-        } finally {
-            setLoading(false);
-        }
-    }, [page, size, debouncedSearch, dir, tipo, addToast]);
+    const fetchArtists = useCallback(() => {
+        return artistasFacade.fetch({
+            page,
+            size,
+            search: debouncedSearch,
+            dir,
+            tipo
+        });
+    }, [page, size, debouncedSearch, dir, tipo]);
 
     // Trigger fetch on dependencies
     useEffect(() => {
         fetchArtists();
     }, [fetchArtists, location.key]);
 
-    const totalPages = useMemo(() => pageData?.totalPages ?? 0, [pageData]);
+    // Keep HomePage behavior: show non-429 errors as toast
+    useEffect(() => {
+        if (!state.error) {
+            lastToastErrorRef.current = null;
+            return;
+        }
+        if (state.error === lastToastErrorRef.current) return;
+
+        lastToastErrorRef.current = state.error;
+        addToast(state.error, "error");
+        artistasFacade.clearError();
+    }, [state.error, addToast]);
+
+    const totalPages = useMemo(() => state.data?.totalPages ?? 0, [state.data]);
 
     return {
-        artists,
-        loading,
+        artists: state.data?.content ?? [],
+        loading: state.loading,
         page,
         totalPages,
         search,

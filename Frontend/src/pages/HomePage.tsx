@@ -1,15 +1,22 @@
 import { Pagination, Select, Card, Label } from "flowbite-react";
 import { PageLayout } from "../components/layout/PageLayout";
 import CreateArtistForm from "../components/CreateArtistForm";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { CardGrid } from "../components/common/CardGrid";
 import { ListToolbar } from "../components/common/ListToolbar";
 import { useArtists } from "../hooks/useArtists";
 
 export default function HomePage() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [showCreate, setShowCreate] = useState(false);
+    const [navLock, setNavLock] = useState(false);
+
+    // Release navigation lock when route changes.
+    useEffect(() => {
+        setNavLock(false);
+    }, [location.pathname]);
 
     const {
         artists,
@@ -42,7 +49,10 @@ export default function HomePage() {
                 sortDirId="sort-artistas"
                 sortDirLabel="Ordem"
                 addLabel="Adicionar"
-                onAdd={() => setShowCreate(true)}
+                onAdd={() => {
+                    if (navLock) return;
+                    setShowCreate(true);
+                }}
                 extra={(
                     <div className="w-full md:w-56">
                         <Label
@@ -71,7 +81,11 @@ export default function HomePage() {
                         className="h-full cursor-pointer hover:shadow-lg transition-shadow"
                         imgAlt={artist.nome}
                         imgSrc={artist.imageUrl || "https://flowbite.com/docs/images/blog/image-1.jpg"}
-                        onClick={() => navigate(`/artista/${artist.id}`)}
+                        onClick={() => {
+                            if (navLock) return;
+                            setNavLock(true);
+                            navigate(`/artista/${artist.id}`);
+                        }}
                     >
                         <h5 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white line-clamp-1" title={artist.nome}>
                             {artist.nome}

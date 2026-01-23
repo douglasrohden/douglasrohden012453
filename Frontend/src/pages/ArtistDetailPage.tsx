@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useDebounce } from "../hooks/useDebounce";
 import { useParams } from "react-router-dom";
 import { PageLayout } from "../components/layout/PageLayout";
@@ -31,8 +31,10 @@ interface ArtistaDetalhado {
 export default function ArtistDetailPage() {
   const { id } = useParams();
   const { addToast } = useToast();
+  const retryTimeoutRef = useRef<number | null>(null);
   const [artist, setArtist] = useState<ArtistaDetalhado | null>(null);
   const [loading, setLoading] = useState(true);
+  const [rateLimited, setRateLimited] = useState(false);
   const [showAddAlbumModal, setShowAddAlbumModal] = useState(false);
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState("titulo");
@@ -40,6 +42,8 @@ export default function ArtistDetailPage() {
 
   const fetchArtist = async () => {
     if (!id) return;
+
+    setRateLimited(false);
     setLoading(true);
     try {
       const data = await artistsService.getById(Number(id));
@@ -50,6 +54,11 @@ export default function ArtistDetailPage() {
       const msg = getErrorMessage(e, "Erro ao carregar detalhes do artista");
       // 429 already triggers a global warning toast
       if (status !== 429) addToast(msg, "error");
+
+      // If the initial load is rate limited, don't keep user on this page.
+      if (status === 429 && !artist) {
+        setRateLimited(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -57,6 +66,12 @@ export default function ArtistDetailPage() {
 
   useEffect(() => {
     fetchArtist();
+    return () => {
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+      }
+    };
   }, [id]);
 
   const debouncedSearch = useDebounce(search, 300);
@@ -91,6 +106,8 @@ export default function ArtistDetailPage() {
     <PageLayout>
       {loading ? (
         <LoadingSpinner message="Carregando detalhes..." />
+      ) : rateLimited ? (
+        <EmptyState message="Muitas requisições. Aguarde e tente novamente." />
       ) : !artist ? (
         <EmptyState message="Artista não encontrado" />
       ) : (

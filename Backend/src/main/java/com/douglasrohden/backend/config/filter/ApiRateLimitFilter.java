@@ -17,9 +17,13 @@ import java.io.IOException;
 
 @Component
 public class ApiRateLimitFilter extends OncePerRequestFilter {
-
-    private static final String API_PREFIX = "/v1/";
-    private static final String AUTH_PREFIX = "/v1/autenticacao/";
+    private static final String[] SKIP_PREFIXES = {
+            "/swagger-ui/",
+            "/v3/api-docs/",
+            "/actuator/",
+            "/error",
+            "/ws/"
+    };
 
     private final RateLimitService rateLimitService;
     private final ObjectMapper objectMapper;
@@ -31,21 +35,26 @@ public class ApiRateLimitFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
-        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) return true;
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod()))
+            return true;
 
         String uri = request.getRequestURI();
-        if (uri == null || !uri.startsWith(API_PREFIX)) return true;
+        if (uri == null)
+            return true;
 
-        // login/refresh tratados no controller
-        return uri.startsWith(AUTH_PREFIX);
+        for (String prefix : SKIP_PREFIXES) {
+            if (uri.startsWith(prefix))
+                return true;
+        }
+
+        return false;
     }
 
     @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
-            @NonNull FilterChain filterChain
-    ) throws ServletException, IOException {
+            @NonNull FilterChain filterChain) throws ServletException, IOException {
         String key = resolveRateLimitKey(request);
         RateLimitService.Probe probe = rateLimitService.tryConsume(key);
 

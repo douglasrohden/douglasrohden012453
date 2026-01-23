@@ -1,6 +1,6 @@
 import axios, { type AxiosError, type AxiosInstance } from "axios";
 import { authStore } from "../store/auth.store";
-import { emitApiRateLimit } from "./apiEvents";
+import { apiStore } from "../store/api.store";
 
 type RateLimitInfo = {
   retryAfter: number;
@@ -13,19 +13,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-type RateLimitedClientError = Error & {
-  response: { status: 429 };
-  rateLimitInfo: RateLimitInfo;
-};
-
-let rateLimitedUntilMs = 0;
-let lastRateLimitInfo: RateLimitInfo | null = null;
-
-function secondsUntil(ms: number): number {
-  const diff = ms - Date.now();
-  return diff > 0 ? Math.ceil(diff / 1000) : 0;
-}
-
 export function getHttpStatus(err: unknown): number | undefined {
   if (axios.isAxiosError(err)) return err.response?.status;
   if (!isRecord(err)) return undefined;
@@ -33,6 +20,18 @@ export function getHttpStatus(err: unknown): number | undefined {
   if (!isRecord(resp)) return undefined;
   const status = resp.status;
   return typeof status === "number" ? status : undefined;
+}
+
+export function getRateLimitInfo(err: unknown): RateLimitInfo | undefined {
+  if (!isRecord(err)) return undefined;
+  const info = (err as Record<string, unknown>).rateLimitInfo;
+  if (!isRecord(info)) return undefined;
+  const retryAfter = info.retryAfter;
+  const message = info.message;
+  if (typeof retryAfter !== "number" || typeof message !== "string") return undefined;
+  const limitPerMinute = typeof info.limitPerMinute === "number" ? info.limitPerMinute : undefined;
+  const remaining = typeof info.remaining === "number" ? info.remaining : undefined;
+  return { retryAfter, message, limitPerMinute, remaining };
 }
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/v1";
@@ -56,53 +55,12 @@ function getAccessToken(): string | null {
 }
 
 function forceLogoutAndRedirect(reason?: string) {
-  console.warn(
-    `[API Client] 401 Unauthorized${reason ? ` - ${reason}` : ""} - Clearing auth and redirecting to login`,
-  );
+  console.warn(`[API Client] 401 Unauthorized${reason ? ` - ${reason}` : ""} - Clearing auth`);
   authStore.clearAuthentication();
-
-  // Avoid redirect loops if already on /login
-  if (window.location.pathname !== "/login") {
-    window.location.href = "/login";
-  }
 }
 
 api.interceptors.request.use(
   (config) => {
-    const url = config?.url ?? "";
-    const isAuthRequest = url.includes("/autenticacao/login") || url.includes("/autenticacao/refresh");
-
-    // If we recently hit a 429, block new API calls until Retry-After passes.
-    // This prevents StrictMode double-effects and other bursts from consuming quota without new clicks.
-    if (!isAuthRequest && Date.now() < rateLimitedUntilMs) {
-      const retryAfter = secondsUntil(rateLimitedUntilMs);
-      const info: RateLimitInfo = {
-        retryAfter,
-        message:
-          lastRateLimitInfo?.message ??
-          "Muitas requisições. Por favor, aguarde antes de tentar novamente.",
-        limitPerMinute: lastRateLimitInfo?.limitPerMinute,
-        remaining: lastRateLimitInfo?.remaining,
-      };
-
-      const err: RateLimitedClientError = Object.assign(new Error("Rate limited"), {
-        response: { status: 429 as const },
-        rateLimitInfo: info,
-      });
-
-      emitApiRateLimit({
-        status: 429,
-        message: info.message,
-        retryAfterSeconds: info.retryAfter,
-        limitPerMinute: info.limitPerMinute,
-        remaining: info.remaining,
-        endpoint: url,
-        method: config?.method,
-      });
-
-      return Promise.reject(err);
-    }
-
     const token = getAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -175,13 +133,9 @@ api.interceptors.response.use(
 
       (error as AxiosError & { rateLimitInfo?: RateLimitInfo }).rateLimitInfo = info;
 
-      // Start local cooldown for subsequent requests
-      lastRateLimitInfo = info;
-      rateLimitedUntilMs = Date.now() + Math.max(1, retryAfterSeconds) * 1000;
-
       // Global toast/event for all screens (avoid duplicating on login/refresh page)
       if (!isAuthRequest) {
-        emitApiRateLimit({
+        apiStore.emitRateLimit({
           status: 429,
           message: friendlyMessage,
           retryAfterSeconds,
@@ -197,14 +151,14 @@ api.interceptors.response.use(
 
     // Handle 401 Unauthorized
     if (error.response?.status === 401) {
-      // If this is an auth request (login/refresh), don't retry - just reject
+      // If this is an auth request (login/refresh), don't redirect - just reject
       if (isAuthRequest) {
         return Promise.reject(error);
       }
 
-      // Requirement: do NOT silently refresh tokens in the frontend.
-      // If the access token expires, force the user to login again.
-      forceLogoutAndRedirect("401 from API");
+      // Edital: o access token expira (5 min). Ao expirar, deve fazer logoff e forçar novo login.
+      // Não fazer renovação automática de token no frontend.
+      forceLogoutAndRedirect("401 unauthorized (token expired/invalid)");
       return Promise.reject(error);
     }
 

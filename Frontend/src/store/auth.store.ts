@@ -64,7 +64,9 @@ class AuthStore extends BaseStore<AuthState> {
             return;
         }
 
-        const expiresAtMs = expSeconds * 1000;
+        // JWT spec uses NumericDate in seconds, but some implementations may emit ms.
+        // Make this robust: if it's already in ms (13 digits), don't multiply again.
+        const expiresAtMs = expSeconds > 1_000_000_000_000 ? expSeconds : expSeconds * 1000;
         const msUntilExpiry = expiresAtMs - Date.now();
 
         // Expire slightly early to avoid edge timing issues.
@@ -82,10 +84,6 @@ class AuthStore extends BaseStore<AuthState> {
 
     private expireNowAndRedirect(): void {
         this.clearAuthentication();
-
-        if (typeof window !== 'undefined' && window.location?.pathname !== '/login') {
-            window.location.href = '/login';
-        }
     }
 
     /**
@@ -134,9 +132,12 @@ class AuthStore extends BaseStore<AuthState> {
             // If token is already expired, clear everything and force login.
             const payload = this.decodeJwtPayload(accessToken);
             const expSeconds = payload?.exp;
-            if (expSeconds && typeof expSeconds === 'number' && expSeconds * 1000 <= Date.now()) {
-                this.clearAuthentication();
-                return;
+            if (expSeconds && typeof expSeconds === 'number') {
+                const expMs = expSeconds > 1_000_000_000_000 ? expSeconds : expSeconds * 1000;
+                if (expMs <= Date.now()) {
+                    this.clearAuthentication();
+                    return;
+                }
             }
 
             this._state$.next({

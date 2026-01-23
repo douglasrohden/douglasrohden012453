@@ -5,6 +5,7 @@ import { PublicRoute } from "./components/PublicRoute";
 import { ToastProvider } from "./contexts/ToastContext";
 import { LoadingSpinner } from "./components/common/LoadingSpinner";
 import { ApiGlobalToasts } from "./components/ApiGlobalToasts";
+import { AuthProvider } from "./contexts/AuthContext";
 
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const HomePage = lazy(() => import("./pages/HomePage"));
@@ -32,25 +33,27 @@ export default function App() {
       <ToastProvider>
         <ApiGlobalToasts />
         <Suspense fallback={<FullScreenFallback />}>
-          <Routes>
-            {/* rota raiz */}
-            <Route path="/" element={<Navigate to={ROUTES.artists} replace />} />
+          <AuthProvider>
+            <Routes>
+              {/* rota raiz */}
+              <Route path="/" element={<Navigate to={ROUTES.artists} replace />} />
 
-            {/* rotas públicas */}
-            <Route element={<PublicRoute />}>
-              <Route path={ROUTES.login} element={<LoginPage />} />
-            </Route>
+              {/* rotas públicas */}
+              <Route element={<PublicRoute />}>
+                <Route path={ROUTES.login} element={<LoginPage />} />
+              </Route>
 
-            {/* rotas protegidas */}
-            <Route element={<ProtectedRoute />}>
-              <Route path={ROUTES.artists} element={<HomePage />} />
-              <Route path={ROUTES.artistDetail} element={<ArtistDetailPage />} />
-              <Route path={ROUTES.albuns} element={<AlbunsPage />} />
-            </Route>
+              {/* rotas protegidas */}
+              <Route element={<ProtectedRoute />}>
+                <Route path={ROUTES.artists} element={<HomePage />} />
+                <Route path={ROUTES.artistDetail} element={<ArtistDetailPage />} />
+                <Route path={ROUTES.albuns} element={<AlbunsPage />} />
+              </Route>
 
-            {/* fallback */}
-            <Route path="*" element={<Navigate to={ROUTES.artists} replace />} />
-          </Routes>
+              {/* fallback */}
+              <Route path="*" element={<Navigate to={ROUTES.artists} replace />} />
+            </Routes>
+          </AuthProvider>
         </Suspense>
       </ToastProvider>
     </BrowserRouter>

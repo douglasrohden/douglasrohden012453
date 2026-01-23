@@ -79,17 +79,11 @@ describe('AuthFacade', () => {
 
   describe('logout', () => {
     it('should clear authentication and redirect', () => {
-      const mockLocation = { href: '' };
-      Object.defineProperty(window, 'location', {
-        value: mockLocation,
-        writable: true
-      });
       authStore.setAuthenticated('token', 'refresh', 'user');
 
       authFacade.logout();
 
       expect(authStore.currentState.isAuthenticated).toBe(false);
-      expect(window.location.href).toBe('/login');
     });
   });
 

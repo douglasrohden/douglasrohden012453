@@ -79,7 +79,6 @@ class AuthFacade {
      */
     logout(): void {
         authStore.clearAuthentication();
-        window.location.href = '/login';
     }
 
     /**

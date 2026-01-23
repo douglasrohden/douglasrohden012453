@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useObservable } from "../hooks/useObservable";
-import { apiStore, type ApiRateLimitNotification } from "../store/api.store";
+import { onApiRateLimit, type ApiRateLimitEventDetail } from "../api/apiRateLimitEvents";
 import { useToast } from "../contexts/ToastContext";
 
 function formatRetryAfter(seconds: number): string {
@@ -11,47 +10,83 @@ function formatRetryAfter(seconds: number): string {
 }
 
 export function ApiGlobalToasts() {
-  const { addToast } = useToast();
+  const { addToast, updateToast } = useToast();
   const lastToastAtRef = useRef<number>(0);
   const lastToastKeyRef = useRef<string>("");
-
-  const apiState = useObservable(apiStore.state$, { lastRateLimit: null });
+  const countdownIntervalRef = useRef<number | null>(null);
+  const currentToastIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const detail: ApiRateLimitNotification | null = apiState.lastRateLimit;
-    if (!detail) return;
+    return onApiRateLimit((detail: ApiRateLimitEventDetail) => {
+      // Basic de-dupe so a burst of requests doesn't spam the user.
+      const now = Date.now();
+      const key = `${detail.endpoint ?? ""}|${detail.method ?? ""}|${detail.retryAfterSeconds}|${detail.message}`;
+      if (key === lastToastKeyRef.current && now - lastToastAtRef.current < 1500) return;
 
-    // Basic de-dupe so a burst of requests doesn't spam the user.
-    const now = Date.now();
-    const key = `${detail.endpoint ?? ""}|${detail.method ?? ""}|${detail.retryAfterSeconds}|${detail.message}`;
-    if (key === lastToastKeyRef.current && now - lastToastAtRef.current < 1500) return;
+      lastToastKeyRef.current = key;
+      lastToastAtRef.current = now;
 
-    lastToastKeyRef.current = key;
-    lastToastAtRef.current = now;
+      // Clear any previous countdown
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
 
-    const retryText = formatRetryAfter(detail.retryAfterSeconds);
+      const limitText =
+        Number.isFinite(detail.limitPerMinute) && (detail.limitPerMinute as number) > 0
+          ? ` (limite: ${detail.limitPerMinute}/min)`
+          : "";
 
-    const limitText =
-      Number.isFinite(detail.limitPerMinute) && (detail.limitPerMinute as number) > 0
-        ? ` (limite: ${detail.limitPerMinute}/min)`
-        : "";
-    const remainingText =
-      Number.isFinite(detail.remaining) && (detail.remaining as number) >= 0
-        ? ` (restante: ${detail.remaining})`
-        : "";
+      const msgBase = detail.message?.trim()
+        ? detail.message
+        : "Muitas requisições.";
 
-    const msgBase = detail.message?.trim() ? detail.message : "Muitas requisições.";
+      // Check if message already contains retry time info to avoid duplication
+      const alreadyHasRetryInfo = msgBase.toLowerCase().includes("tente novamente em") ||
+        msgBase.toLowerCase().includes("aguarde");
 
-    // Check if message already contains retry time info to avoid duplication
-    const alreadyHasRetryInfo =
-      msgBase.toLowerCase().includes("tente novamente em") || msgBase.toLowerCase().includes("aguarde");
+      let remainingSeconds = detail.retryAfterSeconds;
 
-    const msg = alreadyHasRetryInfo
-      ? `${msgBase}${limitText}${remainingText}`
-      : `${msgBase}${limitText}${remainingText} (tente novamente em ${retryText})`;
+      const buildMessage = (seconds: number) => {
+        const retryText = formatRetryAfter(seconds);
+        return alreadyHasRetryInfo
+          ? `${msgBase}${limitText}`
+          : `${msgBase} Tente novamente em ${retryText}.${limitText}`;
+      };
 
-    addToast(msg, "warning");
-  }, [apiState.lastRateLimit, addToast]);
+      const initialMsg = buildMessage(remainingSeconds);
+      const toastId = addToast(initialMsg, "warning", 0); // Duration 0 means it won't auto-dismiss
+      currentToastIdRef.current = toastId;
+
+      // Start countdown
+      countdownIntervalRef.current = window.setInterval(() => {
+        remainingSeconds--;
+
+        if (remainingSeconds <= 0) {
+          if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
+          }
+          currentToastIdRef.current = null;
+          return;
+        }
+
+        const updatedMsg = buildMessage(remainingSeconds);
+        if (toastId && updateToast) {
+          updateToast(toastId, updatedMsg);
+        }
+      }, 1000);
+    });
+  }, [addToast, updateToast]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+      }
+    };
+  }, []);
 
   return null;
 }

@@ -11,7 +11,9 @@ interface ToastMessage {
 }
 
 interface ToastContextType {
-    addToast: (message: string, type: ToastType) => void;
+    addToast: (message: string, type: ToastType, duration?: number) => string;
+    updateToast: (id: string, message: string) => void;
+    removeToast: (id: string) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -19,24 +21,39 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 export const ToastProvider = ({ children }: { children: ReactNode }) => {
     const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
-    const addToast = useCallback((message: string, type: ToastType) => {
+    const addToast = useCallback((message: string, type: ToastType, duration?: number) => {
         const id = Date.now();
         setToasts((prev) => [...prev, { id, message, type }]);
 
-        const durationMs = type === "warning" ? 5000 : type === "error" ? 4500 : 3000;
+        // If duration is undefined, use default based on type
+        // If duration is 0, don't auto-remove
+        const durationMs = duration !== undefined
+            ? duration
+            : (type === "warning" ? 5000 : type === "error" ? 4500 : 3000);
 
-        // Auto remove
-        setTimeout(() => {
-            setToasts((prev) => prev.filter((t) => t.id !== id));
-        }, durationMs);
+        // Auto remove only if duration > 0
+        if (durationMs > 0) {
+            setTimeout(() => {
+                setToasts((prev) => prev.filter((t) => t.id !== id));
+            }, durationMs);
+        }
+
+        return id.toString();
     }, []);
 
-    const removeToast = (id: number) => {
-        setToasts((prev) => prev.filter((t) => t.id !== id));
-    };
+    const updateToast = useCallback((id: string, message: string) => {
+        setToasts((prev) =>
+            prev.map((t) => t.id === parseInt(id) ? { ...t, message } : t)
+        );
+    }, []);
+
+    const removeToast = useCallback((id: string | number) => {
+        const numId = typeof id === 'string' ? parseInt(id) : id;
+        setToasts((prev) => prev.filter((t) => t.id !== numId));
+    }, []);
 
     return (
-        <ToastContext.Provider value={{ addToast }}>
+        <ToastContext.Provider value={{ addToast, updateToast, removeToast }}>
             {children}
             {toasts.length > 0 && (
                 <div className="fixed inset-0 bg-gray-900/50 dark:bg-black/80 z-[9990] transition-opacity duration-300 pointer-events-none" />
@@ -84,7 +101,11 @@ export const useToast = () => {
     const context = useContext(ToastContext);
     if (!context) {
         // Return a no-op implementation when no provider is present (e.g., in tests)
-        return { addToast: () => { } } as ToastContextType;
+        return {
+            addToast: () => "",
+            updateToast: () => { },
+            removeToast: () => { }
+        } as ToastContextType;
     }
     return context;
 };

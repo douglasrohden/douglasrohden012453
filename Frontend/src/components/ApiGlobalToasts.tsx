@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import { onApiRateLimit, type ApiRateLimitEventDetail } from "../api/apiEvents";
+import { useObservable } from "../hooks/useObservable";
+import { apiStore, type ApiRateLimitNotification } from "../store/api.store";
 import { useToast } from "../contexts/ToastContext";
 
 function formatRetryAfter(seconds: number): string {
@@ -14,42 +15,43 @@ export function ApiGlobalToasts() {
   const lastToastAtRef = useRef<number>(0);
   const lastToastKeyRef = useRef<string>("");
 
+  const apiState = useObservable(apiStore.state$, { lastRateLimit: null });
+
   useEffect(() => {
-    return onApiRateLimit((detail: ApiRateLimitEventDetail) => {
-      // Basic de-dupe so a burst of requests doesn't spam the user.
-      const now = Date.now();
-      const key = `${detail.endpoint ?? ""}|${detail.method ?? ""}|${detail.retryAfterSeconds}|${detail.message}`;
-      if (key === lastToastKeyRef.current && now - lastToastAtRef.current < 1500) return;
+    const detail: ApiRateLimitNotification | null = apiState.lastRateLimit;
+    if (!detail) return;
 
-      lastToastKeyRef.current = key;
-      lastToastAtRef.current = now;
+    // Basic de-dupe so a burst of requests doesn't spam the user.
+    const now = Date.now();
+    const key = `${detail.endpoint ?? ""}|${detail.method ?? ""}|${detail.retryAfterSeconds}|${detail.message}`;
+    if (key === lastToastKeyRef.current && now - lastToastAtRef.current < 1500) return;
 
-      const retryText = formatRetryAfter(detail.retryAfterSeconds);
+    lastToastKeyRef.current = key;
+    lastToastAtRef.current = now;
 
-      const limitText =
-        Number.isFinite(detail.limitPerMinute) && (detail.limitPerMinute as number) > 0
-          ? ` (limite: ${detail.limitPerMinute}/min)`
-          : "";
-      const remainingText =
-        Number.isFinite(detail.remaining) && (detail.remaining as number) >= 0
-          ? ` (restante: ${detail.remaining})`
-          : "";
+    const retryText = formatRetryAfter(detail.retryAfterSeconds);
 
-      const msgBase = detail.message?.trim()
-        ? detail.message
-        : "Muitas requisições.";
+    const limitText =
+      Number.isFinite(detail.limitPerMinute) && (detail.limitPerMinute as number) > 0
+        ? ` (limite: ${detail.limitPerMinute}/min)`
+        : "";
+    const remainingText =
+      Number.isFinite(detail.remaining) && (detail.remaining as number) >= 0
+        ? ` (restante: ${detail.remaining})`
+        : "";
 
-      // Check if message already contains retry time info to avoid duplication
-      const alreadyHasRetryInfo = msgBase.toLowerCase().includes("tente novamente em") ||
-        msgBase.toLowerCase().includes("aguarde");
+    const msgBase = detail.message?.trim() ? detail.message : "Muitas requisições.";
 
-      const msg = alreadyHasRetryInfo
-        ? `${msgBase}${limitText}${remainingText}`
-        : `${msgBase}${limitText}${remainingText} (tente novamente em ${retryText})`;
+    // Check if message already contains retry time info to avoid duplication
+    const alreadyHasRetryInfo =
+      msgBase.toLowerCase().includes("tente novamente em") || msgBase.toLowerCase().includes("aguarde");
 
-      addToast(msg, "warning");
-    });
-  }, [addToast]);
+    const msg = alreadyHasRetryInfo
+      ? `${msgBase}${limitText}${remainingText}`
+      : `${msgBase}${limitText}${remainingText} (tente novamente em ${retryText})`;
+
+    addToast(msg, "warning");
+  }, [apiState.lastRateLimit, addToast]);
 
   return null;
 }

@@ -7,6 +7,48 @@ import { useArtists } from '../hooks/useArtists';
 import ArtistSearchInput from './common/ArtistSearchInput';
 import axios from 'axios';
 
+function ArtistSelector({
+    value,
+    onChange,
+    onSelect,
+    hasError,
+}: {
+    value: string;
+    onChange: (value: string) => void;
+    onSelect: (artist: Artista) => void;
+    hasError: boolean;
+}) {
+    const {
+        artists: searchResults,
+        loading: searchLoading,
+        setSearch: setArtistSearch,
+        setPage: setArtistPage,
+    } = useArtists();
+
+    const handleArtistSearchChange = (next: string) => {
+        onChange(next);
+        setArtistSearch(next);
+        setArtistPage(0);
+    };
+
+    const handleSelect = (artist: Artista) => {
+        onSelect(artist);
+        onChange(artist.nome);
+        setArtistSearch(artist.nome);
+    };
+
+    return (
+        <ArtistSearchInput
+            value={value}
+            results={searchResults}
+            loading={searchLoading}
+            onChange={handleArtistSearchChange}
+            onSelect={handleSelect}
+            hasError={hasError}
+        />
+    );
+}
+
 interface CreateAlbumFormProps {
     artistId?: number; // Made optional
     onSuccess: () => void;
@@ -24,14 +66,7 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
 
     // Artist selection state
     const [selectedArtist, setSelectedArtist] = useState<Artista | null>(null);
-    // Use useArtists for searching
-    const {
-        artists: searchResults,
-        loading: searchLoading,
-        search: artistSearch,
-        setSearch: setArtistSearch,
-        setPage: setArtistPage
-    } = useArtists();
+    const [artistSearch, setArtistSearch] = useState('');
 
     // Reset form when modal opens/closes
     useEffect(() => {
@@ -48,14 +83,11 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
                 setSelectedArtist(null);
             }
         }
-    }, [show, artistId, setArtistSearch]);
+    }, [show, artistId]);
 
     const handleArtistSearchChange = (value: string) => {
         setArtistSearch(value);
-        setArtistPage(0); // Reset to first page of results
-        if (selectedArtist) {
-            setSelectedArtist(null); // Clear selection if user types again
-        }
+        if (selectedArtist) setSelectedArtist(null);
     };
 
     const selectArtist = (artist: Artista) => {
@@ -138,10 +170,8 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
                     <div className="flex flex-col gap-4">
                         {/* Artist Selection Field - Only show if artistId prop is missing */}
                         {!artistId && (
-                            <ArtistSearchInput
+                            <ArtistSelector
                                 value={artistSearch}
-                                results={searchResults}
-                                loading={searchLoading}
                                 onChange={handleArtistSearchChange}
                                 onSelect={selectArtist}
                                 hasError={error === 'Selecione um artista'}

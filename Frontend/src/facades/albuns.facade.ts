@@ -1,7 +1,7 @@
 import { BaseFacade } from './base.facade';
 import { getAlbuns, Album } from '../services/albunsService';
 import { Page } from '../types/Page';
-import { getErrorMessage } from '../api/client';
+import { getErrorMessage, getHttpStatus } from '../api/client';
 
 const INITIAL_PAGE: Page<Album> = {
     content: [],
@@ -16,15 +16,7 @@ const INITIAL_PAGE: Page<Album> = {
     empty: true
 };
 
-interface CacheEntry {
-    data: Page<Album>;
-    timestamp: number;
-}
-
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
 export class AlbunsFacade extends BaseFacade<Page<Album>> {
-    private cache = new Map<string, CacheEntry>();
     private inFlight = new Map<string, Promise<void>>();
 
     constructor() {
@@ -33,16 +25,9 @@ export class AlbunsFacade extends BaseFacade<Page<Album>> {
 
     async fetch(page = 0, size = 10) {
         const cacheKey = `${page}-${size}`;
-        const cached = this.cache.get(cacheKey);
-
         const pending = this.inFlight.get(cacheKey);
         if (pending) {
             await pending;
-            return;
-        }
-
-        if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-            this.setData(cached.data);
             return;
         }
 
@@ -50,11 +35,19 @@ export class AlbunsFacade extends BaseFacade<Page<Album>> {
             try {
                 this.setLoading(true);
                 const data = await getAlbuns(page, size);
-                this.cache.set(cacheKey, { data, timestamp: Date.now() });
                 this.setData(data);
             } catch (e) {
-                const errorMessage = getErrorMessage(e, 'Erro ao carregar álbuns');
-                this.setError(errorMessage);
+                const status = getHttpStatus(e);
+
+                // For 429 rate limit, don't set error state - keep previous data visible.
+                // O toast global (ApiGlobalToasts) já mostra a mensagem de rate limit.
+                if (status === 429) {
+                    console.debug('[AlbunsFacade] Rate limited, keeping previous data visible');
+                    // Sem retry automático: o backend controla o rate limit (edital).
+                } else {
+                    const errorMessage = getErrorMessage(e, 'Erro ao carregar álbuns');
+                    this.setError(errorMessage);
+                }
             } finally {
                 this.setLoading(false);
                 this.inFlight.delete(cacheKey);
@@ -66,7 +59,8 @@ export class AlbunsFacade extends BaseFacade<Page<Album>> {
     }
 
     invalidateCache() {
-        this.cache.clear();
+        // Mantido apenas para compatibilidade com testes/consumidores.
+        // Não há cache local de dados na facade.
     }
 }
 

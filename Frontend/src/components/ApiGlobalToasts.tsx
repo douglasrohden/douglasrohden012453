@@ -37,21 +37,18 @@ export function ApiGlobalToasts() {
           ? ` (limite: ${detail.limitPerMinute}/min)`
           : "";
 
-      const msgBase = detail.message?.trim()
-        ? detail.message
-        : "Muitas requisições.";
+      // Extract base message, removing any existing time information from backend
+      let msgBase = detail.message?.trim() || "Muitas requisições.";
 
-      // Check if message already contains retry time info to avoid duplication
-      const alreadyHasRetryInfo = msgBase.toLowerCase().includes("tente novamente em") ||
-        msgBase.toLowerCase().includes("aguarde");
+      // Remove qualquer informação de tempo que o backend possa ter incluído
+      msgBase = msgBase.replace(/Tente novamente em \d+[smh]+\.?/i, "").trim();
+      msgBase = msgBase.replace(/\.$/, ""); // Remove trailing period if exists
 
       let remainingSeconds = detail.retryAfterSeconds;
 
       const buildMessage = (seconds: number) => {
         const retryText = formatRetryAfter(seconds);
-        return alreadyHasRetryInfo
-          ? `${msgBase}${limitText}`
-          : `${msgBase} Tente novamente em ${retryText}.${limitText}`;
+        return `${msgBase} Tente novamente em ${retryText}.${limitText}`;
       };
 
       const initialMsg = buildMessage(remainingSeconds);

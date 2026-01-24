@@ -17,7 +17,6 @@ interface Props {
 export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) {
     const { addToast } = useToast();
     const [nome, setNome] = useState("");
-    const [genero, setGenero] = useState("");
     const [tipo, setTipo] = useState("CANTOR");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -35,9 +34,7 @@ export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) 
         setNome(value);
     };
 
-    const handleGeneroChange = (value: string) => {
-        setGenero(value);
-    };
+
 
     const handleTipoChange = (value: string) => {
         setTipo(value);
@@ -101,7 +98,6 @@ export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) 
         try {
             const artista = await artistsService.create({
                 nome: nome.trim(),
-                genero: genero.trim() || undefined,
                 tipo: tipo,
                 albumIds: selectedAlbums.map(a => a.id)
             });
@@ -115,7 +111,6 @@ export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) 
             onCreated?.();
             onClose();
             setNome("");
-            setGenero("");
             setTipo("CANTOR");
             setFiles([]);
             setPreviews([]);
@@ -145,12 +140,7 @@ export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) 
                             <TextInput id="artist-nome" value={nome} onChange={(e) => handleNameChange(e.target.value)} />
                         </div>
 
-                        <div>
-                            <div className="mb-2 block">
-                                <Label htmlFor="artist-genero">Gênero</Label>
-                            </div>
-                            <TextInput id="artist-genero" value={genero} onChange={(e) => handleGeneroChange(e.target.value)} />
-                        </div>
+
 
                         <div>
                             <div className="mb-2 block">

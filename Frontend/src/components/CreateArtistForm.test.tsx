@@ -25,6 +25,10 @@ vi.mock('flowbite-react', () => {
     ModalHeader,
     ModalBody,
     ModalFooter,
+    FileInput: ({ id, multiple, accept, onChange, ...props }: any) => (
+      <input id={id} multiple={multiple} accept={accept} onChange={onChange} {...props} type="file" />
+    ),
+    Badge: ({ children, ...props }: any) => <div {...props}>{children}</div>,
     TextInput: ({ value, onChange, ...props }: any) => (
       <input value={value} onChange={onChange} {...props} />
     ),
@@ -80,18 +84,16 @@ describe('CreateArtistForm', () => {
     render(<CreateArtistForm {...mockProps} />);
 
     const nameInput = screen.getByLabelText('Nome');
-    const genreInput = screen.getByLabelText('Gênero');
     const submitButton = screen.getByRole('button', { name: 'Criar' });
 
     await user.type(nameInput, 'Test Artist');
-    await user.type(genreInput, 'Rock');
     await user.click(submitButton);
 
     await waitFor(() => {
       expect(artistsService.create).toHaveBeenCalledWith({
         nome: 'Test Artist',
-        genero: 'Rock',
-        tipo: 'CANTOR'
+        tipo: 'CANTOR',
+        albumIds: []
       });
       expect(mockProps.onCreated).toHaveBeenCalled();
       expect(mockProps.onClose).toHaveBeenCalled();
@@ -113,8 +115,8 @@ describe('CreateArtistForm', () => {
     await waitFor(() => {
       expect(artistsService.create).toHaveBeenCalledWith({
         nome: 'Test Artist',
-        genero: undefined,
-        tipo: 'CANTOR'
+        tipo: 'CANTOR',
+        albumIds: []
       });
     });
   });
@@ -162,16 +164,13 @@ describe('CreateArtistForm', () => {
     render(<CreateArtistForm {...mockProps} />);
 
     const nameInput = screen.getByLabelText('Nome');
-    const genreInput = screen.getByLabelText('Gênero');
     const submitButton = screen.getByRole('button', { name: 'Criar' });
 
     await user.type(nameInput, 'Test Artist');
-    await user.type(genreInput, 'Rock');
     await user.click(submitButton);
 
     await waitFor(() => {
       expect(nameInput).toHaveValue('');
-      expect(genreInput).toHaveValue('');
     });
   });
 

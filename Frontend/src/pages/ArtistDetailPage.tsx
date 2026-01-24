@@ -22,7 +22,6 @@ interface Album {
 interface ArtistaDetalhado {
   id: number;
   nome: string;
-  genero: string;
   tipo?: string;
   albuns?: Album[];
 }

@@ -59,7 +59,6 @@ public class ArtistaService {
         return new ArtistaDto(
                 resultado.getId(),
                 resultado.getNome(),
-                resultado.getGenero(),
                 resultado.getAlbumCount());
     }
 
@@ -104,7 +103,6 @@ public class ArtistaService {
     public Artista update(Long id, Artista artista) {
         Artista existing = findById(id);
         existing.setNome(artista.getNome());
-        existing.setGenero(artista.getGenero());
         // imageUrl removed
         if (artista.getTipo() != null) {
             existing.setTipo(artista.getTipo());

@@ -8,6 +8,5 @@ import lombok.Data;
 public class ArtistaDto {
     private Long id;
     private String nome;
-    private String genero;
     private Long albumCount;
 }

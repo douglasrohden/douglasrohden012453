@@ -110,11 +110,7 @@ export default function ArtistSearchInput({
                                                 {artist.nome}
                                             </span>
 
-                                            {artist.genero && (
-                                                <span className="text-xs text-gray-500 dark:text-gray-400">
-                                                    {artist.genero}
-                                                </span>
-                                            )}
+
                                         </Button>
                                     </li>
                                 ))}

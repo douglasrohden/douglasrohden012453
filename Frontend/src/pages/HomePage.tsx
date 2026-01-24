@@ -95,10 +95,7 @@ export default function HomePage() {
                             <span className="text-sm font-semibold text-gray-600 dark:text-gray-400 mr-2">Cantor/Banda:</span>
                             <span>{artist.tipo ? (artist.tipo === 'BANDA' ? 'Banda' : 'Cantor(a)') : '—'}</span>
                         </p>
-                        <p className="text-sm text-gray-700 dark:text-gray-400 mt-1">
-                            <span className="text-sm font-semibold text-gray-600 dark:text-gray-400 mr-2">Gênero:</span>
-                            <span>{artist.genero ?? '—'}</span>
-                        </p>
+
                         {typeof artist.albumCount === "number" && (
                             <p className="mt-2 text-sm text-gray-600 dark:text-gray-300"><span className="text-sm font-semibold text-gray-600 dark:text-gray-400 mr-2">Álbuns:</span>{artist.albumCount} {artist.albumCount === 1 ? 'álbum' : 'álbuns'}</p>
                         )}

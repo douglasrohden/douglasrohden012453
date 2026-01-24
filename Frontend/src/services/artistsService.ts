@@ -4,7 +4,6 @@ import { Page } from "../types/Page";
 export interface Artista {
     id: number;
     nome: string;
-    genero: string;
     tipo?: string;
     albumCount?: number;
     albuns?: Album[];
@@ -43,7 +42,7 @@ export const artistsService = {
         const response = await api.get<Artista>(`/artistas/${id}`);
         return response.data as Artista & { albuns?: Album[] };
     },
-    create: async (payload: { nome: string; genero?: string; tipo?: string; albumIds?: number[] }) => {
+    create: async (payload: { nome: string; tipo?: string; albumIds?: number[] }) => {
         const response = await api.post<Artista>("/artistas", payload);
         return response.data;
     },

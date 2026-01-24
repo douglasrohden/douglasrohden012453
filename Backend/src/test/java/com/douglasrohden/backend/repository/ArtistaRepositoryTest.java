@@ -25,11 +25,9 @@ class ArtistaRepositoryTest {
     void setUp() {
         artista1 = new Artista();
         artista1.setNome("Test Artist 1");
-        artista1.setGenero("Rock");
 
         artista2 = new Artista();
         artista2.setNome("Another Artist");
-        artista2.setGenero("Pop");
 
         repository.save(artista1);
         repository.save(artista2);
@@ -52,7 +50,7 @@ class ArtistaRepositoryTest {
         Page<ArtistaRepository.ArtistaComAlbumCount> result = repository.searchWithAlbumCount("test", null, pageable);
         assertEquals(1, result.getTotalElements());
         var r = result.getContent().get(0);
-        ArtistaDto dto = new ArtistaDto(r.getId(), r.getNome(), r.getGenero(), r.getAlbumCount());
+        ArtistaDto dto = new ArtistaDto(r.getId(), r.getNome(), r.getAlbumCount());
         assertEquals("Test Artist 1", dto.getNome());
         assertEquals(0L, dto.getAlbumCount()); // Assuming no albums
     }

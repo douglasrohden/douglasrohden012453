@@ -10,6 +10,89 @@ class AuthFacade {
     private readonly initializingSubject = new BehaviorSubject<boolean>(true);
     private initPromise: Promise<void> | null = null;
     private refreshPromise: Promise<boolean> | null = null;
+    private refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    private scheduledExpMs: number | null = null;
+
+    // refresh a bit before token expires to avoid 401 bursts
+    private static readonly REFRESH_SKEW_MS = 15_000;
+    private static readonly MIN_REFRESH_DELAY_MS = 1_000;
+
+    constructor() {
+        // Keep token renewal running while the app is open.
+        authStore.state$.subscribe((state) => {
+            this.onAuthStateChange(state);
+        });
+
+        // Ensure we schedule based on the initial loaded state as well.
+        this.onAuthStateChange(authStore.currentState);
+    }
+
+    private clearRefreshTimer(): void {
+        if (this.refreshTimer) {
+            clearTimeout(this.refreshTimer);
+            this.refreshTimer = null;
+        }
+        this.scheduledExpMs = null;
+    }
+
+    private decodeJwtExpMs(token: string): number | null {
+        try {
+            const parts = token.split('.');
+            if (parts.length < 2) return null;
+
+            const base64Url = parts[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+
+            if (typeof window === 'undefined' || typeof window.atob !== 'function') {
+                return null;
+            }
+
+            const json = window.atob(padded);
+            const payload = JSON.parse(json) as { exp?: number };
+            const exp = payload?.exp;
+            if (typeof exp !== 'number') return null;
+
+            // exp is typically in seconds. Accept ms too.
+            return exp > 1_000_000_000_000 ? exp : exp * 1000;
+        } catch {
+            return null;
+        }
+    }
+
+    private onAuthStateChange(state: AuthState): void {
+        const { accessToken, refreshToken, user, isAuthenticated } = state;
+
+        // If we can't refresh, or user is not authenticated, don't keep a timer.
+        if (!isAuthenticated || !accessToken || !refreshToken || !user) {
+            this.clearRefreshTimer();
+            return;
+        }
+
+        const expMs = this.decodeJwtExpMs(accessToken);
+        if (!expMs) {
+            // If we can't read exp, rely on 401-based refresh in the API client.
+            this.clearRefreshTimer();
+            return;
+        }
+
+        if (this.scheduledExpMs === expMs) {
+            return;
+        }
+
+        this.clearRefreshTimer();
+        this.scheduledExpMs = expMs;
+
+        const delayMs = Math.max(
+            AuthFacade.MIN_REFRESH_DELAY_MS,
+            expMs - Date.now() - AuthFacade.REFRESH_SKEW_MS,
+        );
+
+        this.refreshTimer = setTimeout(() => {
+            // Fire-and-forget: tryRefresh is single-flight and cleans auth on failure.
+            void this.tryRefresh();
+        }, delayMs);
+    }
 
     /**
      * Observable do estado de autenticação

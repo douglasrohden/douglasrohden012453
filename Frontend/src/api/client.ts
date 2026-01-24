@@ -2,7 +2,6 @@ import axios, { type AxiosError, type AxiosInstance } from "axios";
 import { authStore } from "../store/auth.store";
 import { emitApiRateLimit } from "./apiRateLimitEvents";
 import { auth } from "../auth/auth.singleton";
-import { getCurrentUserActionId } from "../services/userAction";
 
 type RateLimitInfo = {
   retryAfter: number;
@@ -57,6 +56,69 @@ const api: AxiosInstance = axios.create({
   },
 });
 
+// Request queue with low concurrency and backoff on 429
+type QueueTask<T = unknown> = { fn: () => Promise<T>; resolve: (v: T) => void; reject: (e: unknown) => void };
+const MAX_CONCURRENCY = 2;
+const MIN_SPACING_MS = 400;
+let lastStartMs = 0;
+let active = 0;
+let pauseUntil = 0;
+const queue: QueueTask[] = [];
+
+const baseAdapter = api.defaults.adapter ?? axios.defaults.adapter;
+
+function schedule<T>(fn: () => Promise<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    queue.push({ fn, resolve, reject });
+    processQueue();
+  });
+}
+
+function processQueue(): void {
+  if (active >= MAX_CONCURRENCY) return;
+  if (queue.length === 0) return;
+
+  const now = Date.now();
+  if (now < pauseUntil) {
+    setTimeout(processQueue, pauseUntil - now);
+    return;
+  }
+
+  const sinceLast = now - lastStartMs;
+  if (sinceLast < MIN_SPACING_MS) {
+    setTimeout(processQueue, MIN_SPACING_MS - sinceLast);
+    return;
+  }
+
+  const task = queue.shift();
+  if (!task) return;
+
+  active += 1;
+  lastStartMs = Date.now();
+
+  task.fn()
+    .then(task.resolve)
+    .catch((err) => {
+      const status = getHttpStatus(err);
+      if (status === 429) {
+        const retryAfterHeader = err?.response?.headers?.["retry-after"];
+        const retryAfter = typeof retryAfterHeader === "string" ? parseInt(retryAfterHeader, 10) : undefined;
+        if (Number.isFinite(retryAfter) && retryAfter! > 0) {
+          pauseUntil = Date.now() + retryAfter! * 1000;
+        }
+      }
+      task.reject(err);
+    })
+    .finally(() => {
+      active -= 1;
+      processQueue();
+    });
+}
+
+if (typeof baseAdapter === 'function') {
+  api.defaults.adapter = (config) => schedule(() => baseAdapter(config));
+}
+
 type RefreshResponse = {
   accessToken: string;
   refreshToken: string;
@@ -105,13 +167,6 @@ api.interceptors.request.use(
     const token = getAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-    }
-
-    // Group multiple requests triggered by a single UI action (e.g., refresh list that loads thumbnails)
-    // so the backend counts them as a single rate-limit token.
-    const actionId = getCurrentUserActionId();
-    if (token && actionId) {
-      config.headers["X-User-Action-Id"] = actionId;
     }
 
     return config;

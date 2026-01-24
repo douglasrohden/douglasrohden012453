@@ -1,5 +1,5 @@
 import { Button, DarkThemeToggle } from "flowbite-react";
-import { useAuthFacade } from "../hooks/useAuthFacade";
+import { useAuth } from "../contexts/AuthContext";
 
 interface PageHeaderProps {
     title: string;
@@ -8,7 +8,7 @@ interface PageHeaderProps {
 }
 
 export function PageHeader({ title, subtitle, onToggleSidebar }: PageHeaderProps) {
-    const { logout } = useAuthFacade();
+    const { logout } = useAuth();
 
     return (
         <nav className="flex items-center justify-between px-4 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 md:px-6">

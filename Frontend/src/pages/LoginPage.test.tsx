@@ -2,21 +2,19 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import LoginPage from "./LoginPage";
 import { BrowserRouter } from "react-router-dom";
-import * as AuthFacade from "../hooks/useAuthFacade";
+import { authFacade } from "../facades/auth.facade";
 
-// Mock do hook useAuthFacade
-vi.mock("../hooks/useAuthFacade");
+vi.mock("../facades/auth.facade", () => {
+    return {
+        authFacade: {
+            login: vi.fn(),
+        },
+    };
+});
 
 describe("LoginPage", () => {
     it("renders login form correctly", () => {
-        // Mock do retorno do hook
-        vi.spyOn(AuthFacade, "useAuthFacade").mockReturnValue({
-            login: vi.fn(),
-            isAuthenticated: false,
-            user: null,
-            logout: vi.fn(),
-            checkAuth: vi.fn()
-        });
+        vi.spyOn(authFacade, "login").mockResolvedValue({} as never);
 
         render(
             <BrowserRouter>
@@ -31,13 +29,7 @@ describe("LoginPage", () => {
 
     it("calls login function on form submission", async () => {
         const loginMock = vi.fn().mockResolvedValue(true);
-        vi.spyOn(AuthFacade, "useAuthFacade").mockReturnValue({
-            login: loginMock,
-            isAuthenticated: false,
-            user: null,
-            logout: vi.fn(),
-            checkAuth: vi.fn()
-        });
+        vi.spyOn(authFacade, "login").mockImplementation(loginMock);
 
         render(
             <BrowserRouter>
@@ -56,13 +48,7 @@ describe("LoginPage", () => {
 
     it("displays error message on login failure", async () => {
         const loginMock = vi.fn().mockRejectedValue(new Error("Login failed"));
-        vi.spyOn(AuthFacade, "useAuthFacade").mockReturnValue({
-            login: loginMock,
-            isAuthenticated: false,
-            user: null,
-            logout: vi.fn(),
-            checkAuth: vi.fn()
-        });
+        vi.spyOn(authFacade, "login").mockImplementation(loginMock);
 
         render(
             <BrowserRouter>

@@ -1,7 +1,6 @@
 import { BehaviorSubject, Observable } from 'rxjs';
-import { authStore, AuthState } from '../store/auth.store';
-import { authService, LoginResponse } from '../services/authService';
-import { auth } from '../auth/auth.singleton';
+import { authStore, type AuthState } from '../store/auth.store';
+import { authService, type LoginResponse } from '../services/authService';
 
 /**
  * AuthFacade - Padrão Facade para operações de autenticação
@@ -10,6 +9,7 @@ import { auth } from '../auth/auth.singleton';
 class AuthFacade {
     private readonly initializingSubject = new BehaviorSubject<boolean>(true);
     private initPromise: Promise<void> | null = null;
+    private refreshPromise: Promise<boolean> | null = null;
 
     /**
      * Observable do estado de autenticação
@@ -76,28 +76,55 @@ class AuthFacade {
     }
 
     /**
-     * Realiza logout do usuário
+     * Logout apenas limpa estado. Navegação fica a cargo do AuthProvider.
      */
     logout(): void {
-        auth.logout('/login');
+        authStore.clearAuthentication();
     }
 
     /**
-     * Inicializa autenticação no boot da aplicação.
-     * Requisito do edital: não fazer renovação automática de token no frontend.
-     * Se o token expirar, o usuário deve fazer login novamente.
+     * Tenta renovar tokens usando refresh token (single-flight).
+     * Retorna true se conseguiu renovar.
+     */
+    async tryRefresh(): Promise<boolean> {
+        if (this.refreshPromise) return this.refreshPromise;
+
+        this.refreshPromise = (async () => {
+            const { refreshToken, user } = authStore.currentState;
+            if (!refreshToken || !user) return false;
+
+            try {
+                const res = await authService.refresh(refreshToken);
+                authStore.setAuthenticated(res.accessToken, res.refreshToken, user);
+                return true;
+            } catch {
+                authStore.clearAuthentication();
+                return false;
+            } finally {
+                this.refreshPromise = null;
+            }
+        })();
+
+        return this.refreshPromise;
+    }
+
+    /**
+     * Boot: se já está autenticado, ok.
+     * Se há refreshToken e não está autenticado, tenta uma renovação.
      */
     initialize(): Promise<void> {
         if (this.initPromise) return this.initPromise;
 
         this.initializingSubject.next(true);
         this.initPromise = (async () => {
-            // Se já autenticou via localStorage, não faz nada.
-            if (authStore.currentState.isAuthenticated) return;
+            const { isAuthenticated, refreshToken } = authStore.currentState;
+            if (isAuthenticated) return;
 
-            // Se não está autenticado, garante limpeza de tokens "órfãos".
-            // (ex.: refreshToken salvo sem accessToken) para forçar login.
-            authStore.clearAuthentication();
+            if (refreshToken) {
+                await this.tryRefresh();
+            } else {
+                authStore.clearAuthentication();
+            }
         })().finally(() => {
             this.initializingSubject.next(false);
         });

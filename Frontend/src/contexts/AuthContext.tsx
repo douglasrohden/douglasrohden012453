@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { authStore } from "../store/auth.store";
 import { auth } from "../auth/auth.singleton";
+import { authFacade } from "../facades/auth.facade";
+import type { AuthState } from "../store/auth.store";
 
 /**
  * AuthContext - Mantido para compatibilidade com código existente
@@ -9,7 +10,8 @@ import { auth } from "../auth/auth.singleton";
  */
 interface AuthContextType {
     isAuthenticated: boolean;
-    refreshAuthState: () => void;
+    initializing: boolean;
+    user: string | null;
     logout: (redirectTo?: string) => void;
 }
 
@@ -18,23 +20,24 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const navigate = useNavigate();
     const location = useLocation();
-    const [isAuthenticated, setIsAuthenticated] = useState(() => authStore.currentState.isAuthenticated);
+    const [authState, setAuthState] = useState<AuthState>(() => authFacade.currentAuthState);
+    const [initializing, setInitializing] = useState<boolean>(() => authFacade.isInitializing);
 
     useEffect(() => {
-        const sub = authStore.state$.subscribe((state) => {
-            setIsAuthenticated(state.isAuthenticated);
-        });
-        return () => sub.unsubscribe();
-    }, []);
+        const authSub = authFacade.authState$.subscribe(setAuthState);
+        const initSub = authFacade.initializing$.subscribe(setInitializing);
 
-    const refreshAuthState = useCallback(() => {
-        setIsAuthenticated(authStore.currentState.isAuthenticated);
+        void authFacade.initialize();
+
+        return () => {
+            authSub.unsubscribe();
+            initSub.unsubscribe();
+        };
     }, []);
 
     const logout = useCallback(
         (redirectTo = "/login") => {
-            authStore.clearAuthentication();
-            setIsAuthenticated(false);
+            authFacade.logout();
 
             if (location.pathname !== redirectTo) {
                 navigate(redirectTo, { replace: true });
@@ -47,7 +50,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         auth.bindLogout(logout);
     }, [logout]);
 
-    const value = useMemo(() => ({ isAuthenticated, refreshAuthState, logout }), [isAuthenticated, refreshAuthState, logout]);
+    const value = useMemo(
+        () => ({
+            isAuthenticated: authState.isAuthenticated,
+            initializing,
+            user: authState.user,
+            logout,
+        }),
+        [authState.isAuthenticated, authState.user, initializing, logout]
+    );
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

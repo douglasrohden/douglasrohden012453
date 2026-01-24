@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { Button, Card, Label, TextInput, Alert, Spinner } from "flowbite-react";
-import { useAuthFacade } from "../hooks/useAuthFacade";
 import { useNavigate } from "react-router-dom";
 import { HiClock } from "react-icons/hi";
+import { authFacade } from "../facades/auth.facade";
 
 interface RateLimitError extends Error {
     response?: {
@@ -26,7 +26,6 @@ export default function LoginPage() {
     const [rateLimited, setRateLimited] = useState(false);
     const [retryAfter, setRetryAfter] = useState(0);
 
-    const { login } = useAuthFacade();
     const navigate = useNavigate();
     const intervalRef = useRef<number | null>(null);
 
@@ -72,7 +71,7 @@ export default function LoginPage() {
         setLoading(true);
 
         try {
-            await login(username, password);
+            await authFacade.login(username, password);
             navigate("/artista", { replace: true });
         } catch (err) {
             console.error(err);

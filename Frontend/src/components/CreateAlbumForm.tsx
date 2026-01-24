@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button, Label, TextInput, Modal, ModalBody, ModalHeader, ModalFooter, FileInput, Spinner } from 'flowbite-react';
 import { useToast } from '../contexts/ToastContext';
 import { Artista } from '../services/artistsService';
-import { createAlbum, uploadAlbumCovers } from '../services/albunsService';
+import { createAlbum, uploadAlbumImages } from '../services/albunsService';
 import { getErrorMessage } from '../api/client';
 import { useArtists } from '../hooks/useArtists';
 import ArtistSearchInput from './common/ArtistSearchInput';
@@ -34,11 +34,12 @@ function ArtistSelector({
 
     const handleSelect = (artist: Artista) => {
         onSelect(artist);
-        onChange(artist.nome);
-        setArtistSearch(artist.nome);
+        // limpar o campo de busca após selecionar o artista
+        onChange('');
+        setArtistSearch('');
     };
 
-        return (
+    return (
         <ArtistSearchInput
             value={value}
             results={searchResults}
@@ -180,7 +181,7 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
                 if (!albumId) {
                     throw new Error('Não foi possível obter o id do álbum para subir as capas.');
                 }
-                await uploadAlbumCovers(albumId, files);
+                await uploadAlbumImages(albumId, files);
             }
             addToast('Álbum adicionado com sucesso!', 'success');
             onSuccess();

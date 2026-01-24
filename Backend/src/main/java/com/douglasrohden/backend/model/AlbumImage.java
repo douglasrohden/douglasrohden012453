@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Entity
 @Table(name = "album_image")
-public class AlbumCover {
+public class AlbumImage {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -23,18 +23,46 @@ public class Album {
 
 	@OneToMany(mappedBy = "album", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
 	@JsonIgnore
-	private Set<AlbumCover> covers = new HashSet<>();
+	private Set<AlbumImage> covers = new HashSet<>();
 
-	public Long getId() { return id; }
-	public void setId(Long id) { this.id = id; }
-	public String getTitulo() { return titulo; }
-	public void setTitulo(String titulo) { this.titulo = titulo; }
-	public Integer getAno() { return ano; }
-	public void setAno(Integer ano) { this.ano = ano; }
-	public Set<Artista> getArtistas() { return artistas; }
-	public void setArtistas(Set<Artista> artistas) { this.artistas = artistas; }
+	public Long getId() {
+		return id;
+	}
 
-	public Set<AlbumCover> getCovers() { return covers; }
-	public void setCovers(Set<AlbumCover> covers) { this.covers = covers; }
+	public void setId(Long id) {
+		this.id = id;
+	}
+
+	public String getTitulo() {
+		return titulo;
+	}
+
+	public void setTitulo(String titulo) {
+		this.titulo = titulo;
+	}
+
+	public Integer getAno() {
+		return ano;
+	}
+
+	public void setAno(Integer ano) {
+		this.ano = ano;
+	}
+
+	public Set<Artista> getArtistas() {
+		return artistas;
+	}
+
+	public void setArtistas(Set<Artista> artistas) {
+		this.artistas = artistas;
+	}
+
+	public Set<AlbumImage> getCovers() {
+		return covers;
+	}
+
+	public void setCovers(Set<AlbumImage> covers) {
+		this.covers = covers;
+	}
 
 }

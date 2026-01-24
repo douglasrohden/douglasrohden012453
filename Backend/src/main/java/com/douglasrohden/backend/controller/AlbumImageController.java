@@ -1,7 +1,7 @@
 package com.douglasrohden.backend.controller;
 
-import com.douglasrohden.backend.dto.AlbumCoverResponse;
-import com.douglasrohden.backend.service.AlbumCoverStorageService;
+import com.douglasrohden.backend.dto.AlbumImageResponse;
+import com.douglasrohden.backend.service.AlbumImageStorageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -29,14 +29,13 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 @Tag(name = "Capas de Álbum")
 @SecurityRequirement(name = "bearerAuth")
-public class AlbumCoverController {
+public class AlbumImageController {
 
-    private final AlbumCoverStorageService storageService;
+    private final AlbumImageStorageService storageService;
 
     @Operation(summary = "Upload de capas do álbum", description = "Recebe um ou mais arquivos de imagem e salva no MinIO.")
     @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "Capas salvas",
-                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = AlbumCoverResponse.class)))),
+            @ApiResponse(responseCode = "201", description = "Capas salvas", content = @Content(array = @ArraySchema(schema = @Schema(implementation = AlbumImageResponse.class)))),
             @ApiResponse(responseCode = "400", description = "Requisição inválida", content = @Content),
             @ApiResponse(responseCode = "401", description = "Não autorizado", content = @Content),
             @ApiResponse(responseCode = "403", description = "Acesso negado", content = @Content),
@@ -46,7 +45,7 @@ public class AlbumCoverController {
     })
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
-    public List<AlbumCoverResponse> upload(
+    public List<AlbumImageResponse> upload(
             @PathVariable Long albumId,
             @RequestPart("files") MultipartFile[] files) {
         return storageService.uploadCovers(albumId, files);
@@ -54,8 +53,7 @@ public class AlbumCoverController {
 
     @Operation(summary = "Listar capas do álbum", description = "Retorna metadados e URLs pré-assinadas com expiração configurável (30min).")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Lista de capas",
-                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = AlbumCoverResponse.class)))),
+            @ApiResponse(responseCode = "200", description = "Lista de capas", content = @Content(array = @ArraySchema(schema = @Schema(implementation = AlbumImageResponse.class)))),
             @ApiResponse(responseCode = "401", description = "Não autorizado", content = @Content),
             @ApiResponse(responseCode = "403", description = "Acesso negado", content = @Content),
             @ApiResponse(responseCode = "404", description = "Álbum não encontrado", content = @Content),
@@ -63,7 +61,7 @@ public class AlbumCoverController {
             @ApiResponse(responseCode = "500", description = "Erro interno", content = @Content)
     })
     @GetMapping
-    public List<AlbumCoverResponse> list(@PathVariable Long albumId) {
+    public List<AlbumImageResponse> list(@PathVariable Long albumId) {
         return storageService.listCovers(albumId);
     }
 

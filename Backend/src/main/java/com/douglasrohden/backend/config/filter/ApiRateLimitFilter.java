@@ -20,15 +20,7 @@ import java.io.IOException;
 @Component
 public class ApiRateLimitFilter extends OncePerRequestFilter {
     private static final Logger log = LoggerFactory.getLogger(ApiRateLimitFilter.class);
-    private static final String[] SKIP_PREFIXES = {
-            "/swagger-ui/",
-            "/v3/api-docs/",
-            "/actuator/",
-            "/error",
-            "/ws/"
-    };
-
-    private static final String ACTION_ID_HEADER = "X-User-Action-Id";
+    private static final String API_PREFIX = "/v1/";
 
     private final RateLimitService rateLimitService;
     private final ObjectMapper objectMapper;
@@ -47,12 +39,8 @@ public class ApiRateLimitFilter extends OncePerRequestFilter {
         if (uri == null)
             return true;
 
-        for (String prefix : SKIP_PREFIXES) {
-            if (uri.startsWith(prefix))
-                return true;
-        }
-
-        return false;
+        // Rate limit applies to all API routes under /v1/** (including /v1/autenticacao/**).
+        return !uri.startsWith(API_PREFIX);
     }
 
     @Override
@@ -61,10 +49,7 @@ public class ApiRateLimitFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
         String key = resolveRateLimitKey(request);
-        String actionId = request.getHeader(ACTION_ID_HEADER);
-        RateLimitService.Probe probe = (actionId != null && !actionId.isBlank())
-            ? rateLimitService.tryConsumeForAction(key, actionId)
-            : rateLimitService.tryConsume(key);
+        RateLimitService.Probe probe = rateLimitService.tryConsume(key);
 
         long limit = rateLimitService.defaultLimitPerWindow();
         long windowSeconds = rateLimitService.windowSeconds();
@@ -74,8 +59,8 @@ public class ApiRateLimitFilter extends OncePerRequestFilter {
 
         if (log.isDebugEnabled()) {
             String uri = request.getRequestURI();
-            log.debug("RateLimit key={} uri={} actionId={} limit={} remaining={} nanosToWait={}",
-                    key, uri, (actionId == null ? "" : actionId), limit, probe.remainingTokens(), probe.nanosToWaitForRefill());
+            log.debug("RateLimit key={} uri={} limit={} remaining={} nanosToWait={}",
+                key, uri, limit, probe.remainingTokens(), probe.nanosToWaitForRefill());
         }
 
         if (probe.consumed()) {

@@ -1,10 +1,10 @@
 package com.douglasrohden.backend.service;
 
 import com.douglasrohden.backend.config.MinioProperties;
-import com.douglasrohden.backend.dto.AlbumCoverResponse;
+import com.douglasrohden.backend.dto.AlbumImageResponse;
 import com.douglasrohden.backend.model.Album;
-import com.douglasrohden.backend.model.AlbumCover;
-import com.douglasrohden.backend.repository.AlbumCoverRepository;
+import com.douglasrohden.backend.model.AlbumImage;
+import com.douglasrohden.backend.repository.AlbumImageRepository;
 import com.douglasrohden.backend.repository.AlbumRepository;
 import io.minio.BucketExistsArgs;
 import io.minio.GetPresignedObjectUrlArgs;
@@ -29,26 +29,26 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
-public class AlbumCoverStorageService {
+public class AlbumImageStorageService {
 
     private final AlbumRepository albumRepository;
-    private final AlbumCoverRepository albumCoverRepository;
+    private final AlbumImageRepository albumImageRepository;
     private final MinioClient minioClient;
     private final MinioProperties properties;
     private final AtomicBoolean bucketEnsured = new AtomicBoolean(false);
 
-    public AlbumCoverStorageService(
+    public AlbumImageStorageService(
             AlbumRepository albumRepository,
-            AlbumCoverRepository albumCoverRepository,
+            AlbumImageRepository albumImageRepository,
             MinioClient minioClient,
             MinioProperties properties) {
         this.albumRepository = albumRepository;
-        this.albumCoverRepository = albumCoverRepository;
+        this.albumImageRepository = albumImageRepository;
         this.minioClient = minioClient;
         this.properties = properties;
     }
 
-    public List<AlbumCoverResponse> uploadCovers(Long albumId, MultipartFile[] files) {
+    public List<AlbumImageResponse> uploadCovers(Long albumId, MultipartFile[] files) {
         Album album = albumRepository.findById(albumId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Álbum não encontrado"));
 
@@ -58,14 +58,14 @@ public class AlbumCoverStorageService {
 
         ensureBucket();
 
-        List<AlbumCoverResponse> responses = new ArrayList<>();
+        List<AlbumImageResponse> responses = new ArrayList<>();
         String firstObjectKey = null;
         for (int i = 0; i < files.length; i++) {
             MultipartFile file = files[i];
             validateFile(file);
-            AlbumCover cover = persistFile(album, file);
-            AlbumCover saved = albumCoverRepository.save(cover);
-            AlbumCoverResponse response = mapToResponse(saved);
+            AlbumImage image = persistFile(album, file);
+            AlbumImage saved = albumImageRepository.save(image);
+            AlbumImageResponse response = mapToResponse(saved);
             responses.add(response);
             if (i == 0) {
                 firstObjectKey = saved.getObjectKey();
@@ -74,31 +74,31 @@ public class AlbumCoverStorageService {
         return responses;
     }
 
-    public List<AlbumCoverResponse> listCovers(Long albumId) {
+    public List<AlbumImageResponse> listCovers(Long albumId) {
         if (!albumRepository.existsById(albumId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Álbum não encontrado");
         }
         ensureBucket();
-        List<AlbumCover> covers = albumCoverRepository.findByAlbumId(albumId);
-        return covers.stream().map(this::mapToResponse).toList();
+        List<AlbumImage> images = albumImageRepository.findByAlbumId(albumId);
+        return images.stream().map(this::mapToResponse).toList();
     }
 
     public void deleteCover(Long albumId, Long coverId) {
-        AlbumCover cover = albumCoverRepository.findByIdAndAlbumId(coverId, albumId)
+        AlbumImage image = albumImageRepository.findByIdAndAlbumId(coverId, albumId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Capa não encontrada"));
         ensureBucket();
         try {
             minioClient.removeObject(RemoveObjectArgs.builder()
                     .bucket(properties.getBucket())
-                    .object(cover.getObjectKey())
+                    .object(image.getObjectKey())
                     .build());
-            albumCoverRepository.deleteByIdAndAlbumId(coverId, albumId);
+            albumImageRepository.deleteByIdAndAlbumId(coverId, albumId);
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Falha ao remover objeto no storage", e);
         }
     }
 
-    private AlbumCover persistFile(Album album, MultipartFile file) {
+    private AlbumImage persistFile(Album album, MultipartFile file) {
         String objectKey = buildObjectKey(album.getId(), file);
         String contentType = resolveContentType(file);
         try (InputStream is = file.getInputStream()) {
@@ -115,7 +115,7 @@ public class AlbumCoverStorageService {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Falha ao armazenar arquivo no MinIO", e);
         }
 
-        return AlbumCover.builder()
+        return AlbumImage.builder()
                 .album(album)
                 .objectKey(objectKey)
                 .contentType(contentType)
@@ -129,10 +129,10 @@ public class AlbumCoverStorageService {
         return "album/" + albumId + "/" + UUID.randomUUID() + "." + sanitizedExt;
     }
 
-    private AlbumCoverResponse mapToResponse(AlbumCover cover) {
-        String url = presignUrl(cover.getObjectKey());
+    private AlbumImageResponse mapToResponse(AlbumImage image) {
+        String url = presignUrl(image.getObjectKey());
         Instant expiresAt = Instant.now().plus(Duration.ofMinutes(resolveExpirationMinutes()));
-        return AlbumCoverResponse.from(cover, url, expiresAt);
+        return AlbumImageResponse.from(image, url, expiresAt);
     }
 
     private String presignUrl(String objectKey) {
@@ -158,7 +158,8 @@ public class AlbumCoverStorageService {
                 return;
             }
             try {
-                boolean exists = minioClient.bucketExists(BucketExistsArgs.builder().bucket(properties.getBucket()).build());
+                boolean exists = minioClient
+                        .bucketExists(BucketExistsArgs.builder().bucket(properties.getBucket()).build());
                 if (!exists) {
                     minioClient.makeBucket(MakeBucketArgs.builder().bucket(properties.getBucket()).build());
                 }

@@ -6,7 +6,7 @@ import * as albunsService from '../services/albunsService';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { ToastProvider } from '../contexts/ToastContext';
 import { useArtists } from '../hooks/useArtists';
-import { uploadAlbumCovers } from '../services/albunsService';
+import { uploadAlbumImages } from '../services/albunsService';
 
 // artistsService is used by the search hook; we don't need to mock addAlbum anymore
 
@@ -23,7 +23,7 @@ vi.mock('../hooks/useArtists', () => ({
 }));
 
 vi.mock('../services/albunsService', () => ({
-    uploadAlbumCovers: vi.fn(),
+    uploadAlbumImages: vi.fn(),
     createAlbum: vi.fn(),
 }));
 
@@ -41,7 +41,7 @@ describe('CreateAlbumForm', () => {
             setSearch: mockSetSearch,
             setPage: mockSetPage,
         }));
-        (uploadAlbumCovers as any).mockResolvedValue([]);
+        (uploadAlbumImages as any).mockResolvedValue([]);
         (albunsService.createAlbum as any).mockResolvedValue({ id: 10, titulo: 'X' });
     });
 
@@ -70,7 +70,7 @@ describe('CreateAlbumForm', () => {
 
         await waitFor(() => {
             expect(albunsService.createAlbum).toHaveBeenCalledWith({ titulo: 'Novo Álbum', ano: 2023, artistaIds: [artistId] });
-            expect(uploadAlbumCovers).not.toHaveBeenCalled(); // sem arquivos
+            expect(uploadAlbumImages).not.toHaveBeenCalled(); // sem arquivos
             expect(mockOnSuccess).toHaveBeenCalled();
             expect(mockOnClose).toHaveBeenCalled();
         });

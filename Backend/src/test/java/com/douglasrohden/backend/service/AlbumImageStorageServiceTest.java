@@ -6,10 +6,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import com.douglasrohden.backend.config.MinioProperties;
-import com.douglasrohden.backend.dto.AlbumCoverResponse;
+import com.douglasrohden.backend.dto.AlbumImageResponse;
 import com.douglasrohden.backend.model.Album;
-import com.douglasrohden.backend.model.AlbumCover;
-import com.douglasrohden.backend.repository.AlbumCoverRepository;
+import com.douglasrohden.backend.model.AlbumImage;
+import com.douglasrohden.backend.repository.AlbumImageRepository;
 import com.douglasrohden.backend.repository.AlbumRepository;
 import io.minio.BucketExistsArgs;
 import io.minio.GetPresignedObjectUrlArgs;
@@ -26,20 +26,20 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 @ExtendWith(MockitoExtension.class)
-class AlbumCoverStorageServiceTest {
+class AlbumImageStorageServiceTest {
 
     @Mock
     private AlbumRepository albumRepository;
 
     @Mock
-    private AlbumCoverRepository albumCoverRepository;
+    private AlbumImageRepository albumImageRepository;
 
     @Mock
     private MinioClient minioClient;
 
     private MinioProperties properties;
 
-    private AlbumCoverStorageService service;
+    private AlbumImageStorageService service;
 
     @BeforeEach
     void setup() {
@@ -49,7 +49,7 @@ class AlbumCoverStorageServiceTest {
         properties.setAccessKey("minioadmin");
         properties.setSecretKey("minioadmin123");
         properties.setMaxFileSizeBytes(10_000L);
-        service = new AlbumCoverStorageService(albumRepository, albumCoverRepository, minioClient, properties);
+        service = new AlbumImageStorageService(albumRepository, albumImageRepository, minioClient, properties);
     }
 
     @Test
@@ -62,15 +62,15 @@ class AlbumCoverStorageServiceTest {
         when(minioClient.putObject(any(PutObjectArgs.class))).thenReturn(null);
         when(minioClient.getPresignedObjectUrl(any(GetPresignedObjectUrlArgs.class)))
                 .thenReturn("http://localhost:9000/presigned");
-        when(albumCoverRepository.save(any(AlbumCover.class))).thenAnswer(invocation -> {
-            AlbumCover cover = invocation.getArgument(0);
-            cover.setId(99L);
-            return cover;
+        when(albumImageRepository.save(any(AlbumImage.class))).thenAnswer(invocation -> {
+            AlbumImage image = invocation.getArgument(0);
+            image.setId(99L);
+            return image;
         });
 
         MockMultipartFile file = new MockMultipartFile("files", "capa.png", "image/png", new byte[] { 1, 2, 3 });
 
-        List<AlbumCoverResponse> responses = service.uploadCovers(1L, new MockMultipartFile[] { file });
+        List<AlbumImageResponse> responses = service.uploadCovers(1L, new MockMultipartFile[] { file });
 
         assertEquals(1, responses.size());
         assertEquals("http://localhost:9000/presigned", responses.get(0).url());

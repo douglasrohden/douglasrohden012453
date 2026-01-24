@@ -6,6 +6,19 @@ import { authService } from '../services/authService';
 
 vi.mock('../services/authService');
 
+function base64UrlEncode(input: string): string {
+  // Prefer browser btoa (jsdom). Fallback for node.
+  const b64 = typeof btoa === 'function' ? btoa(input) : Buffer.from(input, 'utf8').toString('base64');
+  return b64.replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+}
+
+function makeJwt(payload: Record<string, unknown>): string {
+  const header = base64UrlEncode(JSON.stringify({ alg: 'none', typ: 'JWT' }));
+  const body = base64UrlEncode(JSON.stringify(payload));
+  // Signature is irrelevant for client-side exp scheduling here.
+  return `${header}.${body}.x`;
+}
+
 describe('AuthFacade', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -145,6 +158,32 @@ describe('AuthFacade', () => {
       authStore.setState({ accessToken: 'token', refreshToken: null, isAuthenticated: false });
 
       expect(authFacade.hasValidTokens()).toBe(false);
+    });
+  });
+
+  describe('expiration management', () => {
+    it('should schedule refresh before access token expires', async () => {
+      vi.useFakeTimers();
+
+      const now = Date.now();
+      const expSeconds = Math.floor((now + 20_000) / 1000); // expires in 20s
+      const accessToken = makeJwt({ exp: expSeconds, sub: 'user' });
+
+      const refreshedToken = makeJwt({ exp: Math.floor((now + 3_600_000) / 1000), sub: 'user' });
+      (authService.refresh as any).mockResolvedValue({
+        accessToken: refreshedToken,
+        refreshToken: 'new_refresh',
+        expiresIn: 3600,
+      });
+
+      authStore.setAuthenticated(accessToken, 'refresh', 'user');
+
+      // AuthFacade refreshes ~15s before exp (so ~5s after setAuthenticated)
+      await vi.advanceTimersByTimeAsync(6_000);
+
+      expect(authService.refresh).toHaveBeenCalledWith('refresh');
+
+      vi.useRealTimers();
     });
   });
 });

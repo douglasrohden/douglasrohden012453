@@ -71,7 +71,10 @@ public class AlbumService {
     }
 
     @Transactional(readOnly = true)
-    public List<Album> findByIds(List<Long> ids) {
-        return albumRepository.findAllById(ids);
+    public List<Album> findByIds(List<Long> albumIds) {
+        if (albumIds == null || albumIds.isEmpty()) {
+            return List.of();
+        }
+        return albumRepository.findAllById(albumIds);
     }
 }

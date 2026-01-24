@@ -152,15 +152,26 @@ function AlbumCard({ album, onManageImages }: { album: Album; onManageImages: ()
       <div className="flex flex-col h-full justify-between">
         <div>
           <h5 className="truncate text-xl font-bold tracking-tight text-gray-900 dark:text-white line-clamp-1" title={album.titulo}>
-            {album.titulo}
+            <span className="text-sm font-semibold text-gray-600 dark:text-gray-400 mr-2">Título:</span>
+            <span>{album.titulo ?? '—'}</span>
           </h5>
           <div className="mb-4">
-            {album.ano && (
-              <p className="font-normal text-gray-700 dark:text-gray-400">
-                {album.ano}
+            <p className="font-normal text-gray-700 dark:text-gray-400">
+              <span className="text-sm font-semibold text-gray-600 dark:text-gray-400 mr-2">Cantor/Banda:</span>
+              <span>{album.artistaNome ?? '—'}</span>
+            </p>
+
+            <p className="font-normal text-gray-700 dark:text-gray-400">
+              <span className="text-sm font-semibold text-gray-600 dark:text-gray-400 mr-2">Ano:</span>
+              <span>{album.ano ?? '—'}</span>
+            </p>
+
+            {album.individual !== undefined && (
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                <span className="text-sm font-semibold text-gray-600 dark:text-gray-400 mr-2">Tipo:</span>
+                <span>{album.individual ? 'Cantor(a)' : 'Banda'}</span>
               </p>
             )}
-            
           </div>
         </div>
         <button

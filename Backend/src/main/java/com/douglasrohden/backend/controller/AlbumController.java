@@ -3,6 +3,7 @@ package com.douglasrohden.backend.controller;
 import com.douglasrohden.backend.dto.AlbumWithArtistDTO;
 import com.douglasrohden.backend.dto.CreateAlbumRequest;
 import com.douglasrohden.backend.model.Album;
+import com.douglasrohden.backend.model.ArtistaTipo;
 import com.douglasrohden.backend.repository.AlbumRepository;
 import com.douglasrohden.backend.repository.AlbumImageRepository;
 import com.douglasrohden.backend.service.AlbumService;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
@@ -57,10 +59,11 @@ public class AlbumController {
     @GetMapping
     @Transactional(readOnly = true)
     public ResponseEntity<Page<AlbumWithArtistDTO>> getAllAlbuns(
-            @org.springframework.web.bind.annotation.RequestParam(required = false) String titulo,
-            @org.springframework.web.bind.annotation.RequestParam(required = false) Integer ano,
-            @org.springframework.web.bind.annotation.RequestParam(required = false) String artistaNome,
-            @org.springframework.web.bind.annotation.RequestParam(required = false) com.douglasrohden.backend.model.ArtistaTipo artistaTipo,
+            @RequestParam(required = false) String titulo,
+            @RequestParam(required = false) Integer ano,
+            @RequestParam(required = false) String artistaNome,
+            @RequestParam(required = false) ArtistaTipo artistaTipo,
+            @RequestParam(required = false) ArtistaTipo apenasArtistaTipo,
             Pageable pageable) {
 
         // Valida se os parâmetros de paginação foram fornecidos corretamente
@@ -93,6 +96,28 @@ public class AlbumController {
                 jakarta.persistence.criteria.Join<Album, com.douglasrohden.backend.model.Artista> artistas = root
                         .join("artistas");
                 return cb.equal(artistas.get("tipo"), artistaTipo);
+            });
+        }
+
+        if (apenasArtistaTipo != null) {
+            spec = spec.and((root, query, cb) -> {
+                // subquery que conta artistas do álbum cujo tipo é diferente do desejado
+                jakarta.persistence.criteria.Subquery<Long> sub = query.subquery(Long.class);
+                jakarta.persistence.criteria.Root<com.douglasrohden.backend.model.Artista> a = sub
+                        .from(com.douglasrohden.backend.model.Artista.class);
+                jakarta.persistence.criteria.Join<com.douglasrohden.backend.model.Artista, Album> ja = a.join("albuns");
+                sub.select(cb.count(a));
+                sub.where(cb.and(cb.equal(ja.get("id"), root.get("id")), cb.notEqual(a.get("tipo"), apenasArtistaTipo)));
+
+                // subquery que conta artistas do álbum (garante que exista ao menos um artista)
+                jakarta.persistence.criteria.Subquery<Long> sub2 = query.subquery(Long.class);
+                jakarta.persistence.criteria.Root<com.douglasrohden.backend.model.Artista> a2 = sub2
+                        .from(com.douglasrohden.backend.model.Artista.class);
+                jakarta.persistence.criteria.Join<com.douglasrohden.backend.model.Artista, Album> ja2 = a2.join("albuns");
+                sub2.select(cb.count(a2));
+                sub2.where(cb.equal(ja2.get("id"), root.get("id")));
+
+                return cb.and(cb.equal(sub, 0L), cb.greaterThan(sub2, 0L));
             });
         }
 

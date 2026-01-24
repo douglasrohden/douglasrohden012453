@@ -88,14 +88,27 @@ export default function HomePage() {
                         }}
                     >
                         <h5 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white line-clamp-1" title={artist.nome}>
-                            {artist.nome}
+                            <span className="text-sm font-semibold text-gray-600 dark:text-gray-400 mr-2">Nome:</span>
+                            <span className="normal-case">{artist.nome ?? '—'}</span>
                         </h5>
                         <p className="font-normal text-gray-700 dark:text-gray-400 line-clamp-1 h-6">
-                            {artist.genero}
+                            <span className="text-sm font-semibold text-gray-600 dark:text-gray-400 mr-2">Cantor/Banda:</span>
+                            <span>{artist.tipo ? (artist.tipo === 'BANDA' ? 'Banda' : 'Cantor(a)') : '—'}</span>
+                        </p>
+                        <p className="text-sm text-gray-700 dark:text-gray-400 mt-1">
+                            <span className="text-sm font-semibold text-gray-600 dark:text-gray-400 mr-2">Gênero:</span>
+                            <span>{artist.genero ?? '—'}</span>
                         </p>
                         {typeof artist.albumCount === "number" && (
-                            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{artist.albumCount} {artist.albumCount === 1 ? 'álbum' : 'álbuns'}</p>
+                            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300"><span className="text-sm font-semibold text-gray-600 dark:text-gray-400 mr-2">Álbuns:</span>{artist.albumCount} {artist.albumCount === 1 ? 'álbum' : 'álbuns'}</p>
                         )}
+
+                        <button
+                            onClick={(e) => { e.stopPropagation(); navigate(`/artista/${artist.id}`); }}
+                            className="w-full mt-4 px-3 py-2 text-sm font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                        >
+                            Álbuns
+                        </button>
                     </Card>
                 ))}
             </CardGrid>

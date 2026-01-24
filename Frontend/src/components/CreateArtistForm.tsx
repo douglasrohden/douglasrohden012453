@@ -25,7 +25,11 @@ export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) 
     const [previews, setPreviews] = useState<string[]>([]);
     const [selectedAlbums, setSelectedAlbums] = useState<Album[]>([]);
     const [albumSearch, setAlbumSearch] = useState("");
-    const { albums, loading: albumsLoading } = useAlbums(albumSearch);
+    const { albums: searchResults, loading: albumsLoading } = useAlbums(albumSearch);
+
+    const filteredAlbums = searchResults.filter(
+        (a) => !selectedAlbums.some((selected) => selected.id === a.id)
+    );
 
     const handleNameChange = (value: string) => {
         setNome(value);
@@ -155,14 +159,13 @@ export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) 
                             <Select id="artist-tipo" value={tipo} onChange={(e) => handleTipoChange(e.target.value)}>
                                 <option value="CANTOR">Cantor</option>
                                 <option value="BANDA">Banda</option>
-                                <option value="DUPLA">Dupla</option>
                             </Select>
                         </div>
 
                         <div>
                             <AlbumSearchInput
                                 value={albumSearch}
-                                results={albums}
+                                results={filteredAlbums}
                                 loading={albumsLoading}
                                 onChange={handleAlbumSearchChange}
                                 onSelect={selectAlbum}

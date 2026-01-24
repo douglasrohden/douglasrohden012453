@@ -6,6 +6,7 @@ export interface Album {
   titulo: string;
   ano?: number;
   artistaNome?: string;
+  individual?: boolean;
   capaUrl?: string | null;
 }
 

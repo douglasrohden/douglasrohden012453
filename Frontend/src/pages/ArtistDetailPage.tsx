@@ -23,6 +23,7 @@ interface ArtistaDetalhado {
   id: number;
   nome: string;
   genero: string;
+  tipo?: string;
   albuns?: Album[];
 }
 
@@ -156,7 +157,12 @@ export default function ArtistDetailPage() {
                     {artist.nome && (
                       <div className="px-4 pt-4 pb-2">
                         <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                          {artist.nome}
+                          <span className="mr-2">Nome:</span>
+                          <span className="normal-case">{artist.nome}</span>
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          <span className="font-semibold mr-2">Cantor/Banda:</span>
+                          <span>{artist.tipo ? (artist.tipo === 'BANDA' ? 'Banda' : 'Cantor(a)') : '—'}</span>
                         </p>
                       </div>
                     )}
@@ -169,14 +175,14 @@ export default function ArtistDetailPage() {
                 )}
               >
                 <h5 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white line-clamp-1" title={alb.titulo}>
-                  {alb.titulo}
+                  <span className="text-sm font-semibold text-gray-600 dark:text-gray-400 mr-2">Título:</span>
+                  <span>{alb.titulo ?? '—'}</span>
                 </h5>
                 <div className="mb-2">
-                  {alb.ano && (
-                    <p className="font-normal text-gray-700 dark:text-gray-400">
-                      {alb.ano}
-                    </p>
-                  )}
+                  <p className="font-normal text-gray-700 dark:text-gray-400">
+                    <span className="text-sm font-semibold text-gray-600 dark:text-gray-400 mr-2">Ano:</span>
+                    <span>{alb.ano ?? '—'}</span>
+                  </p>
                 </div>
               </Card>
             ))}

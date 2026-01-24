@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import com.douglasrohden.backend.model.ArtistaTipo;
 
 import java.util.Optional;
 
@@ -43,6 +44,6 @@ public interface ArtistaRepository extends JpaRepository<Artista, Long> {
             WHERE (:q = '' OR LOWER(a.nome) LIKE LOWER(CONCAT('%', :q, '%')))
             AND (:tipo IS NULL OR a.tipo = :tipo)
             """)
-    Page<ArtistaComAlbumCount> searchWithAlbumCount(@Param("q") String q,
-            @Param("tipo") com.douglasrohden.backend.model.ArtistaTipo tipo, Pageable pageable);
+        Page<ArtistaComAlbumCount> searchWithAlbumCount(@Param("q") String q,
+            @Param("tipo") ArtistaTipo tipo, Pageable pageable);
 }

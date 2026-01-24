@@ -2,6 +2,7 @@ package com.douglasrohden.backend.dto;
 
 import com.douglasrohden.backend.model.Album;
 import com.douglasrohden.backend.model.Artista;
+import com.douglasrohden.backend.model.ArtistaTipo;
 
 import java.util.Set;
 
@@ -10,18 +11,33 @@ public record AlbumWithArtistDTO(
         String titulo,
         Integer ano,
         String artistaNome,
-        Set<ArtistSummaryDTO> artistas,
-        String capaUrl) {
+    Set<ArtistSummaryDTO> artistas,
+    String capaUrl,
+    boolean temCantor,
+    boolean temBanda,
+    boolean apenasCantores,
+    boolean apenasBandas) {
     private static final String ARTISTA_DESCONHECIDO = "Desconhecido";
 
     public static AlbumWithArtistDTO fromAlbum(Album album, String capaUrl) {
+        Set<ArtistSummaryDTO> artistSummaries = extrairArtistas(album);
+
+        boolean temCantor = artistSummaries.stream().anyMatch(a -> a.tipo() == ArtistaTipo.CANTOR);
+        boolean temBanda = artistSummaries.stream().anyMatch(a -> a.tipo() == ArtistaTipo.BANDA);
+        boolean apenasCantores = !artistSummaries.isEmpty() && artistSummaries.stream().allMatch(a -> a.tipo() == ArtistaTipo.CANTOR);
+        boolean apenasBandas = !artistSummaries.isEmpty() && artistSummaries.stream().allMatch(a -> a.tipo() == ArtistaTipo.BANDA);
+
         return new AlbumWithArtistDTO(
-                album.getId(),
-                album.getTitulo(),
-                album.getAno(),
-                extrairNomeDoArtista(album),
-                extrairArtistas(album),
-                capaUrl);
+            album.getId(),
+            album.getTitulo(),
+            album.getAno(),
+            extrairNomeDoArtista(album),
+            artistSummaries,
+            capaUrl,
+            temCantor,
+            temBanda,
+            apenasCantores,
+            apenasBandas);
     }
 
     private static String extrairNomeDoArtista(Album album) {

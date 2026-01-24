@@ -24,7 +24,7 @@ class AlbumNotificationsListenerTest {
 
     @Test
     void onAlbumCreated_ShouldSendMessageToTopic() {
-        AlbumCreatedEvent event = new AlbumCreatedEvent(1L, "The Wall", 1979, "https://example.com/wall.jpg");
+        AlbumCreatedEvent event = new AlbumCreatedEvent(1L, "The Wall", 1979);
 
         listener.onAlbumCreated(event);
 

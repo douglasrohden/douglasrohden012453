@@ -1,6 +1,9 @@
 -- V8: Seed completo com artistas e álbuns do edital
 -- Atualiza os artistas existentes com o campo tipo (CANTOR ou BANDA)
 
+-- Garantir que a coluna 'tipo' exista antes de atualizar valores
+ALTER TABLE artista ADD COLUMN IF NOT EXISTS tipo VARCHAR(20) DEFAULT 'CANTOR';
+
 -- Atualizar tipos dos artistas
 -- Serj Tankian = CANTOR
 UPDATE artista SET tipo = 'CANTOR' WHERE nome = 'Serj Tankian';

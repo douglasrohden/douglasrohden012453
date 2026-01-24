@@ -1,5 +1,0 @@
-ALTER TABLE artista
-ADD COLUMN IF NOT EXISTS tipo VARCHAR(20) NOT NULL DEFAULT 'CANTOR';
-
-
-update artista set tipo = 'BANDA';

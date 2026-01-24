@@ -69,7 +69,9 @@ describe('CreateAlbumForm', () => {
         await user.click(screen.getByText('Salvar'));
 
         await waitFor(() => {
-            expect(albunsService.createAlbum).toHaveBeenCalledWith({ titulo: 'Novo Álbum', ano: 2023, artistaIds: [artistId] });
+            expect(albunsService.createAlbum).toHaveBeenCalledWith(
+                expect.objectContaining({ titulo: 'Novo Álbum', ano: 2023, artistaIds: [artistId], individual: true })
+            );
             expect(uploadAlbumImages).not.toHaveBeenCalled(); // sem arquivos
             expect(mockOnSuccess).toHaveBeenCalled();
             expect(mockOnClose).toHaveBeenCalled();

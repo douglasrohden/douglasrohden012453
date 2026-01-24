@@ -8,14 +8,7 @@ import { ListToolbar } from './common/ListToolbar';
 import CreateAlbumForm from './CreateAlbumForm';
 import ManageAlbumImagesModal from './ManageAlbumImagesModal';
 import { useDebounce } from '../hooks/useDebounce';
-
-interface Album {
-  id: number;
-  titulo: string;
-  ano?: number;
-  artistaNome?: string;
-  capaUrl?: string;
-}
+import type { Album } from '../services/albunsService';
 
 export default function AlbunsList() {
   const { albuns, loading, error, page, totalPages, setPage } = useAlbuns();
@@ -133,7 +126,7 @@ export default function AlbunsList() {
 }
 
 function AlbumCard({ album, onManageImages }: { album: Album; onManageImages: () => void }) {
-  const src = album.capaUrl;
+  const src = album?.capaUrl || undefined;
 
   return (
     <Card

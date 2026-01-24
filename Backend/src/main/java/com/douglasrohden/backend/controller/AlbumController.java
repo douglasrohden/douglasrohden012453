@@ -4,7 +4,9 @@ import com.douglasrohden.backend.dto.AlbumWithArtistDTO;
 import com.douglasrohden.backend.dto.CreateAlbumRequest;
 import com.douglasrohden.backend.model.Album;
 import com.douglasrohden.backend.repository.AlbumRepository;
+import com.douglasrohden.backend.repository.AlbumImageRepository;
 import com.douglasrohden.backend.service.AlbumService;
+import com.douglasrohden.backend.service.AlbumImageStorageService;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -12,6 +14,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,7 +23,9 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Controlador REST para gerenciar álbuns.
@@ -34,6 +39,8 @@ public class AlbumController {
     private final AlbumRepository albumRepository;
     // Serviço com regras de negócio para álbuns
     private final AlbumService albumService;
+    private final AlbumImageStorageService albumImageStorageService;
+    private final AlbumImageRepository albumImageRepository;
 
     /**
      * Endpoint GET para listar todos os álbuns com paginação.
@@ -48,6 +55,7 @@ public class AlbumController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Erro interno")
     })
     @GetMapping
+    @Transactional(readOnly = true)
     public ResponseEntity<Page<AlbumWithArtistDTO>> getAllAlbuns(Pageable pageable) {
         // Valida se os parâmetros de paginação foram fornecidos corretamente
         if (pageable == null || !pageable.isPaged()) {
@@ -72,9 +80,21 @@ public class AlbumController {
      * Este método percorre cada álbum e cria um DTO com informações do artista.
      */
     private List<AlbumWithArtistDTO> converterParaDTOs(List<Album> albums) {
-        List<AlbumWithArtistDTO> dtos = new ArrayList<>();
+        List<Long> albumIds = albums.stream().map(Album::getId).toList();
+        Map<Long, String> capaUrlByAlbumId = new HashMap<>();
+
+        if (!albumIds.isEmpty()) {
+            albumImageRepository.findFirstCoversByAlbumIds(albumIds).forEach(img -> {
+                Long albumId = img.getAlbum() != null ? img.getAlbum().getId() : null;
+                if (albumId != null && img.getObjectKey() != null) {
+                    capaUrlByAlbumId.put(albumId, albumImageStorageService.generatePresignedUrl(img.getObjectKey()));
+                }
+            });
+        }
+
+        List<AlbumWithArtistDTO> dtos = new ArrayList<>(albums.size());
         for (Album album : albums) {
-            dtos.add(AlbumWithArtistDTO.fromAlbum(album));
+            dtos.add(AlbumWithArtistDTO.fromAlbum(album, capaUrlByAlbumId.get(album.getId())));
         }
         return dtos;
     }

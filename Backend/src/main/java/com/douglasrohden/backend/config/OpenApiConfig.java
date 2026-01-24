@@ -28,6 +28,23 @@ public class OpenApiConfig {
                                                                 .in(SecurityScheme.In.HEADER)
                                                                 .name("X-Refresh-Token"));
 
+                // Define global headers
+                components.addHeaders("X-Rate-Limit-Limit", new io.swagger.v3.oas.models.headers.Header()
+                                .description("The number of allowed requests in the current period")
+                                .schema(new io.swagger.v3.oas.models.media.IntegerSchema()));
+
+                components.addHeaders("X-Rate-Limit-Remaining", new io.swagger.v3.oas.models.headers.Header()
+                                .description("The number of remaining requests in the current period")
+                                .schema(new io.swagger.v3.oas.models.media.IntegerSchema()));
+
+                components.addHeaders("X-Rate-Limit-Window-Seconds", new io.swagger.v3.oas.models.headers.Header()
+                                .description("The time window in seconds for the rate limit")
+                                .schema(new io.swagger.v3.oas.models.media.IntegerSchema()));
+
+                components.addHeaders("Retry-After", new io.swagger.v3.oas.models.headers.Header()
+                                .description("The number of seconds to wait before making a new request")
+                                .schema(new io.swagger.v3.oas.models.media.IntegerSchema()));
+
                 components.addSchemas("ErrorResponse", new io.swagger.v3.oas.models.media.Schema<>()
                                 .type("object")
                                 .addProperties("timestamp",
@@ -62,6 +79,13 @@ public class OpenApiConfig {
                                                                 - `size`: Itens por página
                                                                 - `sort`: Campo e direção (ex: `nome,asc`)
 
+                                                                ## Rate Link
+                                                                Todos os endpoints possuem limite de requisições.
+                                                                Headers de resposta indicam o estado atual:
+                                                                - `X-Rate-Limit-Limit`
+                                                                - `X-Rate-Limit-Remaining`
+                                                                - `X-Rate-Limit-Window-Seconds`
+
                                                                 ## Tecnologias
                                                                 - Spring Boot 3.2.0
                                                                 - PostgreSQL
@@ -76,11 +100,50 @@ public class OpenApiConfig {
                                                                 .url("https://opensource.org/licenses/MIT")));
         }
 
-        // Global responses customizer removed due to compatibility with current
-        // springdoc starter.
-        // For now we add ApiResponses per-controller/method where needed.
+        @Bean
+        public org.springdoc.core.customizers.GlobalOpenApiCustomizer customerGlobalHeaderOpenApiCustomizer() {
+                return openApi -> openApi.getPaths().values()
+                                .forEach(pathItem -> pathItem.readOperations().forEach(operation -> {
+                                        io.swagger.v3.oas.models.responses.ApiResponses apiResponses = operation
+                                                        .getResponses();
+
+                                        // 401 Unauthorized
+                                        apiResponses.addApiResponse("401",
+                                                        createResponse("Unauthorized - Falha na autenticação"));
+
+                                        // 403 Forbidden
+                                        apiResponses.addApiResponse("403", createResponse(
+                                                        "Forbidden - Sem permissão para acessar este recurso"));
+
+                                        // 429 Too Many Requests
+                                        ApiResponse tooManyRequests = createResponse(
+                                                        "Too Many Requests - Limite de requisições excedido");
+                                        tooManyRequests.addHeaderObject("Retry-After",
+                                                        new io.swagger.v3.oas.models.headers.Header()
+                                                                        .$ref("#/components/headers/Retry-After"));
+                                        apiResponses.addApiResponse("429", tooManyRequests);
+
+                                        // Add Rate Limit headers to successful responses (200)
+                                        ApiResponse okResponse = apiResponses.get("200");
+                                        if (okResponse != null) {
+                                                okResponse.addHeaderObject("X-Rate-Limit-Limit",
+                                                                new io.swagger.v3.oas.models.headers.Header().$ref(
+                                                                                "#/components/headers/X-Rate-Limit-Limit"));
+                                                okResponse.addHeaderObject("X-Rate-Limit-Remaining",
+                                                                new io.swagger.v3.oas.models.headers.Header().$ref(
+                                                                                "#/components/headers/X-Rate-Limit-Remaining"));
+                                                okResponse.addHeaderObject("X-Rate-Limit-Window-Seconds",
+                                                                new io.swagger.v3.oas.models.headers.Header().$ref(
+                                                                                "#/components/headers/X-Rate-Limit-Window-Seconds"));
+                                        }
+                                }));
+        }
 
         private ApiResponse createResponse(String message) {
-                return new ApiResponse().description(message);
+                return new ApiResponse().description(message)
+                                .content(new io.swagger.v3.oas.models.media.Content().addMediaType("application/json",
+                                                new io.swagger.v3.oas.models.media.MediaType().schema(
+                                                                new io.swagger.v3.oas.models.media.Schema<>().$ref(
+                                                                                "#/components/schemas/ErrorResponse"))));
         }
 }

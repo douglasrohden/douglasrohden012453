@@ -29,9 +29,17 @@ public class AlbumCover {
     @Column(name = "content_type", length = 255)
     private String contentType;
 
-    private Long size;
+    @Column(name = "size_bytes")
+    private Long sizeBytes;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    @PrePersist
+    void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+    }
 
 }

@@ -130,12 +130,12 @@ public class AlbumImageStorageService {
     }
 
     private AlbumImageResponse mapToResponse(AlbumImage image) {
-        String url = presignUrl(image.getObjectKey());
+        String url = generatePresignedUrl(image.getObjectKey());
         Instant expiresAt = Instant.now().plus(Duration.ofMinutes(resolveExpirationMinutes()));
         return AlbumImageResponse.from(image, url, expiresAt);
     }
 
-    private String presignUrl(String objectKey) {
+    public String generatePresignedUrl(String objectKey) {
         try {
             int expirySeconds = (int) Duration.ofMinutes(resolveExpirationMinutes()).getSeconds();
             return minioClient.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()

@@ -14,6 +14,7 @@ interface Album {
   titulo: string;
   ano?: number;
   artistaNome?: string;
+  capaUrl?: string;
 }
 
 export default function AlbunsList() {
@@ -132,7 +133,7 @@ export default function AlbunsList() {
 }
 
 function AlbumCard({ album, onManageImages }: { album: Album; onManageImages: () => void }) {
-  const src = undefined;
+  const src = album.capaUrl;
 
   return (
     <Card

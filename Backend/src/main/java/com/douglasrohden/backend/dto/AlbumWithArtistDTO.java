@@ -9,17 +9,17 @@ public record AlbumWithArtistDTO(
         Long id,
         String titulo,
         Integer ano,
-        String artistaNome
-) {
+        String artistaNome,
+        String capaUrl) {
     private static final String ARTISTA_DESCONHECIDO = "Desconhecido";
 
-    public static AlbumWithArtistDTO fromAlbum(Album album) {
+    public static AlbumWithArtistDTO fromAlbum(Album album, String capaUrl) {
         return new AlbumWithArtistDTO(
                 album.getId(),
                 album.getTitulo(),
                 album.getAno(),
-                extrairNomeDoArtista(album)
-        );
+                extrairNomeDoArtista(album),
+                capaUrl);
     }
 
     private static String extrairNomeDoArtista(Album album) {
@@ -31,10 +31,12 @@ public record AlbumWithArtistDTO(
 
         // Pega o primeiro item de forma simples (for + return)
         for (Artista artista : artistas) {
-            if (artista == null) return ARTISTA_DESCONHECIDO;
+            if (artista == null)
+                return ARTISTA_DESCONHECIDO;
 
             String nome = artista.getNome();
-            if (nome == null || nome.isBlank()) return ARTISTA_DESCONHECIDO;
+            if (nome == null || nome.isBlank())
+                return ARTISTA_DESCONHECIDO;
 
             return nome;
         }

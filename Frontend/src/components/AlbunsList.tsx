@@ -119,7 +119,10 @@ export default function AlbunsList() {
       <ManageAlbumImagesModal
         show={!!manageImagesAlbumId}
         albumId={manageImagesAlbumId}
-        onClose={() => setManageImagesAlbumId(null)}
+        onClose={() => {
+          setManageImagesAlbumId(null);
+          setPage(page);
+        }}
       />
     </div>
   );
@@ -151,12 +154,13 @@ function AlbumCard({ album, onManageImages }: { album: Album; onManageImages: ()
           <h5 className="truncate text-xl font-bold tracking-tight text-gray-900 dark:text-white line-clamp-1" title={album.titulo}>
             {album.titulo}
           </h5>
-          <div className="h-6 mb-4">
+          <div className="mb-4">
             {album.ano && (
               <p className="font-normal text-gray-700 dark:text-gray-400">
                 {album.ano}
               </p>
             )}
+            
           </div>
         </div>
         <button

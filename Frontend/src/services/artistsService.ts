@@ -15,6 +15,16 @@ export interface Album {
     ano?: number;
 }
 
+export interface ArtistImage {
+    id: number;
+    url: string;
+    expiresAt: string;
+    objectKey: string;
+    contentType: string;
+    sizeBytes: number;
+}
+
+
 export const artistsService = {
     getAll: async (page = 0, size = 10, search?: string, sort?: string, dir?: string, tipo?: string) => {
         const params: Record<string, string | number> = { page, size };
@@ -42,3 +52,22 @@ export const artistsService = {
         return response.data;
     },
 };
+
+export async function getArtistImages(artistaId: number): Promise<ArtistImage[]> {
+    const response = await api.get<ArtistImage[]>(`/artistas/${artistaId}/imagens`);
+    return response.data;
+}
+
+export async function uploadArtistImages(artistaId: number, files: File[]): Promise<ArtistImage[]> {
+    const formData = new FormData();
+    files.forEach((file) => formData.append('files', file));
+    const response = await api.post(`/artistas/${artistaId}/imagens`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+}
+
+export async function deleteArtistImage(artistaId: number, imageId: number): Promise<void> {
+    await api.delete(`/artistas/${artistaId}/imagens/${imageId}`);
+}
+

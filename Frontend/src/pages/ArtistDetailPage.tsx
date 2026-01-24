@@ -110,7 +110,7 @@ export default function ArtistDetailPage() {
         <EmptyState message="Artista não encontrado" />
       ) : (
         <div>
-          
+
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Álbuns</h3>
           </div>
@@ -171,7 +171,7 @@ export default function ArtistDetailPage() {
                 <h5 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white line-clamp-1" title={alb.titulo}>
                   {alb.titulo}
                 </h5>
-                <div className="h-6">
+                <div className="mb-2">
                   {alb.ano && (
                     <p className="font-normal text-gray-700 dark:text-gray-400">
                       {alb.ano}

@@ -45,7 +45,8 @@ public class ArtistaController {
     @PostMapping
     public ResponseEntity<Artista> create(@Valid @RequestBody ArtistaRequest request) {
         Artista artista = criarArtistaFromRequest(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.create(artista));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(service.createWithAlbums(artista, request.getAlbumIds()));
     }
 
     @PutMapping("/{id}")

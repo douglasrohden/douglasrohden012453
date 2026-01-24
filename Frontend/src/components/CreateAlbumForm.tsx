@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Button, Label, TextInput, Modal, ModalBody, ModalHeader, ModalFooter, FileInput, Spinner } from 'flowbite-react';
+import { Button, Label, TextInput, Modal, ModalBody, ModalHeader, ModalFooter, FileInput, Spinner, Textarea } from 'flowbite-react';
 import { useToast } from '../contexts/ToastContext';
 import { Artista } from '../services/artistsService';
 import { createAlbum, uploadAlbumImages } from '../services/albunsService';
@@ -174,6 +174,8 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
             return;
         }
 
+        
+
         setIsSubmitting(true);
         try {
             // Envia todos os IDs, mas com a flag individual=true para o backend criar álbuns separados em lote
@@ -262,6 +264,7 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
                                 onChange={(e) => handleYearChange(e.target.value)}
                             />
                         </div>
+                        
                         <div>
                             <div className="mb-2 block">
                                 <Label htmlFor="capas">Capas do Álbum (Adicionar múltiplas)</Label>

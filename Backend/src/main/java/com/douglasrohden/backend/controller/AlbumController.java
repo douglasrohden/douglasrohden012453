@@ -56,16 +56,51 @@ public class AlbumController {
     })
     @GetMapping
     @Transactional(readOnly = true)
-    public ResponseEntity<Page<AlbumWithArtistDTO>> getAllAlbuns(Pageable pageable) {
+    public ResponseEntity<Page<AlbumWithArtistDTO>> getAllAlbuns(
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String titulo,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Integer ano,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String artistaNome,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) com.douglasrohden.backend.model.ArtistaTipo artistaTipo,
+            Pageable pageable) {
+
         // Valida se os parâmetros de paginação foram fornecidos corretamente
         if (pageable == null || !pageable.isPaged()) {
             return ResponseEntity.badRequest().build(); // Retorna erro 400 se inválido
         }
 
-        // Passo 1: Busca os álbuns do banco de dados com paginação
-        Page<Album> albumsPage = albumRepository.findAll(pageable);
+        org.springframework.data.jpa.domain.Specification<Album> spec = org.springframework.data.jpa.domain.Specification
+                .where(null);
+
+        if (titulo != null && !titulo.trim().isEmpty()) {
+            spec = spec
+                    .and((root, query, cb) -> cb.like(cb.lower(root.get("titulo")), "%" + titulo.toLowerCase() + "%"));
+        }
+
+        if (ano != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("ano"), ano));
+        }
+
+        if (artistaNome != null && !artistaNome.trim().isEmpty()) {
+            spec = spec.and((root, query, cb) -> {
+                jakarta.persistence.criteria.Join<Album, com.douglasrohden.backend.model.Artista> artistas = root
+                        .join("artistas");
+                return cb.like(cb.lower(artistas.get("nome")), "%" + artistaNome.toLowerCase() + "%");
+            });
+        }
+
+        if (artistaTipo != null) {
+            spec = spec.and((root, query, cb) -> {
+                jakarta.persistence.criteria.Join<Album, com.douglasrohden.backend.model.Artista> artistas = root
+                        .join("artistas");
+                return cb.equal(artistas.get("tipo"), artistaTipo);
+            });
+        }
+
+        // Passo 1: Busca os álbuns do banco de dados com paginação e filtros
+        Page<Album> albumsPage = albumRepository.findAll(spec, pageable);
 
         // Passo 2: Converte cada álbum (entidade) em um DTO com informações do artista
+        // e demais detalhes
         List<AlbumWithArtistDTO> dtos = converterParaDTOs(albumsPage.getContent());
 
         // Passo 3: Cria a página de DTOs com os mesmos dados de paginação

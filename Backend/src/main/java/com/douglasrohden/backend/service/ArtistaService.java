@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.douglasrohden.backend.model.ArtistaTipo;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -69,10 +70,35 @@ public class ArtistaService {
     }
 
     public Artista create(Artista artista) {
+        return createWithAlbums(artista, null);
+    }
+
+    @Transactional
+    public Artista createWithAlbums(Artista artista, List<Long> albumIds) {
         if (artista.getTipo() == null) {
             artista.setTipo(ArtistaTipo.CANTOR);
         }
-        return repository.save(artista);
+
+        Artista saved = repository.save(artista);
+
+        if (albumIds != null && !albumIds.isEmpty()) {
+            List<Album> albums = albumService.findByIds(albumIds);
+            java.util.Set<Album> albumsSet = new java.util.HashSet<>(albums);
+
+            for (Album album : albumsSet) {
+                if (album.getArtistas() == null) {
+                    album.setArtistas(new java.util.HashSet<>());
+                }
+                album.getArtistas().add(saved);
+            }
+
+            if (saved.getAlbuns() == null) {
+                saved.setAlbuns(new java.util.HashSet<>());
+            }
+            saved.getAlbuns().addAll(albumsSet);
+        }
+
+        return saved;
     }
 
     public Artista update(Long id, Artista artista) {
@@ -96,7 +122,7 @@ public class ArtistaService {
         Album album = new Album();
         album.setTitulo(request.titulo());
         album.setAno(request.ano());
-        
+
         album = albumService.create(album);
         artista.getAlbuns().add(album);
         return repository.save(artista);

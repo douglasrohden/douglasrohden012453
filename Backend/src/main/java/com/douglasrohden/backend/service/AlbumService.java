@@ -69,4 +69,9 @@ public class AlbumService {
         }
         return createdAlbums;
     }
+
+    @Transactional(readOnly = true)
+    public List<Album> findByIds(List<Long> ids) {
+        return albumRepository.findAllById(ids);
+    }
 }

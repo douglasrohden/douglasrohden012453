@@ -10,6 +10,7 @@ public record AlbumWithArtistDTO(
         String titulo,
         Integer ano,
         String artistaNome,
+        Set<ArtistSummaryDTO> artistas,
         String capaUrl) {
     private static final String ARTISTA_DESCONHECIDO = "Desconhecido";
 
@@ -19,6 +20,7 @@ public record AlbumWithArtistDTO(
                 album.getTitulo(),
                 album.getAno(),
                 extrairNomeDoArtista(album),
+                extrairArtistas(album),
                 capaUrl);
     }
 
@@ -29,18 +31,27 @@ public record AlbumWithArtistDTO(
             return ARTISTA_DESCONHECIDO;
         }
 
-        // Pega o primeiro item de forma simples (for + return)
-        for (Artista artista : artistas) {
-            if (artista == null)
-                return ARTISTA_DESCONHECIDO;
+        // Return comma separated names if multiple, or just the first one for backward
+        // compatibility if preferred.
+        // But better to be descriptive.
+        return artistas.stream()
+                .map(Artista::getNome)
+                .reduce((a, b) -> a + ", " + b)
+                .orElse(ARTISTA_DESCONHECIDO);
+    }
 
-            String nome = artista.getNome();
-            if (nome == null || nome.isBlank())
-                return ARTISTA_DESCONHECIDO;
+    private static java.util.stream.Stream<ArtistSummaryDTO> mapToArtistSummary(Set<Artista> artistas) {
+        if (artistas == null)
+            return java.util.stream.Stream.empty();
+        return artistas.stream()
+                .map(a -> new ArtistSummaryDTO(a.getId(), a.getNome(), a.getTipo()));
+    }
 
-            return nome;
-        }
-
-        return ARTISTA_DESCONHECIDO;
+    private static Set<ArtistSummaryDTO> extrairArtistas(Album album) {
+        if (album.getArtistas() == null)
+            return java.util.Collections.emptySet();
+        return album.getArtistas().stream()
+                .map(a -> new ArtistSummaryDTO(a.getId(), a.getNome(), a.getTipo()))
+                .collect(java.util.stream.Collectors.toSet());
     }
 }

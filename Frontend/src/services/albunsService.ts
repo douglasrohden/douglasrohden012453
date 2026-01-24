@@ -28,6 +28,13 @@ export async function createAlbum(data: { titulo: string; ano?: number; artistaI
   return response.data
 }
 
+export async function searchAlbums(query: string, page = 0, size = 10): Promise<Page<Album>> {
+  const response = await api.get<Page<Album>>('/albuns', {
+    params: { titulo: query, page, size }
+  });
+  return response.data;
+}
+
 export async function getAlbumImages(albumId: number): Promise<AlbumImage[]> {
   const response = await api.get<AlbumImage[]>(`/albuns/${albumId}/capas`);
   return response.data;

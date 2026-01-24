@@ -40,7 +40,7 @@ export class AlbunsFacade extends BaseFacade<Page<Album>> {
                 const status = getHttpStatus(e);
 
                 // For 429 rate limit, don't set error state - keep previous data visible.
-                // O toast global (ApiGlobalToasts) já mostra a mensagem de rate limit.
+                // The global toast (via apiRateLimitEvents) already shows the rate limit message.
                 if (status === 429) {
                     console.debug('[AlbunsFacade] Rate limited, keeping previous data visible');
                     // Sem retry automático: o backend controla o rate limit (edital).

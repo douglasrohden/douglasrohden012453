@@ -1,6 +1,7 @@
 import { BehaviorSubject, Observable } from 'rxjs';
 import { authStore, AuthState } from '../store/auth.store';
 import { authService, LoginResponse } from '../services/authService';
+import { auth } from '../auth/auth.singleton';
 
 /**
  * AuthFacade - Padrão Facade para operações de autenticação
@@ -78,7 +79,7 @@ class AuthFacade {
      * Realiza logout do usuário
      */
     logout(): void {
-        authStore.clearAuthentication();
+        auth.logout('/login');
     }
 
     /**

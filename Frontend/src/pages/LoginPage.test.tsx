@@ -15,7 +15,8 @@ describe("LoginPage", () => {
             isAuthenticated: false,
             user: null,
             logout: vi.fn(),
-        } as any);
+            checkAuth: vi.fn()
+        });
 
         render(
             <BrowserRouter>
@@ -35,7 +36,8 @@ describe("LoginPage", () => {
             isAuthenticated: false,
             user: null,
             logout: vi.fn(),
-        } as any);
+            checkAuth: vi.fn()
+        });
 
         render(
             <BrowserRouter>
@@ -53,31 +55,27 @@ describe("LoginPage", () => {
     });
 
     it("displays error message on login failure", async () => {
-        const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-        try {
-            const loginMock = vi.fn().mockRejectedValue(new Error("Login failed"));
-            vi.spyOn(AuthFacade, "useAuthFacade").mockReturnValue({
-                login: loginMock,
-                isAuthenticated: false,
-                user: null,
-                logout: vi.fn(),
-            } as any);
+        const loginMock = vi.fn().mockRejectedValue(new Error("Login failed"));
+        vi.spyOn(AuthFacade, "useAuthFacade").mockReturnValue({
+            login: loginMock,
+            isAuthenticated: false,
+            user: null,
+            logout: vi.fn(),
+            checkAuth: vi.fn()
+        });
 
-            render(
-                <BrowserRouter>
-                    <LoginPage />
-                </BrowserRouter>
-            );
+        render(
+            <BrowserRouter>
+                <LoginPage />
+            </BrowserRouter>
+        );
 
-            fireEvent.change(screen.getByLabelText(/usuário/i), { target: { value: "admin" } });
-            fireEvent.change(screen.getByLabelText(/senha/i), { target: { value: "wrong" } });
-            fireEvent.click(screen.getByRole("button", { name: /entrar/i }));
+        fireEvent.change(screen.getByLabelText(/usuário/i), { target: { value: "admin" } });
+        fireEvent.change(screen.getByLabelText(/senha/i), { target: { value: "wrong" } });
+        fireEvent.click(screen.getByRole("button", { name: /entrar/i }));
 
-            await waitFor(() => {
-                expect(screen.getByText(/falha no login/i)).toBeInTheDocument();
-            });
-        } finally {
-            consoleErrorSpy.mockRestore();
-        }
+        await waitFor(() => {
+            expect(screen.getByText(/falha no login/i)).toBeInTheDocument();
+        });
     });
 });

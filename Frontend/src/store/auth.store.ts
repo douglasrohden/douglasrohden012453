@@ -1,4 +1,5 @@
 import { BaseStore } from './base.store';
+import { auth } from '../auth/auth.singleton';
 
 export interface AuthState {
     isAuthenticated: boolean;
@@ -83,7 +84,8 @@ class AuthStore extends BaseStore<AuthState> {
     }
 
     private expireNowAndRedirect(): void {
-        this.clearAuthentication();
+        // Centraliza o logout e navegação via AuthProvider
+        auth.logout('/login');
     }
 
     /**

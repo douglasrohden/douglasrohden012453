@@ -11,6 +11,8 @@ interface RateLimitError extends Error {
     rateLimitInfo?: {
         retryAfter: number;
         message: string;
+        limitPerWindow?: number;
+        windowSeconds?: number;
         limitPerMinute?: number;
         remaining?: number;
     };
@@ -82,8 +84,19 @@ export default function LoginPage() {
                 const retrySeconds = rateLimitErr.rateLimitInfo?.retryAfter || 60;
                 setRetryAfter(retrySeconds);
 
-                const limit = rateLimitErr.rateLimitInfo?.limitPerMinute;
-                const suffix = typeof limit === "number" && limit > 0 ? ` (limite: ${limit}/min)` : "";
+                const limitInfo = rateLimitErr.rateLimitInfo;
+                const suffix = (() => {
+                    if (
+                        typeof limitInfo?.limitPerWindow === "number" &&
+                        typeof limitInfo?.windowSeconds === "number"
+                    ) {
+                        return ` (limite: ${limitInfo.limitPerWindow}/${limitInfo.windowSeconds}s)`;
+                    }
+                    if (typeof limitInfo?.limitPerMinute === "number") {
+                        return ` (limite: ${limitInfo.limitPerMinute}/min)`;
+                    }
+                    return "";
+                })();
                 setError(
                     (rateLimitErr.rateLimitInfo?.message ||
                         "Muitas requisições. Por favor, aguarde antes de tentar novamente.") + suffix,

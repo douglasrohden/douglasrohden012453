@@ -19,20 +19,20 @@ UPDATE artista SET tipo = 'BANDA' WHERE nome = 'Guns N'' Roses';
 
 -- Garantir que os álbuns estão cadastrados (caso ainda não estejam)
 -- Se já existirem, o INSERT será ignorado devido à constraint UNIQUE (titulo, ano)
-INSERT INTO album (titulo, ano, image_url) VALUES
-('Harakiri', 2012, 'https://via.placeholder.com/300x300/8B0000/FFFFFF?text=Harakiri'),
-('Black Blooms', 2019, 'https://via.placeholder.com/300x300/1C1C1C/FFFFFF?text=Black+Blooms'),
-('The Rough Dog', 2021, 'https://via.placeholder.com/300x300/654321/FFFFFF?text=The+Rough+Dog'),
-('The Rising Tied', 2005, 'https://via.placeholder.com/300x300/4169E1/FFFFFF?text=The+Rising+Tied'),
-('Post Traumatic', 2018, 'https://via.placeholder.com/300x300/8B008B/FFFFFF?text=Post+Traumatic'),
-('Post Traumatic EP', 2018, 'https://via.placeholder.com/300x300/9932CC/FFFFFF?text=Post+Traumatic+EP'),
-('Where''d You Go', 2006, 'https://via.placeholder.com/300x300/20B2AA/FFFFFF?text=Where+You+Go'),
-('Bem Sertanejo', 2014, 'https://via.placeholder.com/300x300/FF4500/FFFFFF?text=Bem+Sertanejo'),
-('Bem Sertanejo - O Show (Ao Vivo)', 2015, 'https://via.placeholder.com/300x300/FF6347/FFFFFF?text=Bem+Sertanejo+Show'),
-('Bem Sertanejo - (1ª Temporada) - EP', 2014, 'https://via.placeholder.com/300x300/FF8C00/FFFFFF?text=Bem+Sertanejo+EP'),
-('Use Your Illusion I', 1991, 'https://via.placeholder.com/300x300/DC143C/FFFFFF?text=Use+Your+Illusion+I'),
-('Use Your Illusion II', 1991, 'https://via.placeholder.com/300x300/B22222/FFFFFF?text=Use+Your+Illusion+II'),
-('Greatest Hits', 2004, 'https://via.placeholder.com/300x300/8B0000/FFFFFF?text=Greatest+Hits')
+INSERT INTO album (titulo, ano) VALUES
+('Harakiri', 2012),
+('Black Blooms', 2019),
+('The Rough Dog', 2021),
+('The Rising Tied', 2005),
+('Post Traumatic', 2018),
+('Post Traumatic EP', 2018),
+('Where''d You Go', 2006),
+('Bem Sertanejo', 2014),
+('Bem Sertanejo - O Show (Ao Vivo)', 2015),
+('Bem Sertanejo - (1ª Temporada) - EP', 2014),
+('Use Your Illusion I', 1991),
+('Use Your Illusion II', 1991),
+('Greatest Hits', 2004)
 ON CONFLICT (titulo, ano) DO NOTHING;
 
 -- Garantir associações artista_album (caso ainda não existam)

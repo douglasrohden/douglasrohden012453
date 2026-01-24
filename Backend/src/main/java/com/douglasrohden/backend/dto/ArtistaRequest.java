@@ -9,8 +9,5 @@ public class ArtistaRequest {
     private String nome;
 
     private String genero;
-
-    private String imageUrl;
-
     private String tipo;
 }

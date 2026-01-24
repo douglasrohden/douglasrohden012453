@@ -52,7 +52,7 @@ class ArtistaRepositoryTest {
         Page<ArtistaRepository.ArtistaComAlbumCount> result = repository.searchWithAlbumCount("test", null, pageable);
         assertEquals(1, result.getTotalElements());
         var r = result.getContent().get(0);
-        ArtistaDto dto = new ArtistaDto(r.getId(), r.getNome(), r.getGenero(), r.getImageUrl(), r.getAlbumCount());
+        ArtistaDto dto = new ArtistaDto(r.getId(), r.getNome(), r.getGenero(), r.getAlbumCount());
         assertEquals("Test Artist 1", dto.getNome());
         assertEquals(0L, dto.getAlbumCount()); // Assuming no albums
     }

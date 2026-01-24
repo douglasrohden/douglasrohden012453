@@ -59,7 +59,6 @@ public class ArtistaService {
                 resultado.getId(),
                 resultado.getNome(),
                 resultado.getGenero(),
-                resultado.getImageUrl(),
                 resultado.getAlbumCount());
     }
 
@@ -80,7 +79,7 @@ public class ArtistaService {
         Artista existing = findById(id);
         existing.setNome(artista.getNome());
         existing.setGenero(artista.getGenero());
-        existing.setImageUrl(artista.getImageUrl());
+        // imageUrl removed
         if (artista.getTipo() != null) {
             existing.setTipo(artista.getTipo());
         }
@@ -97,8 +96,7 @@ public class ArtistaService {
         Album album = new Album();
         album.setTitulo(request.titulo());
         album.setAno(request.ano());
-        album.setImageUrl(request.imageUrl());
-
+        
         album = albumService.create(album);
         artista.getAlbuns().add(album);
         return repository.save(artista);

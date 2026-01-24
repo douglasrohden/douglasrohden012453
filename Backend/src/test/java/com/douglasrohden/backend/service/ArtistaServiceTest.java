@@ -76,7 +76,7 @@ public class ArtistaServiceTest {
     @Test
     void shouldAddAlbumToArtista() {
         Long artistaId = 1L;
-        CreateAlbumRequest request = new CreateAlbumRequest("Novo Album", 2023, "img.jpg");
+        CreateAlbumRequest request = new CreateAlbumRequest("Novo Album", 2023, List.of());
 
         Artista artista = new Artista();
         artista.setId(artistaId);

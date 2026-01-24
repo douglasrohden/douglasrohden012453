@@ -40,9 +40,6 @@ public class Artista {
     @Size(max = 50, message = "Gênero deve ter no máximo 50 caracteres")
     private String genero;
 
-    // Will handle image storage via MinIO separately or as a URL string for now
-    @Column(columnDefinition = "TEXT")
-    private String imageUrl;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)

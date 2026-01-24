@@ -18,9 +18,6 @@ public interface ArtistaRepository extends JpaRepository<Artista, Long> {
         String getNome();
 
         String getGenero();
-
-        String getImageUrl();
-
         long getAlbumCount();
     }
 
@@ -34,13 +31,12 @@ public interface ArtistaRepository extends JpaRepository<Artista, Long> {
             a.id       AS id,
             a.nome     AS nome,
             a.genero   AS genero,
-            a.imageUrl AS imageUrl,
             COUNT(al)  AS albumCount
             FROM Artista a
             LEFT JOIN a.albuns al
             WHERE (:q = '' OR LOWER(a.nome) LIKE LOWER(CONCAT('%', :q, '%')))
             AND (:tipo IS NULL OR a.tipo = :tipo)
-            GROUP BY a.id, a.nome, a.genero, a.imageUrl
+            GROUP BY a.id, a.nome, a.genero
             """, countQuery = """
             SELECT COUNT(a)
             FROM Artista a

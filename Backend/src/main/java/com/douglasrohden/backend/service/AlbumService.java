@@ -19,10 +19,9 @@ public class AlbumService {
     public Album create(Album album) {
         Album saved = albumRepository.save(album);
         eventPublisher.publishEvent(new AlbumCreatedEvent(
-                saved.getId(),
-                saved.getTitulo(),
-                saved.getAno(),
-                saved.getImageUrl()
+            saved.getId(),
+            saved.getTitulo(),
+            saved.getAno()
         ));
         return saved;
     }

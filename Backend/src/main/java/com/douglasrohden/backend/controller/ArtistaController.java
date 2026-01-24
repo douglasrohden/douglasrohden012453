@@ -73,7 +73,7 @@ public class ArtistaController {
         Artista artista = new Artista();
         artista.setNome(request.getNome());
         artista.setGenero(request.getGenero());
-        artista.setImageUrl(request.getImageUrl());
+        // imageUrl removed
 
         // Tenta converter o tipo de artista, se fornecido
         if (request.getTipo() != null) {

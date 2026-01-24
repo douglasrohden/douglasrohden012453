@@ -2,7 +2,6 @@ CREATE TABLE album (
     id SERIAL PRIMARY KEY,
     titulo VARCHAR(255) NOT NULL,
     ano INTEGER,
-    image_url VARCHAR(500),
     UNIQUE (titulo, ano)
 );
 
@@ -14,20 +13,20 @@ CREATE TABLE artista_album (
 );
 
 -- Seed dos álbuns e associações conforme edital
-INSERT INTO album (titulo, ano, image_url) VALUES
-('Harakiri', 2012, NULL),
-('Black Blooms', 2019, NULL),
-('The Rough Dog', 2021, NULL),
-('The Rising Tied', 2005, NULL),
-('Post Traumatic', 2018, NULL),
-('Post Traumatic EP', 2018, NULL),
-('Where’d You Go', 2006, NULL),
-('Bem Sertanejo', 2014, NULL),
-('Bem Sertanejo - O Show (Ao Vivo)', 2015, NULL),
-('Bem Sertanejo - (1ª Temporada) - EP', 2014, NULL),
-('Use Your Illusion I', 1991, NULL),
-('Use Your Illusion II', 1991, NULL),
-('Greatest Hits', 2004, NULL);
+INSERT INTO album (titulo, ano) VALUES
+('Harakiri', 2012),
+('Black Blooms', 2019),
+('The Rough Dog', 2021),
+('The Rising Tied', 2005),
+('Post Traumatic', 2018),
+('Post Traumatic EP', 2018),
+('Where’d You Go', 2006),
+('Bem Sertanejo', 2014),
+('Bem Sertanejo - O Show (Ao Vivo)', 2015),
+('Bem Sertanejo - (1ª Temporada) - EP', 2014),
+('Use Your Illusion I', 1991),
+('Use Your Illusion II', 1991),
+('Greatest Hits', 2004);
 
 -- Associações artista_album
 -- Serj Tankian: 1,2,3

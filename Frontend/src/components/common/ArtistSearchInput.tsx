@@ -64,6 +64,7 @@ export default function ArtistSearchInput({
                 color={hasError ? "failure" : "gray"}
                 disabled={disabled}
                 onFocus={() => !disabled && setIsOpen(true)}
+                onClick={() => !disabled && setIsOpen(true)}
                 onBlur={scheduleBlurClose}
                 onKeyDown={(e) => {
                     if (e.key === "Escape") {
@@ -98,8 +99,8 @@ export default function ArtistSearchInput({
                                             color="white"
                                             size="sm"
                                             onMouseDown={(e) => {
-                                                e.preventDefault();       
-                                                cancelBlurClose();         
+                                                e.preventDefault();
+                                                cancelBlurClose();
                                                 onSelect(artist);
                                                 setIsOpen(false);
                                             }}

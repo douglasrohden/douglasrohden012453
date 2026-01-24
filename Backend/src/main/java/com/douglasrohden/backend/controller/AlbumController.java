@@ -5,11 +5,7 @@ import com.douglasrohden.backend.dto.CreateAlbumRequest;
 import com.douglasrohden.backend.model.Album;
 import com.douglasrohden.backend.repository.AlbumRepository;
 import com.douglasrohden.backend.service.AlbumService;
-import com.douglasrohden.backend.repository.ArtistaRepository;
-import com.douglasrohden.backend.model.Artista;
 
-import java.util.HashSet;
-import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -38,7 +34,6 @@ public class AlbumController {
     private final AlbumRepository albumRepository;
     // Serviço com regras de negócio para álbuns
     private final AlbumService albumService;
-    private final ArtistaRepository artistaRepository;
 
     /**
      * Endpoint GET para listar todos os álbuns com paginação.
@@ -97,7 +92,13 @@ public class AlbumController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Erro interno")
     })
     @PostMapping
-    public ResponseEntity<Album> create(@Valid @RequestBody CreateAlbumRequest request) {
+    public ResponseEntity<?> create(@Valid @RequestBody CreateAlbumRequest request) {
+        // Verifica se é para criar álbuns individuais para cada artista (Batch)
+        if (Boolean.TRUE.equals(request.individual())) {
+            List<Album> albums = albumService.createBatchIndividual(request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(albums);
+        }
+
         // Cria uma nova instância de álbum
         Album album = new Album();
 
@@ -105,31 +106,9 @@ public class AlbumController {
         album.setTitulo(request.titulo());
         album.setAno(request.ano());
 
-        // Salva o álbum primeiro para obter um ID
-        Album savedAlbum = albumService.create(album);
-
-        // Agora associa os artistas ao álbum
-        if (request.artistaIds() != null && !request.artistaIds().isEmpty()) {
-            Iterable<Artista> artistas = artistaRepository.findAllById(request.artistaIds());
-            Set<Artista> artistasSet = new HashSet<>();
-            artistas.forEach(artistasSet::add);
-
-            // Como Artista é o dono da relação (tem @JoinTable), precisamos
-            // adicionar o álbum ao conjunto de álbuns de cada artista
-            for (Artista artista : artistasSet) {
-                if (artista.getAlbuns() == null) {
-                    artista.setAlbuns(new HashSet<>());
-                }
-                artista.getAlbuns().add(savedAlbum);
-            }
-
-            // Salva os artistas para persistir a relação
-            artistaRepository.saveAll(artistasSet);
-
-            // Atualiza a referência do álbum (embora mappedBy não persista,
-            // é bom manter a consistência em memória)
-            savedAlbum.setArtistas(artistasSet);
-        }
+        // Chama o serviço para salvar o álbum e fazer as associações de forma
+        // transacional
+        Album savedAlbum = albumService.createWithArtistas(album, request.artistaIds());
 
         // Retorna o álbum criado com status 201 (CREATED)
         return ResponseEntity.status(HttpStatus.CREATED).body(savedAlbum);

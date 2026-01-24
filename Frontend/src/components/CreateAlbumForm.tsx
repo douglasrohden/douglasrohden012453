@@ -149,11 +149,10 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
     const handleSave = async () => {
         setError(null);
 
-        const artistsToProcess = artistId
-            ? [{ id: artistId, nome: '' }]
-            : selectedArtists;
+        const artistsToProcess = artistId ? [{ id: artistId, nome: '' }] : selectedArtists;
+        const artistIds = artistsToProcess.map((a) => a.id);
 
-        if (artistsToProcess.length === 0) {
+        if (artistIds.length === 0) {
             setError('Selecione pelo menos um artista');
             return;
         }
@@ -177,24 +176,26 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
 
         setIsSubmitting(true);
         try {
-            for (const artist of artistsToProcess) {
-                const album = await createAlbum({
-                    titulo: trimmedTitulo,
-                    ano: anoValue,
-                    artistaIds: [artist.id],
-                });
+            // Envia todos os IDs, mas com a flag individual=true para o backend criar álbuns separados em lote
+            const result = await createAlbum({
+                titulo: trimmedTitulo,
+                ano: anoValue,
+                artistaIds: artistIds,
+                individual: true
+            });
 
-                const albumId = album?.id;
+            // O backend retorna uma lista de álbuns criados
+            const createdAlbums = Array.isArray(result) ? result : [result];
 
-                if (files.length > 0) {
-                    if (!albumId) {
-                        throw new Error(`Não foi possível obter o id do álbum para subir as capas (Artista ID: ${artist.id}).`);
-                    }
-                    await uploadAlbumImages(albumId, files);
-                }
+            if (files.length > 0) {
+                // Realiza upload das imagens para todos os álbuns criados (em paralelo)
+                await Promise.all(createdAlbums.map(album => {
+                    if (!album.id) return Promise.resolve();
+                    return uploadAlbumImages(album.id, files);
+                }));
             }
 
-            addToast(artistsToProcess.length > 1 ? 'Álbuns adicionados com sucesso!' : 'Álbum adicionado com sucesso!', 'success');
+            addToast(createdAlbums.length > 1 ? 'Álbuns adicionados com sucesso!' : 'Álbum adicionado com sucesso!', 'success');
             onSuccess();
             onClose();
         } catch (err) {

@@ -22,8 +22,8 @@ export async function getAlbuns(page = 0, size = 10): Promise<Page<Album>> {
   return response.data
 }
 
-export async function createAlbum(data: { titulo: string; ano?: number; artistaIds?: number[] }): Promise<Album> {
-  const response = await api.post<Album>('/albuns', data)
+export async function createAlbum(data: { titulo: string; ano?: number; artistaIds?: number[]; individual?: boolean }): Promise<Album | Album[]> {
+  const response = await api.post<Album | Album[]>('/albuns', data)
   return response.data
 }
 

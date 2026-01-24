@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
@@ -83,16 +84,17 @@ public class AlbumImageStorageService {
         return images.stream().map(this::mapToResponse).toList();
     }
 
+    @Transactional
     public void deleteCover(Long albumId, Long coverId) {
         AlbumImage image = albumImageRepository.findByIdAndAlbumId(coverId, albumId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Capa não encontrada"));
         ensureBucket();
         try {
+            albumImageRepository.deleteByIdAndAlbumId(coverId, albumId);
             minioClient.removeObject(RemoveObjectArgs.builder()
                     .bucket(properties.getBucket())
                     .object(image.getObjectKey())
                     .build());
-            albumImageRepository.deleteByIdAndAlbumId(coverId, albumId);
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Falha ao remover objeto no storage", e);
         }

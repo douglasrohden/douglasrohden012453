@@ -7,7 +7,6 @@ import { CardGrid } from './common/CardGrid';
 import { ListToolbar } from './common/ListToolbar';
 import CreateAlbumForm from './CreateAlbumForm';
 import { useDebounce } from '../hooks/useDebounce';
-import { useAlbumCoverUrl } from '../hooks/useAlbumCoverUrl';
 
 interface Album {
   id: number;
@@ -121,10 +120,7 @@ export default function AlbunsList() {
 }
 
 function AlbumCard({ album }: { album: Album }) {
-  const { coverUrl, objectKey } = useAlbumCoverUrl(album.id);
-
-  const storageBase = import.meta.env.VITE_STORAGE_BASE_URL || '';
-  const src = coverUrl || (objectKey ? `${storageBase.replace(/\/$/, '')}/${objectKey}` : undefined);
+  const src = undefined;
 
   return (
     <Card
@@ -139,7 +135,7 @@ function AlbumCard({ album }: { album: Album }) {
             </div>
           )}
           <img
-            src={coverUrl || "https://flowbite.com/docs/images/blog/image-1.jpg"}
+            src={src || "https://flowbite.com/docs/images/blog/image-1.jpg"}
             alt={album.titulo}
             className="h-auto w-full object-cover"
           />

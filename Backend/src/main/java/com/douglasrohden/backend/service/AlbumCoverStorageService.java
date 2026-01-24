@@ -59,11 +59,22 @@ public class AlbumCoverStorageService {
         ensureBucket();
 
         List<AlbumCoverResponse> responses = new ArrayList<>();
-        for (MultipartFile file : files) {
+        String firstCoverUrl = null;
+        for (int i = 0; i < files.length; i++) {
+            MultipartFile file = files[i];
             validateFile(file);
             AlbumCover cover = persistFile(album, file);
             AlbumCover saved = albumCoverRepository.save(cover);
-            responses.add(mapToResponse(saved));
+            AlbumCoverResponse response = mapToResponse(saved);
+            responses.add(response);
+            if (i == 0) {
+                firstCoverUrl = response.url();
+            }
+        }
+        // Atualiza o campo imageUrl do álbum com a URL da primeira capa
+        if (firstCoverUrl != null && !firstCoverUrl.isEmpty()) {
+            album.setImageUrl(firstCoverUrl);
+            albumRepository.save(album);
         }
         return responses;
     }

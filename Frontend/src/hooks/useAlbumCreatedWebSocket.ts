@@ -6,7 +6,6 @@ export type AlbumCreatedMessage = {
   id: number;
   titulo: string;
   ano?: number;
-  imageUrl?: string;
 };
 
 function getWebSocketUrl() {

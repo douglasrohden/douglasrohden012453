@@ -80,7 +80,7 @@ export default function HomePage() {
                         key={artist.id}
                         className="h-full cursor-pointer hover:shadow-lg transition-shadow"
                         imgAlt={artist.nome}
-                        imgSrc={artist.imageUrl || "https://flowbite.com/docs/images/blog/image-1.jpg"}
+                        imgSrc={"https://flowbite.com/docs/images/blog/image-1.jpg"}
                         onClick={() => {
                             if (navLock) return;
                             setNavLock(true);

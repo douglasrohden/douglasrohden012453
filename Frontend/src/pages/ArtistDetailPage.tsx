@@ -17,14 +17,12 @@ interface Album {
   id: number;
   titulo: string;
   ano?: number;
-  imageUrl?: string;
 }
 
 interface ArtistaDetalhado {
   id: number;
   nome: string;
   genero: string;
-  imageUrl?: string;
   albuns?: Album[];
 }
 
@@ -163,7 +161,7 @@ export default function ArtistDetailPage() {
                       </div>
                     )}
                     <img
-                      src={alb.imageUrl || "https://flowbite.com/docs/images/blog/image-1.jpg"}
+                      src={"https://flowbite.com/docs/images/blog/image-1.jpg"}
                       alt={alb.titulo}
                       className="h-auto w-full object-cover"
                     />

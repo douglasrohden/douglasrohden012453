@@ -13,7 +13,6 @@ interface Album {
   id: number;
   titulo: string;
   ano?: number;
-  imageUrl?: string;
   artistaNome?: string;
 }
 
@@ -94,42 +93,9 @@ export default function AlbunsList() {
         isEmpty={visibleAlbuns.length === 0}
         emptyMessage="Nenhum álbum encontrado."
       >
-        {visibleAlbuns.map((album) => {
-          const { coverUrl } = useAlbumCoverUrl(album.id);
-          return (
-            <Card
-              key={album.id}
-              className="h-full transition-shadow hover:shadow-lg"
-              renderImage={() => (
-                <div>
-                  {album.artistaNome && (
-                    <div className="px-4 pt-4 pb-2">
-                      <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                        {album.artistaNome}
-                      </p>
-                    </div>
-                  )}
-                  <img
-                    src={coverUrl || "https://flowbite.com/docs/images/blog/image-1.jpg"}
-                    alt={album.titulo}
-                    className="h-auto w-full object-cover"
-                  />
-                </div>
-              )}
-            >
-              <h5 className="truncate text-xl font-bold tracking-tight text-gray-900 dark:text-white line-clamp-1" title={album.titulo}>
-                {album.titulo}
-              </h5>
-              <div className="h-6">
-                {album.ano && (
-                  <p className="font-normal text-gray-700 dark:text-gray-400">
-                    {album.ano}
-                  </p>
-                )}
-              </div>
-            </Card>
-          );
-        })}
+        {visibleAlbuns.map((album) => (
+          <AlbumCard key={album.id} album={album} />
+        ))}
       </CardGrid>
 
       {totalPages > 1 && (
@@ -151,5 +117,45 @@ export default function AlbunsList() {
         onSuccess={() => setPage(page)}
       />
     </div>
+  );
+}
+
+function AlbumCard({ album }: { album: Album }) {
+  const { coverUrl, objectKey } = useAlbumCoverUrl(album.id);
+
+  const storageBase = import.meta.env.VITE_STORAGE_BASE_URL || '';
+  const src = coverUrl || (objectKey ? `${storageBase.replace(/\/$/, '')}/${objectKey}` : undefined);
+
+  return (
+    <Card
+      className="h-full transition-shadow hover:shadow-lg"
+      renderImage={() => (
+        <div>
+          {album.artistaNome && (
+            <div className="px-4 pt-4 pb-2">
+              <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                {album.artistaNome}
+              </p>
+            </div>
+          )}
+          <img
+            src={coverUrl || "https://flowbite.com/docs/images/blog/image-1.jpg"}
+            alt={album.titulo}
+            className="h-auto w-full object-cover"
+          />
+        </div>
+      )}
+    >
+      <h5 className="truncate text-xl font-bold tracking-tight text-gray-900 dark:text-white line-clamp-1" title={album.titulo}>
+        {album.titulo}
+      </h5>
+      <div className="h-6">
+        {album.ano && (
+          <p className="font-normal text-gray-700 dark:text-gray-400">
+            {album.ano}
+          </p>
+        )}
+      </div>
+    </Card>
   );
 }

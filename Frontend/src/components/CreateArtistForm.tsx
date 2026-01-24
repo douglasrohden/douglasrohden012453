@@ -15,7 +15,6 @@ export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) 
     const { addToast } = useToast();
     const [nome, setNome] = useState("");
     const [genero, setGenero] = useState("");
-    const [imageUrl, setImageUrl] = useState("");
     const [tipo, setTipo] = useState("CANTOR");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -32,9 +31,7 @@ export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) 
         setTipo(value);
     };
 
-    const handleImageUrlChange = (value: string) => {
-        setImageUrl(value);
-    };
+    
 
     const handleSave = async () => {
         setError(null);
@@ -43,11 +40,10 @@ export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) 
             return;
         }
         setLoading(true);
-        try {
+            try {
             await artistsService.create({
                 nome: nome.trim(),
                 genero: genero.trim() || undefined,
-                imageUrl: imageUrl.trim() || undefined,
                 tipo: tipo
             });
             addToast("Artista criado com sucesso!", "success");
@@ -55,7 +51,6 @@ export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) 
             onClose();
             setNome("");
             setGenero("");
-            setImageUrl("");
             setTipo("CANTOR");
         } catch (err) {
             const msg = getErrorMessage(err, "Erro ao criar artista");
@@ -99,12 +94,7 @@ export default function CreateArtistForm({ isOpen, onClose, onCreated }: Props) 
                             </Select>
                         </div>
 
-                        <div>
-                            <div className="mb-2 block">
-                                <Label htmlFor="artist-imageUrl">Image URL</Label>
-                            </div>
-                            <TextInput id="artist-imageUrl" value={imageUrl} onChange={(e) => handleImageUrlChange(e.target.value)} />
-                        </div>
+                        {/* imageUrl removed */}
 
                         {error && <div className="text-sm text-red-600">{String(error)}</div>}
                     </div>

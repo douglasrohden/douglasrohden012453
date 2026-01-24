@@ -5,7 +5,6 @@ export interface Artista {
     id: number;
     nome: string;
     genero: string;
-    imageUrl?: string;
     albumCount?: number;
     albuns?: Album[];
 }
@@ -14,7 +13,6 @@ export interface Album {
     id: number;
     titulo: string;
     ano?: number;
-    imageUrl?: string;
 }
 
 export const artistsService = {
@@ -34,7 +32,7 @@ export const artistsService = {
         const response = await api.get<Artista>(`/artistas/${id}`);
         return response.data as Artista & { albuns?: Album[] };
     },
-    create: async (payload: { nome: string; genero?: string; imageUrl?: string; tipo?: string }) => {
+    create: async (payload: { nome: string; genero?: string; tipo?: string }) => {
         const response = await api.post<Artista>("/artistas", payload);
         return response.data;
     },

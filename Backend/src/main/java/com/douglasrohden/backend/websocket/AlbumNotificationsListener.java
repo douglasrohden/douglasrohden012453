@@ -17,8 +17,8 @@ public class AlbumNotificationsListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onAlbumCreated(AlbumCreatedEvent event) {
         messagingTemplate.convertAndSend(
-                "/topic/albuns/created",
-                new AlbumCreatedMessage(event.id(), event.titulo(), event.ano(), event.imageUrl())
+            "/topic/albuns/created",
+            new AlbumCreatedMessage(event.id(), event.titulo(), event.ano())
         );
     }
 }

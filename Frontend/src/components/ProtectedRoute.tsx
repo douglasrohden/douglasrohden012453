@@ -1,8 +1,8 @@
 import { Navigate, Outlet } from "react-router-dom";
-import { useAuthFacade } from "../hooks/useAuthFacade";
+import { useAuth } from "../contexts/AuthContext";
 
 export function ProtectedRoute() {
-    const { isAuthenticated } = useAuthFacade();
+    const { isAuthenticated } = useAuth();
 
     // If not authenticated, redirect to login page
     if (!isAuthenticated) {

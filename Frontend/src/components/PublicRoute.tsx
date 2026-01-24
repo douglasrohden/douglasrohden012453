@@ -1,8 +1,8 @@
 import { Navigate, Outlet } from "react-router-dom";
-import { useAuthFacade } from "../hooks/useAuthFacade";
+import { useAuth } from "../contexts/AuthContext";
 
 export function PublicRoute() {
-  const { isAuthenticated } = useAuthFacade();
+  const { isAuthenticated } = useAuth();
 
   if (isAuthenticated) {
     return <Navigate to="/artista" replace />;

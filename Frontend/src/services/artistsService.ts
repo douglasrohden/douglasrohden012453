@@ -7,6 +7,7 @@ export interface Artista {
     genero: string;
     imageUrl?: string;
     albumCount?: number;
+    albuns?: Album[];
 }
 
 export interface Album {
@@ -37,8 +38,9 @@ export const artistsService = {
         const response = await api.post<Artista>("/artistas", payload);
         return response.data;
     },
-    addAlbum: async (id: number, payload: { titulo: string; ano?: number; imageUrl?: string }) => {
-        const response = await api.post<Artista>(`/artistas/${id}/albuns`, payload);
+    addAlbum: async (id: number, payload: { titulo: string; ano?: number }) => {
+        // Retorna o artista com o álbum recém-criado; usamos o id do novo álbum para subir as capas.
+        const response = await api.post<Artista & { albuns?: Album[] }>(`/artistas/${id}/albuns`, payload);
         return response.data;
     },
 };

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Button, Label, TextInput, Modal, ModalBody, ModalHeader, ModalFooter } from 'flowbite-react';
+import { Button, Label, TextInput, Modal, ModalBody, ModalHeader, ModalFooter, FileInput, Spinner } from 'flowbite-react';
 import { useToast } from '../contexts/ToastContext';
 import { artistsService, Artista } from '../services/artistsService';
+import { uploadAlbumCovers } from '../services/albunsService';
 import { getErrorMessage } from '../api/client';
 import { useArtists } from '../hooks/useArtists';
 import ArtistSearchInput from './common/ArtistSearchInput';
@@ -37,7 +38,7 @@ function ArtistSelector({
         setArtistSearch(artist.nome);
     };
 
-    return (
+        return (
         <ArtistSearchInput
             value={value}
             results={searchResults}
@@ -60,7 +61,8 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
     const { addToast } = useToast();
     const [titulo, setTitulo] = useState('');
     const [ano, setAno] = useState('');
-    const [imageUrl, setImageUrl] = useState('');
+    const [files, setFiles] = useState<File[]>([]);
+    const [previews, setPreviews] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -73,7 +75,8 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
         if (show) {
             setTitulo('');
             setAno('');
-            setImageUrl('');
+            setFiles([]);
+            setPreviews([]);
             setError(null);
             setArtistSearch('');
             // If artistId is provided via props, we don't need to select one, 
@@ -103,8 +106,31 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
         setAno(value);
     };
 
-    const handleImageUrlChange = (value: string) => {
-        setImageUrl(value);
+    const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5MB por arquivo
+    const MAX_TOTAL_BYTES = 25 * 1024 * 1024; // 25MB por requisição
+
+    const handleFilesChange = (fileList: FileList | null) => {
+        if (!fileList) {
+            setFiles([]);
+            setPreviews([]);
+            return;
+        }
+        const filesArray = Array.from(fileList);
+
+        const tooBig = filesArray.some((f) => f.size > MAX_FILE_BYTES);
+        const totalTooBig = filesArray.reduce((acc, f) => acc + f.size, 0) > MAX_TOTAL_BYTES;
+        if (tooBig) {
+            setError('Cada arquivo deve ter no máximo 5MB');
+            return;
+        }
+        if (totalTooBig) {
+            setError('Tamanho total ultrapassa 25MB');
+            return;
+        }
+
+        setError(null);
+        setFiles(filesArray);
+        setPreviews(filesArray.map((f) => URL.createObjectURL(f)));
     };
 
     const handleSave = async () => {
@@ -118,8 +144,6 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
         }
 
         const trimmedTitulo = titulo.trim();
-        const trimmedImageUrl = imageUrl.trim();
-
         if (!trimmedTitulo) {
             setError('Título é obrigatório');
             return;
@@ -127,11 +151,6 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
 
         if (trimmedTitulo.length > 255) {
             setError('Título deve ter no máximo 255 caracteres');
-            return;
-        }
-
-        if (trimmedImageUrl.length > 255) {
-            setError('URL da capa deve ter no máximo 255 caracteres');
             return;
         }
 
@@ -143,11 +162,19 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
 
         setIsSubmitting(true);
         try {
-            await artistsService.addAlbum(targetArtistId, {
+            const artistResponse = await artistsService.addAlbum(targetArtistId, {
                 titulo: trimmedTitulo,
                 ano: anoValue,
-                imageUrl: trimmedImageUrl || undefined,
             });
+
+            const albumId = artistResponse?.albuns?.reduce((max, a) => (a.id > max ? a.id : max), 0);
+
+            if (files.length > 0) {
+                if (!albumId) {
+                    throw new Error('Não foi possível obter o id do álbum para subir as capas.');
+                }
+                await uploadAlbumCovers(albumId, files);
+            }
             addToast('Álbum adicionado com sucesso!', 'success');
             onSuccess();
             onClose();
@@ -177,6 +204,9 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
                                 hasError={error === 'Selecione um artista'}
                             />
                         )}
+                        {artistId && (
+                            <div className="text-sm text-gray-600">Vinculado ao artista selecionado.</div>
+                        )}
 
                         <div>
                             <div className="mb-2 block">
@@ -204,14 +234,21 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
                         </div>
                         <div>
                             <div className="mb-2 block">
-                                <Label htmlFor="imageUrl">URL da Capa</Label>
+                                <Label htmlFor="capas">Capas do Álbum (múltiplas, 5MB máx cada, 25MB total)</Label>
                             </div>
-                            <TextInput
-                                id="imageUrl"
-                                placeholder="https://exemplo.com/capa.jpg"
-                                value={imageUrl}
-                                onChange={(e) => handleImageUrlChange(e.target.value)}
+                            <FileInput
+                                id="capas"
+                                multiple
+                                accept="image/*"
+                                onChange={(e) => handleFilesChange(e.target.files)}
                             />
+                            {previews.length > 0 && (
+                                <div className="mt-2 grid grid-cols-3 gap-2">
+                                    {previews.map((src, idx) => (
+                                        <img key={idx} src={src} alt={`preview-${idx}`} className="h-24 w-full object-cover rounded" />
+                                    ))}
+                                </div>
+                            )}
                         </div>
                         {error && <div className="text-sm text-red-600">{String(error)}</div>}
                     </div>
@@ -222,7 +259,9 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
                             Cancelar
                         </Button>
                         <Button type="submit" disabled={isSubmitting}>
-                            {isSubmitting ? 'Salvando...' : 'Salvar'}
+                            {isSubmitting ? (
+                                <span className="flex items-center gap-2"><Spinner size="sm" /> Salvando...</span>
+                            ) : 'Salvar'}
                         </Button>
                     </div>
                 </ModalFooter>

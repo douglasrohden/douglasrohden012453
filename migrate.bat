@@ -3,7 +3,7 @@ setlocal
 
 rem Use env vars if present, otherwise fallback to defaults
 set "DB=%POSTGRES_DB%"
-if "%DB%"=="" set "DB=musicplayerfree"
+if "%DB%"=="" set "DB=musicplayer"
 set "USER=%POSTGRES_USER%"
 if "%USER%"=="" set "USER=postgres"
 set "PASSWORD=%POSTGRES_PASSWORD%"

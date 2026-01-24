@@ -12,16 +12,16 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "album_image")
-public class AlbumCover {
+@Table(name = "artista_image")
+public class ArtistImage {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "album_id", nullable = false)
-    private Album album;
+    @JoinColumn(name = "artista_id", nullable = false)
+    private Artista artista;
 
     @Column(name = "object_key", nullable = false, length = 1024)
     private String objectKey;

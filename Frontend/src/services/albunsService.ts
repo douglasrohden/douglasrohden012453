@@ -40,3 +40,7 @@ export async function uploadAlbumImages(albumId: number, files: File[]): Promise
   });
   return response.data;
 }
+
+export async function deleteAlbumImage(albumId: number, imageId: number): Promise<void> {
+  await api.delete(`/albuns/${albumId}/capas/${imageId}`);
+}

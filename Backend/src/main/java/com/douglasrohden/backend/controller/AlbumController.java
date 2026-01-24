@@ -104,15 +104,34 @@ public class AlbumController {
         // Define os atributos do álbum com os dados recebidos na requisição
         album.setTitulo(request.titulo());
         album.setAno(request.ano());
+
+        // Salva o álbum primeiro para obter um ID
+        Album savedAlbum = albumService.create(album);
+
+        // Agora associa os artistas ao álbum
         if (request.artistaIds() != null && !request.artistaIds().isEmpty()) {
             Iterable<Artista> artistas = artistaRepository.findAllById(request.artistaIds());
             Set<Artista> artistasSet = new HashSet<>();
             artistas.forEach(artistasSet::add);
-            album.setArtistas(artistasSet);
+
+            // Como Artista é o dono da relação (tem @JoinTable), precisamos
+            // adicionar o álbum ao conjunto de álbuns de cada artista
+            for (Artista artista : artistasSet) {
+                if (artista.getAlbuns() == null) {
+                    artista.setAlbuns(new HashSet<>());
+                }
+                artista.getAlbuns().add(savedAlbum);
+            }
+
+            // Salva os artistas para persistir a relação
+            artistaRepository.saveAll(artistasSet);
+
+            // Atualiza a referência do álbum (embora mappedBy não persista,
+            // é bom manter a consistência em memória)
+            savedAlbum.setArtistas(artistasSet);
         }
 
-        // Chama o serviço para salvar o álbum no banco de dados
-        // e retorna com status 201 (CREATED)
-        return ResponseEntity.status(HttpStatus.CREATED).body(albumService.create(album));
+        // Retorna o álbum criado com status 201 (CREATED)
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedAlbum);
     }
 }

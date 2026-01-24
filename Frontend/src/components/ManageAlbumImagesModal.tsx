@@ -1,0 +1,172 @@
+import { useState, useEffect } from 'react';
+import { Modal, ModalBody, ModalHeader, ModalFooter, Button, FileInput, Spinner, Label } from 'flowbite-react';
+import { HiTrash, HiUpload } from 'react-icons/hi';
+import { useToast } from '../contexts/ToastContext';
+import { getAlbumImages, uploadAlbumImages, deleteAlbumImage, AlbumImage } from '../services/albunsService';
+import { getErrorMessage } from '../api/client';
+
+interface ManageAlbumImagesModalProps {
+    albumId: number | null;
+    show: boolean;
+    onClose: () => void;
+}
+
+export default function ManageAlbumImagesModal({ albumId, show, onClose }: ManageAlbumImagesModalProps) {
+    const { addToast } = useToast();
+    const [images, setImages] = useState<AlbumImage[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [uploading, setUploading] = useState(false);
+
+    // New files to upload
+    const [files, setFiles] = useState<File[]>([]);
+    const [previews, setPreviews] = useState<string[]>([]);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (show && albumId) {
+            loadImages(albumId);
+            setFiles([]);
+            setPreviews([]);
+            setError(null);
+        }
+    }, [show, albumId]);
+
+    const loadImages = async (id: number) => {
+        setLoading(true);
+        try {
+            const data = await getAlbumImages(id);
+            setImages(data);
+        } catch (err) {
+            addToast('Erro ao carregar imagens', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDelete = async (imageId: number) => {
+        if (!albumId) return;
+        if (!confirm('Tem certeza que deseja remover esta imagem?')) return;
+
+        try {
+            await deleteAlbumImage(albumId, imageId);
+            setImages((prev) => prev.filter((img) => img.id !== imageId));
+            addToast('Imagem removida com sucesso', 'success');
+        } catch (err) {
+            addToast(getErrorMessage(err, 'Erro ao remover imagem'), 'error');
+        }
+    };
+
+    const handleFilesChange = (fileList: FileList | null) => {
+        if (!fileList) {
+            setFiles([]);
+            setPreviews([]);
+            return;
+        }
+        const filesArray = Array.from(fileList);
+        const MAX_FILE_BYTES = 5 * 1024 * 1024;
+
+        if (filesArray.some((f) => f.size > MAX_FILE_BYTES)) {
+            setError('Cada arquivo deve ter no máximo 5MB');
+            return;
+        }
+
+        setError(null);
+        setFiles(filesArray);
+        setPreviews(filesArray.map((f) => URL.createObjectURL(f)));
+    };
+
+    const handleUpload = async () => {
+        if (!albumId || files.length === 0) return;
+
+        setUploading(true);
+        try {
+            await uploadAlbumImages(albumId, files);
+            addToast('Imagens enviadas com sucesso!', 'success');
+            setFiles([]);
+            setPreviews([]);
+            loadImages(albumId); // Reload list
+        } catch (err) {
+            addToast(getErrorMessage(err, 'Erro ao enviar imagens'), 'error');
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    return (
+        <Modal show={show} onClose={onClose} size="xl">
+            <ModalHeader>Gerenciar Capas do Álbum</ModalHeader>
+            <ModalBody>
+                <div className="space-y-6">
+                    {/* Existing Images Section */}
+                    <div>
+                        <h3 className="mb-2 text-lg font-medium text-gray-900 dark:text-white">Capas Atuais</h3>
+                        {loading ? (
+                            <div className="text-center py-4"><Spinner /></div>
+                        ) : images.length === 0 ? (
+                            <p className="text-gray-500 italic">Nenhuma capa cadastrada.</p>
+                        ) : (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                {images.map((img) => (
+                                    <div key={img.id} className="relative group border rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+                                        <img
+                                            src={img.url}
+                                            alt="Capa"
+                                            className="w-full h-32 object-cover"
+                                        />
+                                        <button
+                                            onClick={() => handleDelete(img.id)}
+                                            className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                            title="Remover"
+                                        >
+                                            <HiTrash className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    <hr className="dark:border-gray-700" />
+
+                    {/* Upload Section */}
+                    <div>
+                        <h3 className="mb-2 text-lg font-medium text-gray-900 dark:text-white">Adicionar Novas Capas</h3>
+                        <Label htmlFor="new-images">
+                            Selecionar arquivos (Max 5MB cada)
+                        </Label>
+                        <FileInput
+                            id="new-images"
+                            multiple
+                            accept="image/*"
+                            onChange={(e) => handleFilesChange(e.target.files)}
+                            disabled={uploading}
+                        />
+
+                        {previews.length > 0 && (
+                            <div className="mt-4 grid grid-cols-4 gap-2">
+                                {previews.map((src, idx) => (
+                                    <img key={idx} src={src} alt="Preview" className="h-20 w-full object-cover rounded border" />
+                                ))}
+                            </div>
+                        )}
+
+                        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+
+                        <div className="mt-4 flex justify-end">
+                            <Button
+                                onClick={handleUpload}
+                                disabled={files.length === 0 || uploading || !!error}
+                            >
+                                {uploading ? <Spinner size="sm" className="mr-2" /> : <HiUpload className="mr-2 h-5 w-5" />}
+                                Enviar Selecionadas
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            </ModalBody>
+            <ModalFooter>
+                <Button color="gray" onClick={onClose}>Fechar</Button>
+            </ModalFooter>
+        </Modal>
+    );
+}

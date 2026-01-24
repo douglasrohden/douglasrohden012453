@@ -2,10 +2,11 @@
 import { Pagination, Card, Alert } from 'flowbite-react';
 import { useAlbuns } from '../hooks/useAlbuns';
 import { useMemo, useState } from 'react';
-import { HiSearch } from 'react-icons/hi';
+import { HiSearch, HiClock } from 'react-icons/hi';
 import { CardGrid } from './common/CardGrid';
 import { ListToolbar } from './common/ListToolbar';
 import CreateAlbumForm from './CreateAlbumForm';
+import ManageAlbumImagesModal from './ManageAlbumImagesModal';
 import { useDebounce } from '../hooks/useDebounce';
 
 interface Album {
@@ -22,6 +23,7 @@ export default function AlbunsList() {
   const [sortField, setSortField] = useState("titulo");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [manageImagesAlbumId, setManageImagesAlbumId] = useState<number | null>(null);
   const debouncedSearch = useDebounce(search, 300);
 
   const visibleAlbuns = useMemo(() => {
@@ -93,7 +95,11 @@ export default function AlbunsList() {
         emptyMessage="Nenhum álbum encontrado."
       >
         {visibleAlbuns.map((album) => (
-          <AlbumCard key={album.id} album={album} />
+          <AlbumCard
+            key={album.id}
+            album={album}
+            onManageImages={() => setManageImagesAlbumId(album.id)}
+          />
         ))}
       </CardGrid>
 
@@ -115,42 +121,56 @@ export default function AlbunsList() {
         onClose={() => setShowCreateModal(false)}
         onSuccess={() => setPage(page)}
       />
+
+      <ManageAlbumImagesModal
+        show={!!manageImagesAlbumId}
+        albumId={manageImagesAlbumId}
+        onClose={() => setManageImagesAlbumId(null)}
+      />
     </div>
   );
 }
 
-function AlbumCard({ album }: { album: Album }) {
+function AlbumCard({ album, onManageImages }: { album: Album; onManageImages: () => void }) {
   const src = undefined;
 
   return (
     <Card
-      className="h-full transition-shadow hover:shadow-lg"
+      className="h-full transition-shadow hover:shadow-lg flex flex-col"
       renderImage={() => (
-        <div>
+        <div className="relative group">
           {album.artistaNome && (
-            <div className="px-4 pt-4 pb-2">
-              <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                {album.artistaNome}
-              </p>
+            <div className="absolute top-0 left-0 bg-black/50 text-white text-xs px-2 py-1 rounded-br z-10">
+              {album.artistaNome}
             </div>
           )}
           <img
             src={src || "https://flowbite.com/docs/images/blog/image-1.jpg"}
             alt={album.titulo}
-            className="h-auto w-full object-cover"
+            className="h-48 w-full object-cover"
           />
         </div>
       )}
     >
-      <h5 className="truncate text-xl font-bold tracking-tight text-gray-900 dark:text-white line-clamp-1" title={album.titulo}>
-        {album.titulo}
-      </h5>
-      <div className="h-6">
-        {album.ano && (
-          <p className="font-normal text-gray-700 dark:text-gray-400">
-            {album.ano}
-          </p>
-        )}
+      <div className="flex flex-col h-full justify-between">
+        <div>
+          <h5 className="truncate text-xl font-bold tracking-tight text-gray-900 dark:text-white line-clamp-1" title={album.titulo}>
+            {album.titulo}
+          </h5>
+          <div className="h-6 mb-4">
+            {album.ano && (
+              <p className="font-normal text-gray-700 dark:text-gray-400">
+                {album.ano}
+              </p>
+            )}
+          </div>
+        </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); onManageImages(); }}
+          className="w-full mt-2 px-3 py-2 text-sm font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+        >
+          Gerenciar Capas
+        </button>
       </div>
     </Card>
   );

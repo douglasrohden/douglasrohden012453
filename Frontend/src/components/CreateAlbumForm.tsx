@@ -117,15 +117,15 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
     const MAX_TOTAL_BYTES = 25 * 1024 * 1024; // 25MB por requisição
 
     const handleFilesChange = (fileList: FileList | null) => {
-        if (!fileList) {
-            setFiles([]);
-            setPreviews([]);
-            return;
-        }
-        const filesArray = Array.from(fileList);
+        if (!fileList) return;
 
-        const tooBig = filesArray.some((f) => f.size > MAX_FILE_BYTES);
-        const totalTooBig = filesArray.reduce((acc, f) => acc + f.size, 0) > MAX_TOTAL_BYTES;
+        const newFiles = Array.from(fileList);
+        const combinedFiles = [...files, ...newFiles];
+
+        // Validate new files and total size
+        const tooBig = newFiles.some((f) => f.size > MAX_FILE_BYTES);
+        const totalTooBig = combinedFiles.reduce((acc, f) => acc + f.size, 0) > MAX_TOTAL_BYTES;
+
         if (tooBig) {
             setError('Cada arquivo deve ter no máximo 5MB');
             return;
@@ -136,16 +136,24 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
         }
 
         setError(null);
-        setFiles(filesArray);
-        setPreviews(filesArray.map((f) => URL.createObjectURL(f)));
+        setFiles(combinedFiles);
+        setPreviews(combinedFiles.map((f) => URL.createObjectURL(f)));
+    };
+
+    const removeFile = (index: number) => {
+        const newFiles = files.filter((_, i) => i !== index);
+        setFiles(newFiles);
+        setPreviews(newFiles.map((f) => URL.createObjectURL(f)));
     };
 
     const handleSave = async () => {
         setError(null);
 
-        const targetArtistIds = artistId ? [artistId] : selectedArtists.map((a) => a.id);
+        const artistsToProcess = artistId
+            ? [{ id: artistId, nome: '' }]
+            : selectedArtists;
 
-        if (!targetArtistIds || targetArtistIds.length === 0) {
+        if (artistsToProcess.length === 0) {
             setError('Selecione pelo menos um artista');
             return;
         }
@@ -169,28 +177,30 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
 
         setIsSubmitting(true);
         try {
-            const album = await createAlbum({
-                titulo: trimmedTitulo,
-                ano: anoValue,
-                artistaIds: targetArtistIds,
-            });
+            for (const artist of artistsToProcess) {
+                const album = await createAlbum({
+                    titulo: trimmedTitulo,
+                    ano: anoValue,
+                    artistaIds: [artist.id],
+                });
 
-            const albumId = album?.id;
+                const albumId = album?.id;
 
-            if (files.length > 0) {
-                if (!albumId) {
-                    throw new Error('Não foi possível obter o id do álbum para subir as capas.');
+                if (files.length > 0) {
+                    if (!albumId) {
+                        throw new Error(`Não foi possível obter o id do álbum para subir as capas (Artista ID: ${artist.id}).`);
+                    }
+                    await uploadAlbumImages(albumId, files);
                 }
-                await uploadAlbumImages(albumId, files);
             }
-            addToast('Álbum adicionado com sucesso!', 'success');
+
+            addToast(artistsToProcess.length > 1 ? 'Álbuns adicionados com sucesso!' : 'Álbum adicionado com sucesso!', 'success');
             onSuccess();
             onClose();
         } catch (err) {
             const message = getErrorMessage(err, 'Erro ao adicionar álbum.');
             setError(message);
             const status = axios.isAxiosError(err) ? err.response?.status : undefined;
-            // 429 already triggers a global warning toast
             if (status !== 429) addToast(message, 'error');
         } finally {
             setIsSubmitting(false);
@@ -203,7 +213,6 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
                 <ModalHeader>Adicionar Álbum</ModalHeader>
                 <ModalBody>
                     <div className="flex flex-col gap-4">
-                        {/* Artist Selection Field - Only show if artistId prop is missing */}
                         {!artistId && (
                             <div>
                                 <ArtistSelector
@@ -254,18 +263,36 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
                         </div>
                         <div>
                             <div className="mb-2 block">
-                                <Label htmlFor="capas">Capas do Álbum (múltiplas, 5MB máx cada, 25MB total)</Label>
+                                <Label htmlFor="capas">Capas do Álbum (Adicionar múltiplas)</Label>
                             </div>
-                            <FileInput
-                                id="capas"
-                                multiple
-                                accept="image/*"
-                                onChange={(e) => handleFilesChange(e.target.files)}
-                            />
+                            <div className="flex flex-col gap-2">
+                                <FileInput
+                                    id="capas"
+                                    multiple
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                        handleFilesChange(e.target.files);
+                                        e.target.value = '';
+                                    }}
+                                />
+                                <span className="text-xs text-gray-500">
+                                    Máx 5MB por arquivo, 25MB total. Selecione mais arquivos para adicionar à lista.
+                                </span>
+                            </div>
                             {previews.length > 0 && (
                                 <div className="mt-2 grid grid-cols-3 gap-2">
                                     {previews.map((src, idx) => (
-                                        <img key={idx} src={src} alt={`preview-${idx}`} className="h-24 w-full object-cover rounded" />
+                                        <div key={idx} className="relative group">
+                                            <img src={src} alt={`preview-${idx}`} className="h-24 w-full object-cover rounded border border-gray-200" />
+                                            <button
+                                                type="button"
+                                                onClick={() => removeFile(idx)}
+                                                className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                title="Remover imagem"
+                                            >
+                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                            </button>
+                                        </div>
                                     ))}
                                 </div>
                             )}

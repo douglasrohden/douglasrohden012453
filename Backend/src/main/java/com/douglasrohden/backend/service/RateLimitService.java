@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 public class RateLimitService {
@@ -21,13 +22,16 @@ public class RateLimitService {
     private final long requestsPerWindow;
     private final long windowSeconds;
     private final long bucketExpireAfterSeconds;
+    private final long actionExpireAfterSeconds;
     private final long bucketMaxSize;
     private final ConcurrentHashMap<String, BucketHolder> buckets = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, ActionHolder> actions = new ConcurrentHashMap<>();
 
     public RateLimitService(
             @Value("${rate-limit.requests-per-window:10}") long requestsPerWindow,
             @Value("${rate-limit.window-seconds:60}") long windowSeconds,
             @Value("${rate-limit.bucket-expire-after-seconds:600}") long bucketExpireAfterSeconds,
+            @Value("${rate-limit.action-expire-after-seconds:5}") long actionExpireAfterSeconds,
             @Value("${rate-limit.bucket-max-size:100000}") long bucketMaxSize
     ) {
         if (requestsPerWindow <= 0) {
@@ -40,6 +44,7 @@ public class RateLimitService {
         this.requestsPerWindow = requestsPerWindow;
         this.windowSeconds = windowSeconds;
         this.bucketExpireAfterSeconds = Math.max(1, bucketExpireAfterSeconds);
+        this.actionExpireAfterSeconds = Math.max(1, actionExpireAfterSeconds);
         this.bucketMaxSize = Math.max(1, bucketMaxSize);
     }
 
@@ -85,6 +90,86 @@ public class RateLimitService {
         return new Probe(probe.isConsumed(), probe.getRemainingTokens(), probe.getNanosToWaitForRefill());
     }
 
+    /**
+     * Groups multiple HTTP requests under the same user action id so they count as a single rate-limit token.
+     * Intended to support UI actions that fan-out into multiple requests (e.g., list + cover thumbnails).
+     */
+    public Probe tryConsumeForAction(String key, String actionId) {
+        return tryConsumeForAction(key, requestsPerWindow, actionId);
+    }
+
+    public Probe tryConsumeForAction(String key, long limitPerWindow, String actionId) {
+        String safeActionId = (actionId == null || actionId.isBlank()) ? "" : actionId.trim();
+        if (safeActionId.isBlank()) {
+            return tryConsume(key, limitPerWindow);
+        }
+
+        // keep action ids bounded to avoid unbounded memory usage with huge headers
+        if (safeActionId.length() > 128) {
+            safeActionId = safeActionId.substring(0, 128);
+        }
+
+        long limit = Math.max(1, limitPerWindow);
+        String safeKey = (key == null || key.isBlank()) ? "unknown" : key.trim();
+        String bucketKey = limit + ":" + windowSeconds + ":" + safeKey;
+
+        long nowMs = System.currentTimeMillis();
+        long bucketExpireMs = Duration.ofSeconds(bucketExpireAfterSeconds).toMillis();
+        long actionExpireMs = Duration.ofSeconds(actionExpireAfterSeconds).toMillis();
+
+        BucketHolder holder = buckets.compute(bucketKey, (k, existing) -> {
+            if (existing == null) {
+                return new BucketHolder(newBucket(limit), nowMs);
+            }
+            if (nowMs - existing.lastAccessMs > bucketExpireMs) {
+                return new BucketHolder(newBucket(limit), nowMs);
+            }
+            existing.lastAccessMs = nowMs;
+            return existing;
+        });
+
+        Bucket bucket = holder.bucket;
+
+        String actionKey = bucketKey + ":action:" + safeActionId;
+        ActionHolder actionHolder = actions.compute(actionKey, (k, existing) -> {
+            if (existing == null) {
+                return new ActionHolder(nowMs);
+            }
+            if (nowMs - existing.lastAccessMs > actionExpireMs) {
+                return new ActionHolder(nowMs);
+            }
+            existing.lastAccessMs = nowMs;
+            return existing;
+        });
+
+        // If this action already counted a token, allow without consuming more.
+        if (actionHolder.tokenCounted.get()) {
+            long remaining = bucket.getAvailableTokens();
+            return new Probe(true, remaining, 0);
+        }
+
+        // Only one concurrent request for the action should attempt to count the token.
+        if (!actionHolder.tokenCounted.compareAndSet(false, true)) {
+            long remaining = bucket.getAvailableTokens();
+            return new Probe(true, remaining, 0);
+        }
+
+        ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
+        if (!probe.isConsumed()) {
+            // Don't allow bypassing the rate-limit if token couldn't be consumed.
+            actionHolder.tokenCounted.set(false);
+        }
+
+        if (buckets.size() > bucketMaxSize) {
+            cleanup(nowMs, bucketExpireMs);
+        }
+        if (actions.size() > bucketMaxSize) {
+            cleanupActions(nowMs, actionExpireMs);
+        }
+
+        return new Probe(probe.isConsumed(), probe.getRemainingTokens(), probe.getNanosToWaitForRefill());
+    }
+
     private void cleanup(long nowMs, long expireMs) {
         // 1) remove expirados
         for (Map.Entry<String, BucketHolder> entry : buckets.entrySet()) {
@@ -99,6 +184,21 @@ public class RateLimitService {
         for (String k : buckets.keySet()) {
             buckets.remove(k);
             if (buckets.size() <= bucketMaxSize) return;
+        }
+    }
+
+    private void cleanupActions(long nowMs, long expireMs) {
+        for (Map.Entry<String, ActionHolder> entry : actions.entrySet()) {
+            ActionHolder holder = entry.getValue();
+            if (holder != null && nowMs - holder.lastAccessMs > expireMs) {
+                actions.remove(entry.getKey(), holder);
+            }
+        }
+
+        if (actions.size() <= bucketMaxSize) return;
+        for (String k : actions.keySet()) {
+            actions.remove(k);
+            if (actions.size() <= bucketMaxSize) return;
         }
     }
 
@@ -154,6 +254,15 @@ public class RateLimitService {
 
         private BucketHolder(Bucket bucket, long lastAccessMs) {
             this.bucket = bucket;
+            this.lastAccessMs = lastAccessMs;
+        }
+    }
+
+    private static final class ActionHolder {
+        private final AtomicBoolean tokenCounted = new AtomicBoolean(false);
+        private volatile long lastAccessMs;
+
+        private ActionHolder(long lastAccessMs) {
             this.lastAccessMs = lastAccessMs;
         }
     }

@@ -2,6 +2,7 @@ import axios, { type AxiosError, type AxiosInstance } from "axios";
 import { authStore } from "../store/auth.store";
 import { emitApiRateLimit } from "./apiRateLimitEvents";
 import { auth } from "../auth/auth.singleton";
+import { getCurrentUserActionId } from "../services/userAction";
 
 type RateLimitInfo = {
   retryAfter: number;
@@ -105,6 +106,14 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Group multiple requests triggered by a single UI action (e.g., refresh list that loads thumbnails)
+    // so the backend counts them as a single rate-limit token.
+    const actionId = getCurrentUserActionId();
+    if (token && actionId) {
+      config.headers["X-User-Action-Id"] = actionId;
+    }
+
     return config;
   },
   (error) => Promise.reject(error),

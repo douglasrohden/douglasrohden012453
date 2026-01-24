@@ -2,6 +2,8 @@ package com.douglasrohden.backend.config.filter;
 
 import com.douglasrohden.backend.service.RateLimitService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,6 +19,7 @@ import java.io.IOException;
 
 @Component
 public class ApiRateLimitFilter extends OncePerRequestFilter {
+    private static final Logger log = LoggerFactory.getLogger(ApiRateLimitFilter.class);
     private static final String[] SKIP_PREFIXES = {
             "/swagger-ui/",
             "/v3/api-docs/",
@@ -24,6 +27,8 @@ public class ApiRateLimitFilter extends OncePerRequestFilter {
             "/error",
             "/ws/"
     };
+
+    private static final String ACTION_ID_HEADER = "X-User-Action-Id";
 
     private final RateLimitService rateLimitService;
     private final ObjectMapper objectMapper;
@@ -56,13 +61,22 @@ public class ApiRateLimitFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
         String key = resolveRateLimitKey(request);
-        RateLimitService.Probe probe = rateLimitService.tryConsume(key);
+        String actionId = request.getHeader(ACTION_ID_HEADER);
+        RateLimitService.Probe probe = (actionId != null && !actionId.isBlank())
+            ? rateLimitService.tryConsumeForAction(key, actionId)
+            : rateLimitService.tryConsume(key);
 
         long limit = rateLimitService.defaultLimitPerWindow();
         long windowSeconds = rateLimitService.windowSeconds();
         response.setHeader("X-Rate-Limit-Limit", String.valueOf(limit));
         response.setHeader("X-Rate-Limit-Window-Seconds", String.valueOf(windowSeconds));
         response.setHeader("X-Rate-Limit-Remaining", String.valueOf(probe.remainingTokens()));
+
+        if (log.isDebugEnabled()) {
+            String uri = request.getRequestURI();
+            log.debug("RateLimit key={} uri={} actionId={} limit={} remaining={} nanosToWait={}",
+                    key, uri, (actionId == null ? "" : actionId), limit, probe.remainingTokens(), probe.nanosToWaitForRefill());
+        }
 
         if (probe.consumed()) {
             filterChain.doFilter(request, response);

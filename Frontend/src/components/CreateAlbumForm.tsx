@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Button, Label, TextInput, Modal, ModalBody, ModalHeader, ModalFooter, FileInput, Spinner } from 'flowbite-react';
 import { useToast } from '../contexts/ToastContext';
-import { artistsService, Artista } from '../services/artistsService';
-import { uploadAlbumCovers } from '../services/albunsService';
+import { Artista } from '../services/artistsService';
+import { createAlbum, uploadAlbumCovers } from '../services/albunsService';
 import { getErrorMessage } from '../api/client';
 import { useArtists } from '../hooks/useArtists';
 import ArtistSearchInput from './common/ArtistSearchInput';
@@ -66,8 +66,8 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Artist selection state
-    const [selectedArtist, setSelectedArtist] = useState<Artista | null>(null);
+    // Artist selection state (multiple)
+    const [selectedArtists, setSelectedArtists] = useState<Artista[]>([]);
     const [artistSearch, setArtistSearch] = useState('');
 
     // Reset form when modal opens/closes
@@ -83,19 +83,25 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
             // but we don't necessarily have the full Artista object here. 
             // We'll rely on the prop for submission if present.
             if (!artistId) {
-                setSelectedArtist(null);
+                setSelectedArtists([]);
             }
         }
     }, [show, artistId]);
 
     const handleArtistSearchChange = (value: string) => {
         setArtistSearch(value);
-        if (selectedArtist) setSelectedArtist(null);
     };
 
     const selectArtist = (artist: Artista) => {
-        setSelectedArtist(artist);
-        setArtistSearch(artist.nome);
+        // add if not already selected
+        if (!selectedArtists.some((a) => a.id === artist.id)) {
+            setSelectedArtists((prev) => [...prev, artist]);
+        }
+        setArtistSearch('');
+    };
+
+    const removeArtist = (id: number) => {
+        setSelectedArtists((prev) => prev.filter((a) => a.id !== id));
     };
 
     const handleTitleChange = (value: string) => {
@@ -136,10 +142,10 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
     const handleSave = async () => {
         setError(null);
 
-        const targetArtistId = artistId || selectedArtist?.id;
+        const targetArtistIds = artistId ? [artistId] : selectedArtists.map((a) => a.id);
 
-        if (!targetArtistId) {
-            setError('Selecione um artista');
+        if (!targetArtistIds || targetArtistIds.length === 0) {
+            setError('Selecione pelo menos um artista');
             return;
         }
 
@@ -162,12 +168,13 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
 
         setIsSubmitting(true);
         try {
-            const artistResponse = await artistsService.addAlbum(targetArtistId, {
+            const album = await createAlbum({
                 titulo: trimmedTitulo,
                 ano: anoValue,
+                artistaIds: targetArtistIds,
             });
 
-            const albumId = artistResponse?.albuns?.reduce((max, a) => (a.id > max ? a.id : max), 0);
+            const albumId = album?.id;
 
             if (files.length > 0) {
                 if (!albumId) {
@@ -197,12 +204,24 @@ export default function CreateAlbumForm({ artistId, onSuccess, onClose, show }: 
                     <div className="flex flex-col gap-4">
                         {/* Artist Selection Field - Only show if artistId prop is missing */}
                         {!artistId && (
-                            <ArtistSelector
-                                value={artistSearch}
-                                onChange={handleArtistSearchChange}
-                                onSelect={selectArtist}
-                                hasError={error === 'Selecione um artista'}
-                            />
+                            <div>
+                                <ArtistSelector
+                                    value={artistSearch}
+                                    onChange={handleArtistSearchChange}
+                                    onSelect={selectArtist}
+                                    hasError={error === 'Selecione pelo menos um artista'}
+                                />
+                                {selectedArtists.length > 0 && (
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                        {selectedArtists.map((a) => (
+                                            <div key={a.id} className="px-2 py-1 bg-gray-200 rounded flex items-center gap-2">
+                                                <span className="text-sm">{a.nome}</span>
+                                                <button type="button" onClick={() => removeArtist(a.id)} className="text-sm text-red-600">×</button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         )}
                         {artistId && (
                             <div className="text-sm text-gray-600">Vinculado ao artista selecionado.</div>

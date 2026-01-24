@@ -2,16 +2,13 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import CreateAlbumForm from './CreateAlbumForm';
 import { artistsService } from '../services/artistsService';
+import * as albunsService from '../services/albunsService';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { ToastProvider } from '../contexts/ToastContext';
 import { useArtists } from '../hooks/useArtists';
 import { uploadAlbumCovers } from '../services/albunsService';
 
-vi.mock('../services/artistsService', () => ({
-    artistsService: {
-        addAlbum: vi.fn(),
-    },
-}));
+// artistsService is used by the search hook; we don't need to mock addAlbum anymore
 
 const mockSetSearch = vi.fn();
 const mockSetPage = vi.fn();
@@ -27,6 +24,7 @@ vi.mock('../hooks/useArtists', () => ({
 
 vi.mock('../services/albunsService', () => ({
     uploadAlbumCovers: vi.fn(),
+    createAlbum: vi.fn(),
 }));
 
 describe('CreateAlbumForm', () => {
@@ -44,6 +42,7 @@ describe('CreateAlbumForm', () => {
             setPage: mockSetPage,
         }));
         (uploadAlbumCovers as any).mockResolvedValue([]);
+        (albunsService.createAlbum as any).mockResolvedValue({ id: 10, titulo: 'X' });
     });
 
     const renderComponent = (props: any = {}) => render(
@@ -57,12 +56,12 @@ describe('CreateAlbumForm', () => {
         renderComponent({ artistId });
         await user.click(screen.getByText('Salvar'));
         await waitFor(() => expect(screen.getByText('Título é obrigatório')).toBeInTheDocument());
-        expect(artistsService.addAlbum).not.toHaveBeenCalled();
+        expect(albunsService.createAlbum).not.toHaveBeenCalled();
     });
 
     it('envia com artista do contexto', async () => {
         const user = userEvent.setup();
-        (artistsService.addAlbum as any).mockResolvedValue({ id: artistId, albuns: [{ id: 10, titulo: 'X' }] });
+        (albunsService.createAlbum as any).mockResolvedValue({ id: 10, titulo: 'X' });
         renderComponent({ artistId });
 
         await user.type(screen.getByLabelText(/Título do Álbum/i), 'Novo Álbum');
@@ -70,7 +69,7 @@ describe('CreateAlbumForm', () => {
         await user.click(screen.getByText('Salvar'));
 
         await waitFor(() => {
-            expect(artistsService.addAlbum).toHaveBeenCalledWith(artistId, { titulo: 'Novo Álbum', ano: 2023 });
+            expect(albunsService.createAlbum).toHaveBeenCalledWith({ titulo: 'Novo Álbum', ano: 2023, artistaIds: [artistId] });
             expect(uploadAlbumCovers).not.toHaveBeenCalled(); // sem arquivos
             expect(mockOnSuccess).toHaveBeenCalled();
             expect(mockOnClose).toHaveBeenCalled();

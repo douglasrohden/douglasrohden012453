@@ -81,19 +81,16 @@ describe('CreateArtistForm', () => {
 
     const nameInput = screen.getByLabelText('Nome');
     const genreInput = screen.getByLabelText('Gênero');
-    const imageInput = screen.getByLabelText('Image URL');
     const submitButton = screen.getByRole('button', { name: 'Criar' });
 
     await user.type(nameInput, 'Test Artist');
     await user.type(genreInput, 'Rock');
-    await user.type(imageInput, 'http://example.com/image.jpg');
     await user.click(submitButton);
 
     await waitFor(() => {
       expect(artistsService.create).toHaveBeenCalledWith({
         nome: 'Test Artist',
         genero: 'Rock',
-        imageUrl: 'http://example.com/image.jpg',
         tipo: 'CANTOR'
       });
       expect(mockProps.onCreated).toHaveBeenCalled();
@@ -117,7 +114,6 @@ describe('CreateArtistForm', () => {
       expect(artistsService.create).toHaveBeenCalledWith({
         nome: 'Test Artist',
         genero: undefined,
-        imageUrl: undefined,
         tipo: 'CANTOR'
       });
     });
@@ -167,18 +163,15 @@ describe('CreateArtistForm', () => {
 
     const nameInput = screen.getByLabelText('Nome');
     const genreInput = screen.getByLabelText('Gênero');
-    const imageInput = screen.getByLabelText('Image URL');
     const submitButton = screen.getByRole('button', { name: 'Criar' });
 
     await user.type(nameInput, 'Test Artist');
     await user.type(genreInput, 'Rock');
-    await user.type(imageInput, 'http://example.com/image.jpg');
     await user.click(submitButton);
 
     await waitFor(() => {
       expect(nameInput).toHaveValue('');
       expect(genreInput).toHaveValue('');
-      expect(imageInput).toHaveValue('');
     });
   });
 

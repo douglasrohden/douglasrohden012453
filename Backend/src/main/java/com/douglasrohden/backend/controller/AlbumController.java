@@ -5,6 +5,11 @@ import com.douglasrohden.backend.dto.CreateAlbumRequest;
 import com.douglasrohden.backend.model.Album;
 import com.douglasrohden.backend.repository.AlbumRepository;
 import com.douglasrohden.backend.service.AlbumService;
+import com.douglasrohden.backend.repository.ArtistaRepository;
+import com.douglasrohden.backend.model.Artista;
+
+import java.util.HashSet;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -33,6 +38,7 @@ public class AlbumController {
     private final AlbumRepository albumRepository;
     // Serviço com regras de negócio para álbuns
     private final AlbumService albumService;
+    private final ArtistaRepository artistaRepository;
 
     /**
      * Endpoint GET para listar todos os álbuns com paginação.
@@ -98,6 +104,12 @@ public class AlbumController {
         // Define os atributos do álbum com os dados recebidos na requisição
         album.setTitulo(request.titulo());
         album.setAno(request.ano());
+        if (request.artistaIds() != null && !request.artistaIds().isEmpty()) {
+            Iterable<Artista> artistas = artistaRepository.findAllById(request.artistaIds());
+            Set<Artista> artistasSet = new HashSet<>();
+            artistas.forEach(artistasSet::add);
+            album.setArtistas(artistasSet);
+        }
 
         // Chama o serviço para salvar o álbum no banco de dados
         // e retorna com status 201 (CREATED)

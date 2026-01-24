@@ -76,8 +76,9 @@ export default function LoginPage() {
         } catch (err) {
             console.error(err);
 
+            const rateLimitErr = err as RateLimitError & { code?: string; message?: string };
+
             // Check if it's a rate limit error (429)
-            const rateLimitErr = err as RateLimitError;
             if (rateLimitErr.response?.status === 429) {
                 setRateLimited(true);
                 const retrySeconds = rateLimitErr.rateLimitInfo?.retryAfter || 60;
@@ -102,7 +103,16 @@ export default function LoginPage() {
                 );
             } else {
                 setRateLimited(false);
-                setError("Falha no login. Verifique suas credenciais.");
+
+                const isNetworkError =
+                    rateLimitErr.code === "ERR_NETWORK" ||
+                    rateLimitErr.message === "Network Error";
+
+                if (isNetworkError) {
+                    setError("Falha de rede. Verifique sua conexão ou se o servidor está disponível.");
+                } else {
+                    setError("Falha no login. Verifique suas credenciais.");
+                }
             }
         } finally {
             setLoading(false);

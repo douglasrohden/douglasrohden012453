@@ -56,6 +56,38 @@ const api: AxiosInstance = axios.create({
   },
 });
 
+type RefreshResponse = {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn?: number;
+};
+
+let refreshPromise: Promise<boolean> | null = null;
+
+async function tryRefreshToken(): Promise<boolean> {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
+    const refreshToken = authStore.currentState.refreshToken ?? localStorage.getItem("refreshToken");
+    const user = authStore.currentState.user ?? localStorage.getItem("user");
+    if (!refreshToken || !user) return false;
+
+    try {
+      const resp = await rawApi.post("/autenticacao/refresh", { refreshToken });
+      const data = resp.data as Partial<RefreshResponse>;
+      if (!data?.accessToken || !data?.refreshToken) return false;
+      authStore.setAuthenticated(data.accessToken, data.refreshToken, user);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+}
+
 function getAccessToken(): string | null {
   return authStore.currentState.accessToken ?? localStorage.getItem("accessToken");
 }
@@ -91,13 +123,11 @@ api.interceptors.response.use(
     const body = isRecord(responseData) ? responseData : {};
     const message: unknown = body?.message ?? body?.error;
     const msg = typeof message === "string" ? message.toLowerCase() : "";
-    const backendSaysExpired = msg.includes("expir") || msg.includes("expired") || msg.includes("token invál") || msg.includes("invalid token");
-
-    // If backend says the token is expired/invalid, force logoff and go to login.
-    if (backendSaysExpired && !isAuthRequest) {
-      forceLogoutAndRedirect("backend token invalid/expired");
-      return Promise.reject(error);
-    }
+    const backendSaysExpired =
+      msg.includes("expir") ||
+      msg.includes("expired") ||
+      msg.includes("token invál") ||
+      msg.includes("invalid token");
 
     // Handle 429 Too Many Requests (Rate Limit)
     if (error.response?.status === 429) {
@@ -182,9 +212,26 @@ api.interceptors.response.use(
         return Promise.reject(error);
       }
 
-      // Edital: o access token expira (5 min). Ao expirar, deve fazer logoff e forçar novo login.
-      // Não fazer renovação automática de token no frontend.
-      forceLogoutAndRedirect("401 unauthorized (token expired/invalid)");
+      // Fluxo esperado: ao expirar/401, tentar refresh UMA vez e repetir a requisição.
+      // Se falhar, desloga e redireciona para /login (sem loops).
+      const req = (originalRequest ?? {}) as typeof originalRequest & { _retry?: boolean };
+      if (req._retry) {
+        forceLogoutAndRedirect(
+          backendSaysExpired ? "401 after refresh attempt (expired/invalid)" : "401 after refresh attempt",
+        );
+        return Promise.reject(error);
+      }
+
+      req._retry = true;
+
+      const refreshed = await tryRefreshToken();
+      if (refreshed) {
+        return api(req);
+      }
+
+      forceLogoutAndRedirect(
+        backendSaysExpired ? "refresh failed (expired/invalid)" : "refresh failed",
+      );
       return Promise.reject(error);
     }
 

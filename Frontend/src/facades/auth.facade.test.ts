@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { firstValueFrom, take } from 'rxjs';
 import { authFacade } from '../facades/auth.facade';
 import { authStore } from '../store/auth.store';
-import { auth } from '../auth/auth.singleton';
 import { authService } from '../services/authService';
 
 vi.mock('../services/authService');
@@ -79,14 +78,15 @@ describe('AuthFacade', () => {
   });
 
   describe('logout', () => {
-    it('should clear authentication and redirect', () => {
-      const logoutSpy = vi.fn();
-      auth.bindLogout(logoutSpy);
+    it('should clear authentication state', () => {
       authStore.setAuthenticated('token', 'refresh', 'user');
 
       authFacade.logout();
 
-      expect(logoutSpy).toHaveBeenCalledWith('/login');
+      expect(authStore.currentState.isAuthenticated).toBe(false);
+      expect(authStore.currentState.accessToken).toBe(null);
+      expect(authStore.currentState.refreshToken).toBe(null);
+      expect(authStore.currentState.user).toBe(null);
     });
   });
 

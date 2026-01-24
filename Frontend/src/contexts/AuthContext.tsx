@@ -36,11 +36,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, []);
 
     const logout = useCallback(
-        (redirectTo = "/login") => {
+        (redirectTo: unknown = "/login") => {
+            const target = typeof redirectTo === "string" && redirectTo.trim() ? redirectTo : "/login";
+
             authFacade.logout();
 
-            if (location.pathname !== redirectTo) {
-                navigate(redirectTo, { replace: true });
+            if (location.pathname !== target) {
+                navigate(target, { replace: true });
             }
         },
         [navigate, location.pathname]
@@ -70,7 +72,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 export const useAuth = () => {
     const context = useContext(AuthContext);
     if (!context) {
-        throw new Error("useAuth must be used within an AuthProvider");
+        // Graceful fallback: if hook is used outside provider, behave as logged-out and warn.
+        console.warn('useAuth called outside AuthProvider; returning logged-out state');
+        return {
+            isAuthenticated: false,
+            initializing: false,
+            user: null,
+            logout: (redirectTo = '/login') => auth.logout(typeof redirectTo === 'string' ? redirectTo : '/login'),
+        } satisfies AuthContextType;
     }
     return context;
 };

@@ -1,5 +1,4 @@
 import { BaseStore } from './base.store';
-import { auth } from '../auth/auth.singleton';
 
 export interface AuthState {
     isAuthenticated: boolean;
@@ -20,18 +19,9 @@ const initialState: AuthState = {
  * Implementa o padrão Observable para gestão reativa de estado
  */
 class AuthStore extends BaseStore<AuthState> {
-    private logoutTimerId: number | null = null;
-
     constructor() {
         super(initialState);
         this.loadStateFromLocalStorage();
-    }
-
-    private clearLogoutTimer(): void {
-        if (this.logoutTimerId !== null) {
-            window.clearTimeout(this.logoutTimerId);
-            this.logoutTimerId = null;
-        }
     }
 
     private decodeJwtPayload(token: string): { exp?: number } | null {
@@ -54,40 +44,6 @@ class AuthStore extends BaseStore<AuthState> {
         }
     }
 
-    private scheduleLogoutForToken(accessToken: string): void {
-        this.clearLogoutTimer();
-
-        const payload = this.decodeJwtPayload(accessToken);
-        const expSeconds = payload?.exp;
-
-        if (!expSeconds || typeof expSeconds !== 'number') {
-            // If token has no exp, we can't auto-expire; rely on 401 handling.
-            return;
-        }
-
-        // JWT spec uses NumericDate in seconds, but some implementations may emit ms.
-        // Make this robust: if it's already in ms (13 digits), don't multiply again.
-        const expiresAtMs = expSeconds > 1_000_000_000_000 ? expSeconds : expSeconds * 1000;
-        const msUntilExpiry = expiresAtMs - Date.now();
-
-        // Expire slightly early to avoid edge timing issues.
-        const logoutInMs = msUntilExpiry - 1000;
-
-        if (logoutInMs <= 0) {
-            this.expireNowAndRedirect();
-            return;
-        }
-
-        this.logoutTimerId = window.setTimeout(() => {
-            this.expireNowAndRedirect();
-        }, logoutInMs);
-    }
-
-    private expireNowAndRedirect(): void {
-        // Centraliza o logout e navegação via AuthProvider
-        auth.logout('/login');
-    }
-
     /**
      * Define o usuário autenticado
      */
@@ -99,16 +55,12 @@ class AuthStore extends BaseStore<AuthState> {
             refreshToken,
         });
         this.saveStateToLocalStorage(this.currentState);
-
-        // Requisito: não renovar automaticamente; apenas expirar e forçar novo login.
-        this.scheduleLogoutForToken(accessToken);
     }
 
     /**
      * Remove a autenticação
      */
     clearAuthentication(): void {
-        this.clearLogoutTimer();
         this.setState(initialState);
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
@@ -130,14 +82,33 @@ class AuthStore extends BaseStore<AuthState> {
         const refreshToken = localStorage.getItem('refreshToken');
         const user = localStorage.getItem('user');
 
+        // Se houver refreshToken+user, preserva isso para permitir renovação.
+        // O refresh real é disparado pela AuthFacade no boot, ou pelo interceptor (401).
+        if (user && refreshToken && !accessToken) {
+            this._state$.next({
+                isAuthenticated: false,
+                user,
+                accessToken: null,
+                refreshToken,
+            });
+            return;
+        }
+
         if (accessToken && user) {
-            // If token is already expired, clear everything and force login.
+            // Se o access token já expirou, NÃO apagamos o refreshToken automaticamente;
+            // mantemos user+refreshToken para tentar renovar no boot.
             const payload = this.decodeJwtPayload(accessToken);
             const expSeconds = payload?.exp;
             if (expSeconds && typeof expSeconds === 'number') {
                 const expMs = expSeconds > 1_000_000_000_000 ? expSeconds : expSeconds * 1000;
                 if (expMs <= Date.now()) {
-                    this.clearAuthentication();
+                    localStorage.removeItem('accessToken');
+                    this._state$.next({
+                        isAuthenticated: false,
+                        user,
+                        accessToken: null,
+                        refreshToken,
+                    });
                     return;
                 }
             }
@@ -148,8 +119,6 @@ class AuthStore extends BaseStore<AuthState> {
                 accessToken,
                 refreshToken,
             });
-
-            this.scheduleLogoutForToken(accessToken);
         }
     }
 
@@ -157,15 +126,14 @@ class AuthStore extends BaseStore<AuthState> {
      * Salva estado no localStorage
      */
     private saveStateToLocalStorage(state: AuthState): void {
-        if (state.accessToken) {
-            localStorage.setItem('accessToken', state.accessToken);
-        }
-        if (state.refreshToken) {
-            localStorage.setItem('refreshToken', state.refreshToken);
-        }
-        if (state.user) {
-            localStorage.setItem('user', state.user);
-        }
+        if (state.accessToken) localStorage.setItem('accessToken', state.accessToken);
+        else localStorage.removeItem('accessToken');
+
+        if (state.refreshToken) localStorage.setItem('refreshToken', state.refreshToken);
+        else localStorage.removeItem('refreshToken');
+
+        if (state.user) localStorage.setItem('user', state.user);
+        else localStorage.removeItem('user');
     }
 }
 

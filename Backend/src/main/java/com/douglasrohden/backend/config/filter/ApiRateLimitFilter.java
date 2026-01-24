@@ -58,8 +58,10 @@ public class ApiRateLimitFilter extends OncePerRequestFilter {
         String key = resolveRateLimitKey(request);
         RateLimitService.Probe probe = rateLimitService.tryConsume(key);
 
-        long limit = rateLimitService.defaultLimitPerMinute();
+        long limit = rateLimitService.defaultLimitPerWindow();
+        long windowSeconds = rateLimitService.windowSeconds();
         response.setHeader("X-Rate-Limit-Limit", String.valueOf(limit));
+        response.setHeader("X-Rate-Limit-Window-Seconds", String.valueOf(windowSeconds));
         response.setHeader("X-Rate-Limit-Remaining", String.valueOf(probe.remainingTokens()));
 
         if (probe.consumed()) {

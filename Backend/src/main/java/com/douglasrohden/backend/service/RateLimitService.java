@@ -18,39 +18,50 @@ public class RateLimitService {
     public record Probe(boolean consumed, long remainingTokens, long nanosToWaitForRefill) {
     }
 
-    private final long defaultRequestsPerMinute;
-    private final long bucketExpireAfterMinutes;
+    private final long requestsPerWindow;
+    private final long windowSeconds;
+    private final long bucketExpireAfterSeconds;
     private final long bucketMaxSize;
     private final ConcurrentHashMap<String, BucketHolder> buckets = new ConcurrentHashMap<>();
 
     public RateLimitService(
-            @Value("${rate-limit.requests-per-minute-per-user:10}") long defaultRequestsPerMinute,
-            @Value("${rate-limit.bucket-expire-after-minutes:10}") long bucketExpireAfterMinutes,
+            @Value("${rate-limit.requests-per-window:10}") long requestsPerWindow,
+            @Value("${rate-limit.window-seconds:60}") long windowSeconds,
+            @Value("${rate-limit.bucket-expire-after-seconds:600}") long bucketExpireAfterSeconds,
             @Value("${rate-limit.bucket-max-size:100000}") long bucketMaxSize
     ) {
-        if (defaultRequestsPerMinute <= 0) {
-            throw new IllegalArgumentException("rate-limit.requests-per-minute-per-user must be > 0");
+        if (requestsPerWindow <= 0) {
+            throw new IllegalArgumentException("rate-limit.requests-per-window must be > 0");
         }
-        this.defaultRequestsPerMinute = defaultRequestsPerMinute;
-        this.bucketExpireAfterMinutes = Math.max(1, bucketExpireAfterMinutes);
+        if (windowSeconds <= 0) {
+            throw new IllegalArgumentException("rate-limit.window-seconds must be > 0");
+        }
+
+        this.requestsPerWindow = requestsPerWindow;
+        this.windowSeconds = windowSeconds;
+        this.bucketExpireAfterSeconds = Math.max(1, bucketExpireAfterSeconds);
         this.bucketMaxSize = Math.max(1, bucketMaxSize);
     }
 
-    public long defaultLimitPerMinute() {
-        return defaultRequestsPerMinute;
+    public long defaultLimitPerWindow() {
+        return requestsPerWindow;
+    }
+
+    public long windowSeconds() {
+        return windowSeconds;
     }
 
     public Probe tryConsume(String key) {
-        return tryConsume(key, defaultRequestsPerMinute);
+        return tryConsume(key, requestsPerWindow);
     }
 
-    public Probe tryConsume(String key, long limitPerMinute) {
-        long limit = Math.max(1, limitPerMinute);
+    public Probe tryConsume(String key, long limitPerWindow) {
+        long limit = Math.max(1, limitPerWindow);
         String safeKey = (key == null || key.isBlank()) ? "unknown" : key.trim();
-        String bucketKey = limit + ":" + safeKey;
+        String bucketKey = limit + ":" + windowSeconds + ":" + safeKey;
 
         long nowMs = System.currentTimeMillis();
-        long expireMs = Duration.ofMinutes(bucketExpireAfterMinutes).toMillis();
+        long expireMs = Duration.ofSeconds(bucketExpireAfterSeconds).toMillis();
 
         BucketHolder holder = buckets.compute(bucketKey, (k, existing) -> {
             if (existing == null) {
@@ -95,7 +106,9 @@ public class RateLimitService {
         return Map.of(
                 "code", "RATE_LIMIT",
                 "message", "Muitas requisições. Tente novamente em " + retryAfterSeconds + "s.",
-                "retryAfter", retryAfterSeconds
+                "retryAfter", retryAfterSeconds,
+                "limit", requestsPerWindow,
+                "windowSeconds", windowSeconds
         );
     }
 
@@ -127,10 +140,10 @@ public class RateLimitService {
         return remoteAddr != null ? remoteAddr : "unknown";
     }
 
-    private Bucket newBucket(long limitPerMinute) {
+    private Bucket newBucket(long limitPerWindow) {
         Bandwidth limit = Bandwidth.classic(
-                limitPerMinute,
-                Refill.intervally(limitPerMinute, Duration.ofMinutes(1))
+                limitPerWindow,
+                Refill.intervally(limitPerWindow, Duration.ofSeconds(windowSeconds))
         );
         return Bucket.builder().addLimit(limit).build();
     }

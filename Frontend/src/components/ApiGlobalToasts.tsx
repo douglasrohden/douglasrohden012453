@@ -32,10 +32,15 @@ export function ApiGlobalToasts() {
         countdownIntervalRef.current = null;
       }
 
-      const limitText =
-        Number.isFinite(detail.limitPerMinute) && (detail.limitPerMinute as number) > 0
-          ? ` (limite: ${detail.limitPerMinute}/min)`
-          : "";
+      const limitText = (() => {
+        if (Number.isFinite(detail.limitPerWindow) && Number.isFinite(detail.windowSeconds)) {
+          return ` (limite: ${detail.limitPerWindow}/${detail.windowSeconds}s)`;
+        }
+        if (Number.isFinite(detail.limitPerMinute)) {
+          return ` (limite: ${detail.limitPerMinute}/min)`;
+        }
+        return "";
+      })();
 
       // Extract base message, removing any existing time information from backend
       let msgBase = detail.message?.trim() || "Muitas requisições.";

@@ -1,10 +1,14 @@
 import axios, { type AxiosError, type AxiosInstance } from "axios";
 import { authStore } from "../store/auth.store";
-import { apiStore } from "../store/api.store";
+import { emitApiRateLimit } from "./apiRateLimitEvents";
+import { auth } from "../auth/auth.singleton";
 
 type RateLimitInfo = {
   retryAfter: number;
   message: string;
+  limitPerWindow?: number;
+  windowSeconds?: number;
+  // legacy support for older fields
   limitPerMinute?: number;
   remaining?: number;
 };
@@ -29,9 +33,11 @@ export function getRateLimitInfo(err: unknown): RateLimitInfo | undefined {
   const retryAfter = info.retryAfter;
   const message = info.message;
   if (typeof retryAfter !== "number" || typeof message !== "string") return undefined;
+  const limitPerWindow = typeof info.limitPerWindow === "number" ? info.limitPerWindow : undefined;
+  const windowSeconds = typeof info.windowSeconds === "number" ? info.windowSeconds : undefined;
   const limitPerMinute = typeof info.limitPerMinute === "number" ? info.limitPerMinute : undefined;
   const remaining = typeof info.remaining === "number" ? info.remaining : undefined;
-  return { retryAfter, message, limitPerMinute, remaining };
+  return { retryAfter, message, limitPerWindow, windowSeconds, limitPerMinute, remaining };
 }
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/v1";
@@ -55,8 +61,10 @@ function getAccessToken(): string | null {
 }
 
 function forceLogoutAndRedirect(reason?: string) {
-  console.warn(`[API Client] 401 Unauthorized${reason ? ` - ${reason}` : ""} - Clearing auth`);
-  authStore.clearAuthentication();
+  console.warn(
+    `[API Client] 401 Unauthorized${reason ? ` - ${reason}` : ""} - Clearing auth and redirecting to login`,
+  );
+  auth.logout("/login");
 }
 
 api.interceptors.request.use(
@@ -112,8 +120,22 @@ api.interceptors.response.use(
             : 60;
 
       const limitHeader = error.response.headers?.["x-rate-limit-limit"];
+      const windowHeader = error.response.headers?.["x-rate-limit-window-seconds"];
       const remainingHeader = error.response.headers?.["x-rate-limit-remaining"];
-      const limitPerMinute = typeof limitHeader === "string" ? parseInt(limitHeader, 10) : undefined;
+
+      const limitFromHeader = typeof limitHeader === "string" ? parseInt(limitHeader, 10) : undefined;
+      const windowSecondsFromHeader = typeof windowHeader === "string" ? parseInt(windowHeader, 10) : undefined;
+      const limitFromBody = typeof body?.limit === "number" ? (body.limit as number) : undefined;
+      const windowSecondsFromBody = typeof body?.windowSeconds === "number" ? (body.windowSeconds as number) : undefined;
+
+      const limitPerWindow = Number.isFinite(limitFromBody) ? (limitFromBody as number) : limitFromHeader;
+      const windowSeconds = Number.isFinite(windowSecondsFromBody)
+        ? (windowSecondsFromBody as number)
+        : windowSecondsFromHeader;
+      const limitPerMinute =
+        limitPerWindow && windowSeconds && windowSeconds > 0
+          ? Math.round((limitPerWindow * 60) / windowSeconds)
+          : undefined;
       const remaining = typeof remainingHeader === "string" ? parseInt(remainingHeader, 10) : undefined;
 
       const friendlyMessage =
@@ -127,6 +149,8 @@ api.interceptors.response.use(
       const info: RateLimitInfo = {
         retryAfter: retryAfterSeconds,
         message: friendlyMessage,
+        limitPerWindow,
+        windowSeconds,
         limitPerMinute,
         remaining,
       };
@@ -135,10 +159,12 @@ api.interceptors.response.use(
 
       // Global toast/event for all screens (avoid duplicating on login/refresh page)
       if (!isAuthRequest) {
-        apiStore.emitRateLimit({
+        emitApiRateLimit({
           status: 429,
           message: friendlyMessage,
           retryAfterSeconds,
+          limitPerWindow,
+          windowSeconds,
           limitPerMinute,
           remaining,
           endpoint: url,

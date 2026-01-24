@@ -1,3 +1,4 @@
+
 import { Pagination, Card, Alert } from 'flowbite-react';
 import { useAlbuns } from '../hooks/useAlbuns';
 import { useMemo, useState } from 'react';
@@ -6,6 +7,7 @@ import { CardGrid } from './common/CardGrid';
 import { ListToolbar } from './common/ListToolbar';
 import CreateAlbumForm from './CreateAlbumForm';
 import { useDebounce } from '../hooks/useDebounce';
+import { useAlbumCoverUrl } from '../hooks/useAlbumCoverUrl';
 
 interface Album {
   id: number;
@@ -92,39 +94,42 @@ export default function AlbunsList() {
         isEmpty={visibleAlbuns.length === 0}
         emptyMessage="Nenhum álbum encontrado."
       >
-        {visibleAlbuns.map((album) => (
-          <Card
-            key={album.id}
-            className="h-full transition-shadow hover:shadow-lg"
-            renderImage={() => (
-              <div>
-                {album.artistaNome && (
-                  <div className="px-4 pt-4 pb-2">
-                    <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                      {album.artistaNome}
-                    </p>
-                  </div>
-                )}
-                <img
-                  src={album.imageUrl || "https://flowbite.com/docs/images/blog/image-1.jpg"}
-                  alt={album.titulo}
-                  className="h-auto w-full object-cover"
-                />
-              </div>
-            )}
-          >
-            <h5 className="truncate text-xl font-bold tracking-tight text-gray-900 dark:text-white line-clamp-1" title={album.titulo}>
-              {album.titulo}
-            </h5>
-            <div className="h-6">
-              {album.ano && (
-                <p className="font-normal text-gray-700 dark:text-gray-400">
-                  {album.ano}
-                </p>
+        {visibleAlbuns.map((album) => {
+          const { coverUrl } = useAlbumCoverUrl(album.id);
+          return (
+            <Card
+              key={album.id}
+              className="h-full transition-shadow hover:shadow-lg"
+              renderImage={() => (
+                <div>
+                  {album.artistaNome && (
+                    <div className="px-4 pt-4 pb-2">
+                      <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                        {album.artistaNome}
+                      </p>
+                    </div>
+                  )}
+                  <img
+                    src={coverUrl || "https://flowbite.com/docs/images/blog/image-1.jpg"}
+                    alt={album.titulo}
+                    className="h-auto w-full object-cover"
+                  />
+                </div>
               )}
-            </div>
-          </Card>
-        ))}
+            >
+              <h5 className="truncate text-xl font-bold tracking-tight text-gray-900 dark:text-white line-clamp-1" title={album.titulo}>
+                {album.titulo}
+              </h5>
+              <div className="h-6">
+                {album.ano && (
+                  <p className="font-normal text-gray-700 dark:text-gray-400">
+                    {album.ano}
+                  </p>
+                )}
+              </div>
+            </Card>
+          );
+        })}
       </CardGrid>
 
       {totalPages > 1 && (

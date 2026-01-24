@@ -16,7 +16,6 @@ public class Album {
 
 	private String titulo;
 	private Integer ano;
-	private String imageUrl;
 
 	@ManyToMany(mappedBy = "albuns")
 	@JsonIgnore
@@ -32,8 +31,6 @@ public class Album {
 	public void setTitulo(String titulo) { this.titulo = titulo; }
 	public Integer getAno() { return ano; }
 	public void setAno(Integer ano) { this.ano = ano; }
-	public String getImageUrl() { return imageUrl; }
-	public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 	public Set<Artista> getArtistas() { return artistas; }
 	public void setArtistas(Set<Artista> artistas) { this.artistas = artistas; }
 

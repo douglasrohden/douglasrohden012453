@@ -98,7 +98,6 @@ public class AlbumController {
         // Define os atributos do álbum com os dados recebidos na requisição
         album.setTitulo(request.titulo());
         album.setAno(request.ano());
-        album.setImageUrl(request.imageUrl());
 
         // Chama o serviço para salvar o álbum no banco de dados
         // e retorna com status 201 (CREATED)

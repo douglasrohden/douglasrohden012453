@@ -8,7 +8,5 @@ public record CreateAlbumRequest(
         @Size(max = 255, message = "Título deve ter no máximo 255 caracteres")
         String titulo,
         Integer ano,
-        @Size(max = 255, message = "imageUrl deve ter no máximo 255 caracteres")
-        String imageUrl
 ) {
 }

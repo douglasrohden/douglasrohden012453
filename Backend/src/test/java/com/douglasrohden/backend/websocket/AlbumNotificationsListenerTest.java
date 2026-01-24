@@ -38,6 +38,5 @@ class AlbumNotificationsListenerTest {
         assertEquals(1L, msg.id());
         assertEquals("The Wall", msg.titulo());
         assertEquals(1979, msg.ano());
-        assertEquals("https://example.com/wall.jpg", msg.imageUrl());
     }
 }

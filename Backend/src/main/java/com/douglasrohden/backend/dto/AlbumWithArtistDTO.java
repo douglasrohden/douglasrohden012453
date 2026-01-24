@@ -9,7 +9,6 @@ public record AlbumWithArtistDTO(
         Long id,
         String titulo,
         Integer ano,
-        String imageUrl,
         String artistaNome
 ) {
     private static final String ARTISTA_DESCONHECIDO = "Desconhecido";
@@ -19,7 +18,6 @@ public record AlbumWithArtistDTO(
                 album.getId(),
                 album.getTitulo(),
                 album.getAno(),
-                album.getImageUrl(),
                 extrairNomeDoArtista(album)
         );
     }

@@ -10,7 +10,7 @@ function formatRetryAfter(seconds: number): string {
 }
 
 export function ApiGlobalToasts() {
-  const { addToast, updateToast } = useToast();
+  const { addToast, updateToast, removeToast } = useToast();
   const lastToastAtRef = useRef<number>(0);
   const lastToastKeyRef = useRef<string>("");
   const countdownIntervalRef = useRef<number | null>(null);
@@ -30,6 +30,12 @@ export function ApiGlobalToasts() {
       if (countdownIntervalRef.current) {
         clearInterval(countdownIntervalRef.current);
         countdownIntervalRef.current = null;
+      }
+
+      // Clear previous toast if still present to avoid stacking overlays
+      if (currentToastIdRef.current && removeToast) {
+        removeToast(currentToastIdRef.current);
+        currentToastIdRef.current = null;
       }
 
       const limitText = (() => {
@@ -68,6 +74,9 @@ export function ApiGlobalToasts() {
           if (countdownIntervalRef.current) {
             clearInterval(countdownIntervalRef.current);
             countdownIntervalRef.current = null;
+          }
+          if (toastId && removeToast) {
+            removeToast(toastId);
           }
           currentToastIdRef.current = null;
           return;

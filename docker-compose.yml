@@ -49,6 +49,8 @@ services:
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin123}
       - BACKEND_PORT=${BACKEND_PORT:-3001}
+      - ALLOWED_FRONTEND_URLS=${ALLOWED_FRONTEND_URLS:-http://localhost:5173}
+      - JWT_SECRET=${JWT_SECRET}
     ports:
       - "${BACKEND_PORT:-3001}:8080"
     command: ["clean", "spring-boot:run"]

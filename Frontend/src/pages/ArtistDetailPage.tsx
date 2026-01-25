@@ -172,7 +172,7 @@ export default function ArtistDetailPage() {
                       {artist.nome && (
                         <div className="px-4 pt-4 pb-2">
                           <p className="text-sm font-semibold tracking-wide text-gray-600 uppercase dark:text-gray-400">
-                            <span className="mr-2">Nome1:</span>
+                            <span className="mr-2">Artista:</span>
                             <span className="normal-case">{artist.nome}</span>
                           </p>
                           <p className="text-sm text-gray-600 dark:text-gray-400">

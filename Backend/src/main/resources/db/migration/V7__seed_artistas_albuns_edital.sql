@@ -20,7 +20,7 @@ INSERT INTO album (titulo, ano) VALUES
 ON CONFLICT (titulo) DO NOTHING;
 
 
--- Associações artista_album
+-- Associações artista_albumhttp://localhost:5173/albuns
 -- Serj Tankian (id=1): Harakiri, Black Blooms, The Rough Dog
 INSERT INTO artista_album (artista_id, album_id)
 SELECT 1, id FROM album WHERE titulo IN ('Harakiri', 'Black Blooms', 'The Rough Dog')

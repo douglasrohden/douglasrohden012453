@@ -150,29 +150,50 @@ function AlbumCard({
     <Card
       className="flex h-full flex-col transition-shadow hover:shadow-lg"
       renderImage={() => (
-        <div className="group relative">
+        <div>
           {album.artistaNome && (
-            <div className="absolute top-0 left-0 z-10 rounded-br bg-black/50 px-2 py-1 text-xs text-white">
-              {album.artistaNome}
+            <div className="px-4 pt-4 pb-2">
+              <p className="text-sm font-semibold tracking-wide text-gray-600 uppercase dark:text-gray-400">
+                <span className="mr-2">Artista:</span>
+                <span className="normal-case">{album.artistaNome}</span>
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                <span className="mr-2 font-semibold">Cantor/Banda:</span>
+                <span>
+                  {album.apenasBandas
+                    ? "Banda"
+                    : album.apenasCantores
+                      ? "Cantor(a)"
+                      : album.temBanda && album.temCantor
+                        ? "Vários"
+                        : album.individual === true
+                          ? "Cantor(a)"
+                          : album.individual === false
+                            ? "Banda"
+                            : "—"}
+                </span>
+              </p>
             </div>
           )}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit();
-            }}
-            className="absolute top-1 right-1 z-10 rounded-full bg-black/60 p-1.5 text-white hover:bg-black/80 focus:outline-none focus:ring-2 focus:ring-white"
-            title="Editar informações"
-            aria-label="Editar informações"
-          >
-            <HiPencil className="h-4 w-4" />
-          </button>
-          <img
-            src={src || "https://flowbite.com/docs/images/blog/image-1.jpg"}
-            alt={album.titulo}
-            className="h-48 w-full object-cover"
-          />
+          <div className="group relative">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
+              className="absolute top-1 right-1 z-10 rounded-full bg-black/60 p-1.5 text-white hover:bg-black/80 focus:outline-none focus:ring-2 focus:ring-white"
+              title="Editar informações"
+              aria-label="Editar informações"
+            >
+              <HiPencil className="h-4 w-4" />
+            </button>
+            <img
+              src={src || "https://flowbite.com/docs/images/blog/image-1.jpg"}
+              alt={album.titulo}
+              className="h-48 w-full object-cover"
+            />
+          </div>
         </div>
       )}
     >
@@ -190,26 +211,10 @@ function AlbumCard({
           <div className="mb-4">
             <p className="font-normal text-gray-700 dark:text-gray-400">
               <span className="mr-2 text-sm font-semibold text-gray-600 dark:text-gray-400">
-                Cantor/Banda:
-              </span>
-              <span>{album.artistaNome ?? "—"}</span>
-            </p>
-
-            <p className="font-normal text-gray-700 dark:text-gray-400">
-              <span className="mr-2 text-sm font-semibold text-gray-600 dark:text-gray-400">
                 Ano:
               </span>
               <span>{album.ano ?? "—"}</span>
             </p>
-
-            {album.individual !== undefined && (
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                <span className="mr-2 text-sm font-semibold text-gray-600 dark:text-gray-400">
-                  Tipo:
-                </span>
-                <span>{album.individual ? "Cantor(a)" : "Banda"}</span>
-              </p>
-            )}
           </div>
         </div>
         <button

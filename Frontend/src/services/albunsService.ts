@@ -8,6 +8,10 @@ export interface Album {
   artistaNome?: string;
   individual?: boolean;
   capaUrl?: string | null;
+  temCantor?: boolean;
+  temBanda?: boolean;
+  apenasCantores?: boolean;
+  apenasBandas?: boolean;
 }
 
 export interface AlbumImage {

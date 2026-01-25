@@ -18,7 +18,7 @@ interface EditAlbumModalProps {
   show: boolean;
   album: Album | null;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (album: Album) => void;
 }
 
 export default function EditAlbumModal({
@@ -65,9 +65,12 @@ export default function EditAlbumModal({
 
     setIsSubmitting(true);
     try {
-      await updateAlbum(album.id, { titulo: trimmedTitulo, ano: anoValue });
+      const updated = await updateAlbum(album.id, {
+        titulo: trimmedTitulo,
+        ano: anoValue,
+      });
       addToast("Álbum atualizado com sucesso!", "success");
-      onSuccess();
+      onSuccess(updated);
       onClose();
     } catch (err) {
       const message = getErrorMessage(err, "Erro ao atualizar álbum.");

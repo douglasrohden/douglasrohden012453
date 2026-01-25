@@ -9,6 +9,7 @@ import ManageAlbumImagesModal from "./ManageAlbumImagesModal";
 import { useDebounce } from "../hooks/useDebounce";
 import type { Album } from "../services/albunsService";
 import EditAlbumModal from "./EditAlbumModal";
+import { albunsFacade } from "../facades/albuns.facade";
 
 export default function AlbunsList() {
   const { albuns, loading, error, page, totalPages, setPage } = useAlbuns();
@@ -136,7 +137,10 @@ export default function AlbunsList() {
         show={!!editingAlbum}
         album={editingAlbum}
         onClose={() => setEditingAlbum(null)}
-        onSuccess={() => setPage(page)}
+        onSuccess={(updated) => {
+          albunsFacade.updateAlbumInState(updated);
+          setPage(page);
+        }}
       />
 
       <ManageAlbumImagesModal

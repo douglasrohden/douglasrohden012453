@@ -1,7 +1,7 @@
 import axios from "axios";
 import { BehaviorSubject, Observable } from "rxjs";
 import { ArtistImage, getArtistImages } from "../services/artistsService";
-import { getErrorMessage, getHttpStatus } from "../api/client";
+import { getErrorMessage, getHttpStatus } from "../lib/http";
 
 export type ArtistImagesState =
   | { status: "idle" }

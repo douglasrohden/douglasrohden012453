@@ -10,14 +10,14 @@ import {
   FileInput,
   Badge,
 } from "flowbite-react";
-import { useState } from "react";
-import { artistsService, uploadArtistImages } from "../services/artistsService";
+import { artistsFacade } from "../facades/ArtistsFacade";
+import { useEffect, useMemo, useState } from "react";
 import { useToast } from "../contexts/ToastContext";
-import { getErrorMessage } from "../api/client";
-import axios from "axios";
-import { Album } from "../services/albunsService";
+import { getErrorMessage } from "../lib/http";
+import type { Album } from "../services/albunsService";
 import AlbumSearchInput from "./common/AlbumSearchInput";
-import { useAlbums } from "../hooks/useAlbums";
+import { AlbumsFacade } from "../facades/AlbumsFacade";
+import { useBehaviorSubjectValue } from "../hooks/useBehaviorSubjectValue";
 
 interface Props {
   isOpen: boolean;
@@ -33,14 +33,27 @@ export default function CreateArtistForm({
   const { addToast } = useToast();
   const [nome, setNome] = useState("");
   const [tipo, setTipo] = useState("CANTOR");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const loading = useBehaviorSubjectValue(artistsFacade.loading$);
+  const facadeError = useBehaviorSubjectValue(artistsFacade.error$);
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [selectedAlbums, setSelectedAlbums] = useState<Album[]>([]);
   const [albumSearch, setAlbumSearch] = useState("");
-  const { albums: searchResults, loading: albumsLoading } =
-    useAlbums(albumSearch);
+
+  const albumsLookupFacade = useMemo(() => new AlbumsFacade(), []);
+  const albumsLookupData = useBehaviorSubjectValue(albumsLookupFacade.data$);
+  const albumsLoading = useBehaviorSubjectValue(albumsLookupFacade.loading$);
+
+  useEffect(() => {
+    albumsLookupFacade.setQuery(albumSearch);
+  }, [albumsLookupFacade, albumSearch]);
+
+  const searchResults = albumsLookupData?.content ?? [];
+
+  // Note: We use local loading/error for the modal form feedback, 
+  // even though Facade has global loading/error. This prevents global UI flicker
+  // or confusing error messages on the main list while a modal is open.
+  // We re-throw from Facade so we can catch here.
 
   const filteredAlbums = searchResults.filter(
     (a) => !selectedAlbums.some((selected) => selected.id === a.id),
@@ -68,15 +81,14 @@ export default function CreateArtistForm({
       combinedFiles.reduce((acc, f) => acc + f.size, 0) > MAX_TOTAL_BYTES;
 
     if (tooBig) {
-      setError("Cada arquivo deve ter no máximo 5MB");
+      addToast("Cada arquivo deve ter no máximo 5MB", "warning");
       return;
     }
     if (totalTooBig) {
-      setError("Tamanho total ultrapassa 25MB");
+      addToast("Tamanho total ultrapassa 25MB", "warning");
       return;
     }
 
-    setError(null);
     setFiles(combinedFiles);
     setPreviews(combinedFiles.map((f) => URL.createObjectURL(f)));
   };
@@ -103,41 +115,35 @@ export default function CreateArtistForm({
   };
 
   const handleSave = async () => {
-    setError(null);
     if (!nome.trim()) {
-      setError("Nome é obrigatório");
+      addToast("Nome é obrigatório", "warning");
       return;
     }
-    setLoading(true);
     try {
-      const artista = await artistsService.create({
-        nome: nome.trim(),
-        tipo: tipo,
-        albumIds: selectedAlbums.map((a) => a.id),
-      });
-
-      // Upload images if any
-      if (files.length > 0 && artista.id) {
-        await uploadArtistImages(artista.id, files);
-      }
+      await artistsFacade.create(
+        {
+          nome: nome.trim(),
+          tipo: tipo,
+          albumIds: selectedAlbums.map((a) => a.id),
+        },
+        files,
+      );
 
       addToast("Artista criado com sucesso!", "success");
-      onCreated?.();
+      onCreated?.(); // Refresh triggered by facade but we might want to ensure it? Facade create calls refresh(), so maybe redundant but harmless.
       onClose();
+
+      // Reset form
       setNome("");
       setTipo("CANTOR");
       setFiles([]);
       setPreviews([]);
       setSelectedAlbums([]);
       setAlbumSearch("");
-    } catch (err) {
+    } catch (err: unknown) {
+      // Facade sets global error, but we also want local error in modal.
       const msg = getErrorMessage(err, "Erro ao criar artista");
-      setError(msg);
-      const status = axios.isAxiosError(err) ? err.response?.status : undefined;
-      // 429 already triggers a global warning toast
-      if (status !== 429) addToast(msg, "error");
-    } finally {
-      setLoading(false);
+      addToast(msg, "error");
     }
   };
 
@@ -268,8 +274,8 @@ export default function CreateArtistForm({
               )}
             </div>
 
-            {error && (
-              <div className="text-sm text-red-600">{String(error)}</div>
+            {facadeError && (
+              <div className="text-sm text-red-600">{String(facadeError)}</div>
             )}
           </div>
         </ModalBody>

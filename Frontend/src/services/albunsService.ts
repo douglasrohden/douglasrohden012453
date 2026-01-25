@@ -19,10 +19,28 @@ export interface AlbumImage {
   sizeBytes: number;
 }
 
-export async function getAlbuns(page = 0, size = 10): Promise<Page<Album>> {
-  const response = await api.get<Page<Album>>("/albuns", {
-    params: { page, size },
-  });
+export type GetAlbunsFilters = {
+  titulo?: string;
+  ano?: number;
+  artistaNome?: string;
+  artistaTipo?: string;
+  apenasArtistaTipo?: string;
+};
+
+export async function getAlbuns(
+  page = 0,
+  size = 10,
+  filters: GetAlbunsFilters = {},
+): Promise<Page<Album>> {
+  const params: Record<string, string | number> = { page, size };
+  if (filters.titulo) params.titulo = filters.titulo;
+  if (filters.ano !== undefined) params.ano = filters.ano;
+  if (filters.artistaNome) params.artistaNome = filters.artistaNome;
+  if (filters.artistaTipo) params.artistaTipo = filters.artistaTipo;
+  if (filters.apenasArtistaTipo)
+    params.apenasArtistaTipo = filters.apenasArtistaTipo;
+
+  const response = await api.get<Page<Album>>("/albuns", { params });
   return response.data;
 }
 
@@ -33,6 +51,14 @@ export async function createAlbum(data: {
   individual?: boolean;
 }): Promise<Album | Album[]> {
   const response = await api.post<Album | Album[]>("/albuns", data);
+  return response.data;
+}
+
+export async function updateAlbum(
+  albumId: number,
+  data: { titulo: string; ano?: number },
+): Promise<Album> {
+  const response = await api.put<Album>(`/albuns/${albumId}`, data);
   return response.data;
 }
 

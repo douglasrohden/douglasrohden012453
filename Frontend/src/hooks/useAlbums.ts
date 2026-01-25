@@ -1,43 +1,29 @@
-import { useState, useEffect, useMemo } from "react";
-import { searchAlbums, Album } from "../services/albunsService";
-import { debounce } from "lodash";
+import { useEffect, useMemo, useState } from "react";
+import { AlbumsFacade } from "./albumsFacade";
+import type { Album } from "../services/albunsService";
+
+function useBehaviorSubjectValue<T>(subject: {
+    getValue: () => T;
+    subscribe: (fn: (v: T) => void) => { unsubscribe: () => void };
+}) {
+    const [value, setValue] = useState(subject.getValue());
+    useEffect(() => {
+        const sub = subject.subscribe(setValue);
+        return () => sub.unsubscribe();
+    }, [subject]);
+    return value;
+}
 
 export function useAlbums(searchQuery: string) {
-  const [albums, setAlbums] = useState<Album[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+    const facade = useMemo(() => new AlbumsFacade(), []);
 
-  const performSearch = useMemo(
-    () =>
-      debounce(async (query: string) => {
-        if (!query.trim()) {
-          setAlbums([]);
-          setLoading(false);
-          return;
-        }
+    useEffect(() => {
+        facade.setQuery(searchQuery);
+    }, [facade, searchQuery]);
 
-        setLoading(true);
-        setError(null);
+    const albums = useBehaviorSubjectValue<Album[]>(facade.albums$);
+    const loading = useBehaviorSubjectValue<boolean>(facade.loading$);
+    const error = useBehaviorSubjectValue<string | null>(facade.error$);
 
-        try {
-          const response = await searchAlbums(query);
-          setAlbums(response.content);
-        } catch {
-          setError("Erro ao buscar álbuns");
-          setAlbums([]);
-        } finally {
-          setLoading(false);
-        }
-      }, 300),
-    [],
-  );
-
-  useEffect(() => {
-    performSearch(searchQuery);
-    return () => {
-      performSearch.cancel();
-    };
-  }, [searchQuery, performSearch]);
-
-  return { albums, loading, error };
+    return { albums, loading, error };
 }

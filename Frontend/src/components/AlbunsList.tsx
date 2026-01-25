@@ -1,13 +1,14 @@
 import { Pagination, Card, Alert } from "flowbite-react";
 import { useAlbuns } from "../hooks/useAlbuns";
 import { useMemo, useState } from "react";
-import { HiSearch, HiClock } from "react-icons/hi";
+import { HiSearch, HiClock, HiPencil } from "react-icons/hi";
 import { CardGrid } from "./common/CardGrid";
 import { ListToolbar } from "./common/ListToolbar";
 import CreateAlbumForm from "./CreateAlbumForm";
 import ManageAlbumImagesModal from "./ManageAlbumImagesModal";
 import { useDebounce } from "../hooks/useDebounce";
 import type { Album } from "../services/albunsService";
+import EditAlbumModal from "./EditAlbumModal";
 
 export default function AlbunsList() {
   const { albuns, loading, error, page, totalPages, setPage } = useAlbuns();
@@ -16,6 +17,7 @@ export default function AlbunsList() {
   const [sortField, setSortField] = useState("titulo");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingAlbum, setEditingAlbum] = useState<Album | null>(null);
   const [manageImagesAlbumId, setManageImagesAlbumId] = useState<number | null>(
     null,
   );
@@ -105,6 +107,7 @@ export default function AlbunsList() {
           <AlbumCard
             key={album.id}
             album={album}
+            onEdit={() => setEditingAlbum(album)}
             onManageImages={() => setManageImagesAlbumId(album.id)}
           />
         ))}
@@ -129,6 +132,13 @@ export default function AlbunsList() {
         onSuccess={() => setPage(page)}
       />
 
+      <EditAlbumModal
+        show={!!editingAlbum}
+        album={editingAlbum}
+        onClose={() => setEditingAlbum(null)}
+        onSuccess={() => setPage(page)}
+      />
+
       <ManageAlbumImagesModal
         show={!!manageImagesAlbumId}
         albumId={manageImagesAlbumId}
@@ -143,9 +153,11 @@ export default function AlbunsList() {
 
 function AlbumCard({
   album,
+  onEdit,
   onManageImages,
 }: {
   album: Album;
+  onEdit: () => void;
   onManageImages: () => void;
 }) {
   const src = album?.capaUrl || undefined;
@@ -160,6 +172,18 @@ function AlbumCard({
               {album.artistaNome}
             </div>
           )}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
+            className="absolute top-1 right-1 z-10 rounded-full bg-black/60 p-1.5 text-white hover:bg-black/80 focus:outline-none focus:ring-2 focus:ring-white"
+            title="Editar informações"
+            aria-label="Editar informações"
+          >
+            <HiPencil className="h-4 w-4" />
+          </button>
           <img
             src={src || "https://flowbite.com/docs/images/blog/image-1.jpg"}
             alt={album.titulo}

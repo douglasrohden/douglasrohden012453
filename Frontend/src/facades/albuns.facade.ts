@@ -1,5 +1,9 @@
 import { BaseFacade } from "./base.facade";
-import { getAlbuns, Album } from "../services/albunsService";
+import {
+  getAlbuns,
+  type Album,
+  type GetAlbunsFilters,
+} from "../services/albunsService";
 import { Page } from "../types/Page";
 import { getErrorMessage, getHttpStatus } from "../api/client";
 
@@ -23,8 +27,21 @@ export class AlbunsFacade extends BaseFacade<Page<Album>> {
     super(INITIAL_PAGE);
   }
 
-  async fetch(page = 0, size = 10) {
-    const cacheKey = `${page}-${size}`;
+  async fetch(page = 0, size = 10, filters?: GetAlbunsFilters) {
+    const filterKey = filters
+      ? Object.entries(filters)
+          .filter(([, value]) =>
+            typeof value === "string"
+              ? value.trim() !== ""
+              : value !== undefined && value !== null,
+          )
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([key, value]) => `${key}=${String(value)}`)
+          .join("&")
+      : "";
+    const cacheKey = filterKey
+      ? `${page}-${size}-${filterKey}`
+      : `${page}-${size}`;
     const pending = this.inFlight.get(cacheKey);
     if (pending) {
       await pending;
@@ -34,7 +51,7 @@ export class AlbunsFacade extends BaseFacade<Page<Album>> {
     const job = (async () => {
       try {
         this.setLoading(true);
-        const data = await getAlbuns(page, size);
+        const data = await getAlbuns(page, size, filters);
         this.setData(data);
       } catch (e) {
         const status = getHttpStatus(e);

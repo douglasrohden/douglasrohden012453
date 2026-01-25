@@ -31,6 +31,11 @@ function looksLikeGenerated(content) {
     content.includes("it('renders without crashing')") ||
     content.includes('it(\'renders without crashing\')') ||
     content.includes('expect(container).toBeDefined()') ||
+    content.includes('AUTO-GENERATED TEST') ||
+    content.includes('renders default structure') ||
+    content.includes('handles a basic user interaction') ||
+    content.includes('responds to prop changes') ||
+    content.includes('invokes callback props') ||
     content.includes('// AUTO-GENERATED TEST')
   );
 }

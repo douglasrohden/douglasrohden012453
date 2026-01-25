@@ -2,6 +2,7 @@ package com.douglasrohden.backend.controller;
 
 import com.douglasrohden.backend.dto.AlbumWithArtistDTO;
 import com.douglasrohden.backend.dto.CreateAlbumRequest;
+import com.douglasrohden.backend.dto.UpdateAlbumRequest;
 import com.douglasrohden.backend.model.Album;
 import com.douglasrohden.backend.model.ArtistaTipo;
 import com.douglasrohden.backend.repository.AlbumRepository;
@@ -18,9 +19,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
@@ -192,5 +195,20 @@ public class AlbumController {
 
         // Retorna o álbum criado com status 201 (CREATED)
         return ResponseEntity.status(HttpStatus.CREATED).body(savedAlbum);
+    }
+
+    @io.swagger.v3.oas.annotations.Operation(summary = "Atualizar álbum", description = "Atualiza informações de um álbum existente.")
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Álbum atualizado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Dados inválidos"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Não autorizado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Álbum não encontrado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Erro interno")
+    })
+    @PutMapping("/{id}")
+    public ResponseEntity<Album> update(@PathVariable Long id, @Valid @RequestBody UpdateAlbumRequest request) {
+        return albumService.update(id, request)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 }

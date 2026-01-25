@@ -16,11 +16,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class RegionalController {
 
     private final RegionalSyncService regionalSyncService;
+    private final com.douglasrohden.backend.repository.RegionalRepository regionalRepository;
 
-    @Operation(
-            summary = "Sincronizar regionais",
-            description = "Sincroniza a tabela local `regional` via GET https://integrador-argus-api.geia.vip/v1/regionais."
-    )
+    @Operation(summary = "Sincronizar regionais", description = "Sincroniza a tabela local `regional` via GET https://integrador-argus-api.geia.vip/v1/regionais.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Sincronizacao executada"),
             @ApiResponse(responseCode = "401", description = "Nao autenticado"),
@@ -30,5 +28,10 @@ public class RegionalController {
     public ResponseEntity<RegionalSyncService.SyncResult> sync() {
         return ResponseEntity.ok(regionalSyncService.sync());
     }
-}
 
+    @Operation(summary = "Listar todas as regionais")
+    @org.springframework.web.bind.annotation.GetMapping
+    public ResponseEntity<java.util.List<com.douglasrohden.backend.model.Regional>> findAll() {
+        return ResponseEntity.ok(regionalRepository.findAll());
+    }
+}

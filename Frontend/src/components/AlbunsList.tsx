@@ -1,56 +1,34 @@
 import { Pagination, Card, Alert } from "flowbite-react";
-import { useAlbuns } from "../hooks/useAlbuns";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { HiSearch, HiClock, HiPencil } from "react-icons/hi";
 import { CardGrid } from "./common/CardGrid";
 import { ListToolbar } from "./common/ListToolbar";
 import CreateAlbumForm from "./CreateAlbumForm";
 import ManageAlbumImagesModal from "./ManageAlbumImagesModal";
-import { useDebounce } from "../hooks/useDebounce";
 import type { Album } from "../services/albunsService";
 import EditAlbumModal from "./EditAlbumModal";
-import { albunsFacade } from "../facades/albuns.facade";
+import { albunsFacade } from "../facades/AlbumsFacade";
+import { useBehaviorSubjectValue } from "../hooks/useBehaviorSubjectValue";
 
 export default function AlbunsList() {
-  const { albuns, loading, error, page, totalPages, setPage } = useAlbuns();
+  const data = useBehaviorSubjectValue(albunsFacade.data$);
+  const params = useBehaviorSubjectValue(albunsFacade.params$);
+  const loading = useBehaviorSubjectValue(albunsFacade.loading$);
+  const error = useBehaviorSubjectValue(albunsFacade.error$);
 
-  const [search, setSearch] = useState("");
-  const [sortField, setSortField] = useState("titulo");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingAlbum, setEditingAlbum] = useState<Album | null>(null);
   const [manageImagesAlbumId, setManageImagesAlbumId] = useState<number | null>(
     null,
   );
-  const debouncedSearch = useDebounce(search, 300);
 
-  const visibleAlbuns = useMemo(() => {
-    const normalizedQuery = debouncedSearch.trim().toLowerCase();
-    const filtered = normalizedQuery
-      ? albuns.filter((a) =>
-          (a?.titulo ?? "").toLowerCase().includes(normalizedQuery),
-        )
-      : albuns;
-
-    const sorted = [...filtered].sort((a, b) => {
-      const aValue = a?.[sortField as keyof Album];
-      const bValue = b?.[sortField as keyof Album];
-
-      if (aValue == null && bValue == null) return 0;
-      if (aValue == null) return 1;
-      if (bValue == null) return -1;
-
-      if (typeof aValue === "number" && typeof bValue === "number") {
-        return aValue - bValue;
-      }
-
-      return String(aValue).localeCompare(String(bValue), "pt-BR", {
-        sensitivity: "base",
-      });
-    });
-
-    return sortDir === "asc" ? sorted : sorted.reverse();
-  }, [albuns, debouncedSearch, sortField, sortDir]);
+  useEffect(() => {
+    // garante carregamento inicial caso esta lista seja usada fora da página
+    if (!loading && (data?.content?.length ?? 0) === 0) {
+      albunsFacade.load();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (error) {
     const lower = String(error).toLowerCase();
@@ -78,21 +56,23 @@ export default function AlbunsList() {
       </div>
 
       <ListToolbar
-        query={search}
-        onQueryChange={setSearch}
+        query={params.search}
+        onQueryChange={(q) => albunsFacade.setQuery(q)}
         queryPlaceholder="Buscar álbum..."
         queryId="search-albuns"
         searchIcon={HiSearch}
-        sortField={sortField}
-        onSortFieldChange={setSortField}
+        sortField={params.sortField}
+        onSortFieldChange={(v) =>
+          albunsFacade.setSortField(v as "titulo" | "ano")
+        }
         sortFieldId="sort-albuns"
         sortFieldLabel="Ordenar por"
         sortFieldOptions={[
           { value: "titulo", label: "Título" },
           { value: "ano", label: "Ano" },
         ]}
-        sortDir={sortDir}
-        onSortDirChange={setSortDir}
+        sortDir={params.sortDir}
+        onSortDirChange={(d) => albunsFacade.setSortDir(d)}
         sortDirId="sort-dir-albuns"
         sortDirLabel="Ordem"
         addLabel="Adicionar"
@@ -101,10 +81,10 @@ export default function AlbunsList() {
 
       <CardGrid
         loading={loading}
-        isEmpty={visibleAlbuns.length === 0}
+        isEmpty={(data?.content?.length ?? 0) === 0}
         emptyMessage="Nenhum álbum encontrado."
       >
-        {visibleAlbuns.map((album) => (
+        {(data?.content ?? []).map((album) => (
           <AlbumCard
             key={album.id}
             album={album}
@@ -114,12 +94,12 @@ export default function AlbunsList() {
         ))}
       </CardGrid>
 
-      {totalPages > 1 && (
+      {(data?.totalPages ?? 0) > 1 && (
         <div className="mt-8 flex justify-center">
           <Pagination
-            currentPage={page + 1}
-            totalPages={totalPages}
-            onPageChange={(p) => setPage(p - 1)}
+            currentPage={(params.page ?? 0) + 1}
+            totalPages={data?.totalPages ?? 0}
+            onPageChange={(p) => albunsFacade.setPage(p - 1)}
             showIcons
             previousLabel="Anterior"
             nextLabel="Próxima"
@@ -130,7 +110,7 @@ export default function AlbunsList() {
       <CreateAlbumForm
         show={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        onSuccess={() => setPage(page)}
+        onSuccess={() => albunsFacade.refresh()}
       />
 
       <EditAlbumModal
@@ -139,7 +119,7 @@ export default function AlbunsList() {
         onClose={() => setEditingAlbum(null)}
         onSuccess={(updated) => {
           albunsFacade.updateAlbumInState(updated);
-          setPage(page);
+          albunsFacade.refresh();
         }}
       />
 
@@ -148,7 +128,7 @@ export default function AlbunsList() {
         albumId={manageImagesAlbumId}
         onClose={() => {
           setManageImagesAlbumId(null);
-          setPage(page);
+          albunsFacade.refresh();
         }}
       />
     </div>

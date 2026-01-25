@@ -1,11 +1,11 @@
 import { useEffect, useMemo } from "react";
-import { albumImagesFacade } from "../facades/albumImages.facade";
-import { useObservable } from "./useObservable";
+import { albumImagesFacade } from "../facades/AlbumImagesFacade";
+import { useBehaviorSubjectValue } from "./useBehaviorSubjectValue";
 
 export function useAlbumImages(albumId?: number) {
   const id = albumId ?? 0;
-  const observable = useMemo(() => albumImagesFacade.state$(id), [id]);
-  const state = useObservable(observable, albumImagesFacade.snapshot(id));
+  const subject = useMemo(() => albumImagesFacade.state$(id), [id]);
+  const state = useBehaviorSubjectValue(subject);
 
   useEffect(() => {
     if (!albumId) return;

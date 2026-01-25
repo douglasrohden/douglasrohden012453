@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Modal,
   ModalBody,
@@ -11,13 +11,12 @@ import {
 } from "flowbite-react";
 import { HiTrash, HiUpload } from "react-icons/hi";
 import { useToast } from "../contexts/ToastContext";
-import {
-  getAlbumImages,
-  uploadAlbumImages,
-  deleteAlbumImage,
-  AlbumImage,
-} from "../services/albunsService";
-import { getErrorMessage } from "../api/client";
+import { getErrorMessage } from "../lib/http";
+import { albumImagesFacade, type AlbumImagesState } from "../facades/AlbumImagesFacade";
+import { useBehaviorSubjectValue } from "../hooks/useBehaviorSubjectValue";
+import { BehaviorSubject } from "rxjs";
+
+const EMPTY_ALBUM_IMAGES_SUBJECT = new BehaviorSubject<AlbumImagesState>({ status: "idle" });
 
 interface ManageAlbumImagesModalProps {
   albumId: number | null;
@@ -31,8 +30,6 @@ export default function ManageAlbumImagesModal({
   onClose,
 }: ManageAlbumImagesModalProps) {
   const { addToast } = useToast();
-  const [images, setImages] = useState<AlbumImage[]>([]);
-  const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
 
   // New files to upload
@@ -40,37 +37,32 @@ export default function ManageAlbumImagesModal({
   const [previews, setPreviews] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const loadImages = useCallback(
-    async (id: number) => {
-      setLoading(true);
-      try {
-        const data = await getAlbumImages(id);
-        setImages(data);
-      } catch (error) {
-        addToast(getErrorMessage(error, "Erro ao carregar imagens"), "error");
-      } finally {
-        setLoading(false);
-      }
-    },
-    [addToast],
+  const subject = useMemo(
+    () => (albumId ? albumImagesFacade.state$(albumId) : EMPTY_ALBUM_IMAGES_SUBJECT),
+    [albumId],
   );
+  const state = useBehaviorSubjectValue(subject);
+  const images = state.status === "ready" ? state.data : [];
+  const loading = state.status === "loading";
+  const facadeError = state.status === "error" ? state.message : null;
 
   useEffect(() => {
     if (show && albumId) {
-      loadImages(albumId);
+      albumImagesFacade.load(albumId).catch((err) => {
+        addToast(getErrorMessage(err, "Erro ao carregar imagens"), "error");
+      });
       setFiles([]);
       setPreviews([]);
       setError(null);
     }
-  }, [show, albumId, loadImages]);
+  }, [show, albumId, addToast]);
 
   const handleDelete = async (imageId: number) => {
     if (!albumId) return;
     if (!confirm("Tem certeza que deseja remover esta imagem?")) return;
 
     try {
-      await deleteAlbumImage(albumId, imageId);
-      setImages((prev) => prev.filter((img) => img.id !== imageId));
+      await albumImagesFacade.remove(albumId, imageId);
       addToast("Imagem removida com sucesso", "success");
     } catch (error) {
       addToast(getErrorMessage(error, "Erro ao remover imagem"), "error");
@@ -101,11 +93,11 @@ export default function ManageAlbumImagesModal({
 
     setUploading(true);
     try {
-      await uploadAlbumImages(albumId, files);
+      await albumImagesFacade.upload(albumId, files);
       addToast("Imagens enviadas com sucesso!", "success");
       setFiles([]);
       setPreviews([]);
-      loadImages(albumId); // Reload list
+      await albumImagesFacade.load(albumId);
     } catch (error) {
       addToast(getErrorMessage(error, "Erro ao enviar imagens"), "error");
     } finally {
@@ -186,6 +178,9 @@ export default function ManageAlbumImagesModal({
             )}
 
             {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+            {facadeError && (
+              <p className="mt-2 text-sm text-red-600">{facadeError}</p>
+            )}
 
             <div className="mt-4 flex justify-end">
               <Button

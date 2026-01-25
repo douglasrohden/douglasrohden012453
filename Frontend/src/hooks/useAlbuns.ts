@@ -1,33 +1,35 @@
 import { useEffect } from "react";
-import { useObservable } from "./useObservable";
-import { albunsFacade } from "../facades/albuns.facade";
+import { albunsFacade } from "../facades/AlbumsFacade";
+import { useBehaviorSubjectValue } from "./useBehaviorSubjectValue";
 
 export function useAlbuns() {
-  const state = useObservable(albunsFacade.state$, albunsFacade.snapshot);
+  const data = useBehaviorSubjectValue(albunsFacade.data$);
+  const loading = useBehaviorSubjectValue(albunsFacade.loading$);
+  const error = useBehaviorSubjectValue(albunsFacade.error$);
 
   useEffect(() => {
     // Fetch on mount if we don't have data yet (or if content is empty)
     if (
-      !state.loading &&
-      (!state.data?.content || state.data.content.length === 0)
+      !loading &&
+      (!data?.content || data.content.length === 0)
     ) {
-      albunsFacade.fetch();
+      albunsFacade.load();
     }
-  }, [state.data?.content, state.loading]);
+  }, [data?.content, loading]);
 
   const setPage = (page: number) => {
-    albunsFacade.fetch(page);
+    albunsFacade.setPage(page);
   };
 
   return {
-    albuns: state.data?.content ?? [],
-    page: state.data?.number ?? 0,
-    totalPages: state.data?.totalPages ?? 0,
-    totalElements: state.data?.totalElements ?? 0,
-    first: state.data?.first ?? true,
-    last: state.data?.last ?? true,
-    loading: state.loading,
-    error: state.error,
+    albuns: data?.content ?? [],
+    page: data?.number ?? 0,
+    totalPages: data?.totalPages ?? 0,
+    totalElements: data?.totalElements ?? 0,
+    first: data?.first ?? true,
+    last: data?.last ?? true,
+    loading,
+    error,
     setPage,
   };
 }

@@ -11,12 +11,13 @@ import {
   Spinner,
 } from "flowbite-react";
 import { useToast } from "../contexts/ToastContext";
-import { Artista } from "../services/artistsService";
-import { createAlbum, uploadAlbumImages } from "../services/albunsService";
-import { getErrorMessage } from "../api/client";
+import type { Artista } from "../services/artistsService";
+import { getErrorMessage } from "../lib/http";
 import { useArtists } from "../hooks/useArtists";
 import ArtistSearchInput from "./common/ArtistSearchInput";
-import axios from "axios";
+import { albunsFacade } from "../facades/AlbumsFacade";
+import { artistDetailFacade } from "../facades/ArtistDetailFacade";
+import { useBehaviorSubjectValue } from "../hooks/useBehaviorSubjectValue";
 
 function ArtistSelector({
   value,
@@ -79,12 +80,15 @@ export default function CreateAlbumForm({
   const [ano, setAno] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [didSubmit, setDidSubmit] = useState(false);
 
   // Artist selection state (multiple)
   const [selectedArtists, setSelectedArtists] = useState<Artista[]>([]);
   const [artistSearch, setArtistSearch] = useState("");
+
+  const loading = useBehaviorSubjectValue(
+    artistId ? artistDetailFacade.loading$ : albunsFacade.loading$,
+  );
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -93,7 +97,7 @@ export default function CreateAlbumForm({
       setAno("");
       setFiles([]);
       setPreviews([]);
-      setError(null);
+      setDidSubmit(false);
       setArtistSearch("");
       // If artistId is provided via props, we don't need to select one,
       // but we don't necessarily have the full Artista object here.
@@ -143,15 +147,14 @@ export default function CreateAlbumForm({
       combinedFiles.reduce((acc, f) => acc + f.size, 0) > MAX_TOTAL_BYTES;
 
     if (tooBig) {
-      setError("Cada arquivo deve ter no máximo 5MB");
+      addToast("Cada arquivo deve ter no máximo 5MB", "warning");
       return;
     }
     if (totalTooBig) {
-      setError("Tamanho total ultrapassa 25MB");
+      addToast("Tamanho total ultrapassa 25MB", "warning");
       return;
     }
 
-    setError(null);
     setFiles(combinedFiles);
     setPreviews(combinedFiles.map((f) => URL.createObjectURL(f)));
   };
@@ -163,7 +166,7 @@ export default function CreateAlbumForm({
   };
 
   const handleSave = async () => {
-    setError(null);
+    setDidSubmit(true);
 
     const artistsToProcess = artistId
       ? [{ id: artistId, nome: "" }]
@@ -171,65 +174,59 @@ export default function CreateAlbumForm({
     const artistIds = artistsToProcess.map((a) => a.id);
 
     if (artistIds.length === 0) {
-      setError("Selecione pelo menos um artista");
+      addToast("Selecione pelo menos um artista", "warning");
       return;
     }
 
     const trimmedTitulo = titulo.trim();
     if (!trimmedTitulo) {
-      setError("Título é obrigatório");
+      addToast("Título é obrigatório", "warning");
       return;
     }
 
     if (trimmedTitulo.length > 255) {
-      setError("Título deve ter no máximo 255 caracteres");
+      addToast("Título deve ter no máximo 255 caracteres", "warning");
       return;
     }
 
     const anoValue = ano.trim() ? Number(ano) : undefined;
     if (ano.trim() && Number.isNaN(anoValue)) {
-      setError("Ano inválido");
+      addToast("Ano inválido", "warning");
       return;
     }
 
-    setIsSubmitting(true);
     try {
-      // Envia todos os IDs, mas com a flag individual=true para o backend criar álbuns separados em lote
-      const result = await createAlbum({
-        titulo: trimmedTitulo,
-        ano: anoValue,
-        artistaIds: artistIds,
-        individual: true,
-      });
-
-      // O backend retorna uma lista de álbuns criados
-      const createdAlbums = Array.isArray(result) ? result : [result];
-
-      if (files.length > 0) {
-        // Realiza upload das imagens para todos os álbuns criados (em paralelo)
-        await Promise.all(
-          createdAlbums.map((album) => {
-            if (!album.id) return Promise.resolve();
-            return uploadAlbumImages(album.id, files);
-          }),
+      if (artistId) {
+        await artistDetailFacade.addAlbumToArtist(
+          { titulo: trimmedTitulo, ano: anoValue },
+          files,
+        );
+        addToast("Álbum adicionado com sucesso!", "success");
+      } else {
+        const created = await albunsFacade.createAlbum(
+          {
+            titulo: trimmedTitulo,
+            ano: anoValue,
+            artistaIds: artistIds,
+            individual: true,
+          },
+          files,
+        );
+        const createdCount = Array.isArray(created) ? created.length : 1;
+        addToast(
+          createdCount > 1
+            ? "Álbuns adicionados com sucesso!"
+            : "Álbum adicionado com sucesso!",
+          "success",
         );
       }
 
-      addToast(
-        createdAlbums.length > 1
-          ? "Álbuns adicionados com sucesso!"
-          : "Álbum adicionado com sucesso!",
-        "success",
-      );
       onSuccess();
       onClose();
     } catch (err) {
       const message = getErrorMessage(err, "Erro ao adicionar álbum.");
-      setError(message);
-      const status = axios.isAxiosError(err) ? err.response?.status : undefined;
-      if (status !== 429) addToast(message, "error");
-    } finally {
-      setIsSubmitting(false);
+      // 429 já dispara toast global; aqui só evitamos duplicar quando possível.
+      addToast(message, "error");
     }
   };
 
@@ -250,7 +247,7 @@ export default function CreateAlbumForm({
                   value={artistSearch}
                   onChange={handleArtistSearchChange}
                   onSelect={selectArtist}
-                  hasError={error === "Selecione pelo menos um artista"}
+                  hasError={didSubmit && selectedArtists.length === 0}
                 />
                 {selectedArtists.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -288,9 +285,7 @@ export default function CreateAlbumForm({
                 placeholder="Ex: Hybrid Theory"
                 value={titulo}
                 onChange={(e) => handleTitleChange(e.target.value)}
-                color={
-                  error?.toLowerCase().includes("título") ? "failure" : "gray"
-                }
+                color={didSubmit && !titulo.trim() ? "failure" : "gray"}
               />
             </div>
             <div>
@@ -360,18 +355,15 @@ export default function CreateAlbumForm({
                 </div>
               )}
             </div>
-            {error && (
-              <div className="text-sm text-red-600">{String(error)}</div>
-            )}
           </div>
         </ModalBody>
         <ModalFooter>
           <div className="flex gap-2">
-            <Button color="gray" onClick={onClose} disabled={isSubmitting}>
+            <Button color="gray" onClick={onClose} disabled={loading}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
+            <Button type="submit" disabled={loading}>
+              {loading ? (
                 <span className="flex items-center gap-2">
                   <Spinner size="sm" /> Salvando...
                 </span>

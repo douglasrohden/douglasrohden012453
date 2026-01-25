@@ -9,10 +9,11 @@ import {
   Spinner,
   TextInput,
 } from "flowbite-react";
-import axios from "axios";
-import { getErrorMessage } from "../api/client";
+import { getErrorMessage } from "../lib/http";
 import { useToast } from "../contexts/ToastContext";
-import { updateAlbum, type Album } from "../services/albunsService";
+import { type Album } from "../services/albunsService";
+import { albunsFacade } from "../facades/AlbumsFacade";
+import { useBehaviorSubjectValue } from "../hooks/useBehaviorSubjectValue";
 
 interface EditAlbumModalProps {
   show: boolean;
@@ -29,43 +30,43 @@ export default function EditAlbumModal({
 }: EditAlbumModalProps) {
   const { addToast } = useToast();
 
+  const loading = useBehaviorSubjectValue(albunsFacade.loading$);
+  const facadeError = useBehaviorSubjectValue(albunsFacade.error$);
+
   const [titulo, setTitulo] = useState("");
   const [ano, setAno] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [didSubmit, setDidSubmit] = useState(false);
 
   useEffect(() => {
     if (!show) return;
     setTitulo(album?.titulo ?? "");
     setAno(album?.ano != null ? String(album.ano) : "");
-    setError(null);
-    setIsSubmitting(false);
-  }, [show, album?.id]);
+    setDidSubmit(false);
+  }, [show, album?.id, album?.titulo, album?.ano]);
 
   const handleSave = async () => {
     if (!album) return;
-    setError(null);
+    setDidSubmit(true);
 
     const trimmedTitulo = titulo.trim();
     if (!trimmedTitulo) {
-      setError("Título é obrigatório");
+      addToast("Título é obrigatório", "warning");
       return;
     }
 
     if (trimmedTitulo.length > 255) {
-      setError("Título deve ter no máximo 255 caracteres");
+      addToast("Título deve ter no máximo 255 caracteres", "warning");
       return;
     }
 
     const anoValue = ano.trim() ? Number(ano) : undefined;
     if (ano.trim() && Number.isNaN(anoValue)) {
-      setError("Ano inválido");
+      addToast("Ano inválido", "warning");
       return;
     }
 
-    setIsSubmitting(true);
     try {
-      const updated = await updateAlbum(album.id, {
+      const updated = await albunsFacade.updateAlbum(album.id, {
         titulo: trimmedTitulo,
         ano: anoValue,
       });
@@ -74,11 +75,7 @@ export default function EditAlbumModal({
       onClose();
     } catch (err) {
       const message = getErrorMessage(err, "Erro ao atualizar álbum.");
-      setError(message);
-      const status = axios.isAxiosError(err) ? err.response?.status : undefined;
-      if (status !== 429) addToast(message, "error");
-    } finally {
-      setIsSubmitting(false);
+      addToast(message, "error");
     }
   };
 
@@ -102,10 +99,8 @@ export default function EditAlbumModal({
                 placeholder="Ex: Hybrid Theory"
                 value={titulo}
                 onChange={(e) => setTitulo(e.target.value)}
-                disabled={isSubmitting}
-                color={
-                  error?.toLowerCase().includes("título") ? "failure" : "gray"
-                }
+                disabled={loading}
+                color={didSubmit && !titulo.trim() ? "failure" : "gray"}
               />
             </div>
 
@@ -119,20 +114,22 @@ export default function EditAlbumModal({
                 placeholder="Ex: 2000"
                 value={ano}
                 onChange={(e) => setAno(e.target.value)}
-                disabled={isSubmitting}
+                disabled={loading}
               />
             </div>
 
-            {error && <div className="text-sm text-red-600">{error}</div>}
+            {facadeError && (
+              <div className="text-sm text-red-600">{facadeError}</div>
+            )}
           </div>
         </ModalBody>
         <ModalFooter>
           <div className="flex gap-2">
-            <Button color="gray" onClick={onClose} disabled={isSubmitting}>
+            <Button color="gray" onClick={onClose} disabled={loading}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmitting || !album}>
-              {isSubmitting ? (
+            <Button type="submit" disabled={loading || !album}>
+              {loading ? (
                 <span className="flex items-center gap-2">
                   <Spinner size="sm" /> Salvando...
                 </span>

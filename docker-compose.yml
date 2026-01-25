@@ -53,11 +53,11 @@ services:
       - MINIO_PRESIGN_EXPIRATION_MINUTES=${MINIO_PRESIGN_EXPIRATION_MINUTES:-30}
       - MINIO_MAX_FILE_SIZE_BYTES=${MINIO_MAX_FILE_SIZE_BYTES:-5242880}
       - MINIO_MAX_REQUEST_SIZE_BYTES=${MINIO_MAX_REQUEST_SIZE_BYTES:-26214400}
-      - BACKEND_PORT=${BACKEND_PORT:-3001}
-      - ALLOWED_FRONTEND_URLS=${ALLOWED_FRONTEND_URLS:-http://localhost:5173}
+      - SERVER_PORT=${BACKEND_PORT:-3001}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
       - JWT_SECRET=${JWT_SECRET}
     ports:
-      - "${BACKEND_PORT:-3001}:8080"
+      - "${BACKEND_PORT:-3001}:${BACKEND_PORT:-3001}"
     command: ["clean", "spring-boot:run"]
     depends_on:
       db:
@@ -67,12 +67,10 @@ services:
 
   frontend:
     build:
-      context: ./frontend
+      context: ./Frontend
       dockerfile: Dockerfile
     ports:
-      - "5173:5173"
-    environment:
-      - PORT=5173
+      - "5173:80"
     depends_on:
       - backend
 

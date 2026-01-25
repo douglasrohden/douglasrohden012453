@@ -8,6 +8,7 @@ import com.douglasrohden.backend.model.Usuario;
 import com.douglasrohden.backend.repository.RefreshTokenRepository;
 import com.douglasrohden.backend.repository.UsuarioRepository;
 import com.douglasrohden.backend.security.JwtUtil;
+import com.douglasrohden.backend.security.RefreshTokenCrypto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -21,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +32,7 @@ public class AuthenticationService {
     private final JwtUtil jwtUtil;
     private final UserDetailsService userDetailsService;
     private final PasswordEncoder passwordEncoder;
+    private final RefreshTokenCrypto refreshTokenCrypto;
 
     @Value("${jwt.expiration}")
     private long jwtExpiration;
@@ -50,22 +51,36 @@ public class AuthenticationService {
         UserDetails userDetails = userDetailsService.loadUserByUsername(request.getUsername());
         String accessToken = jwtUtil.generateToken(userDetails);
 
+        String rawRefreshToken = refreshTokenCrypto.generateOpaqueToken();
+        String refreshTokenHash = refreshTokenCrypto.hash(rawRefreshToken);
+
         RefreshToken refreshToken = new RefreshToken();
         refreshToken.setUsuario(usuario);
-        refreshToken.setTokenHash(UUID.randomUUID().toString());
+        refreshToken.setTokenHash(refreshTokenHash);
         refreshToken.setExpiresAt(LocalDateTime.now().plus(refreshExpiration, ChronoUnit.MILLIS));
         refreshToken = refreshTokenRepository.save(refreshToken);
 
-        return new LoginResponse(accessToken, refreshToken.getTokenHash(), jwtExpiration / 1000);
+        return new LoginResponse(accessToken, rawRefreshToken, jwtExpiration / 1000);
     }
 
     @Transactional
     public LoginResponse refresh(RefreshTokenRequest request) {
-        RefreshToken refreshToken = refreshTokenRepository.findByTokenHash(request.getRefreshToken())
+        String rawRefreshToken = request.getRefreshToken();
+        if (rawRefreshToken == null || rawRefreshToken.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token inválido");
+        }
+
+        String incomingHash = refreshTokenCrypto.hash(rawRefreshToken);
+        RefreshToken refreshToken = refreshTokenRepository.findByTokenHash(incomingHash)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token inválido"));
 
+        if (refreshToken.getRevokedAt() != null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token inválido");
+        }
+
         if (refreshToken.getExpiresAt().isBefore(LocalDateTime.now())) {
-            refreshTokenRepository.delete(refreshToken);
+            refreshToken.setRevokedAt(LocalDateTime.now());
+            refreshTokenRepository.save(refreshToken);
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token expirado");
         }
 
@@ -73,6 +88,21 @@ public class AuthenticationService {
         UserDetails userDetails = userDetailsService.loadUserByUsername(usuario.getUsername());
         String accessToken = jwtUtil.generateToken(userDetails);
 
-        return new LoginResponse(accessToken, refreshToken.getTokenHash(), jwtExpiration / 1000);
+        // Refresh token rotation: invalida o token atual e emite um novo.
+        String newRawRefreshToken = refreshTokenCrypto.generateOpaqueToken();
+        String newHash = refreshTokenCrypto.hash(newRawRefreshToken);
+
+        LocalDateTime now = LocalDateTime.now();
+        refreshToken.setRevokedAt(now);
+        refreshToken.setReplacedByTokenHash(newHash);
+        refreshTokenRepository.save(refreshToken);
+
+        RefreshToken next = new RefreshToken();
+        next.setUsuario(usuario);
+        next.setTokenHash(newHash);
+        next.setExpiresAt(now.plus(refreshExpiration, ChronoUnit.MILLIS));
+        refreshTokenRepository.save(next);
+
+        return new LoginResponse(accessToken, newRawRefreshToken, jwtExpiration / 1000);
     }
 }

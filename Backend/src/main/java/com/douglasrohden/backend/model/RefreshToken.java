@@ -18,6 +18,12 @@ public class RefreshToken {
     @Column(name = "token_hash", nullable = false, unique = true)
     private String tokenHash;
 
+    @Column(name = "revoked_at")
+    private LocalDateTime revokedAt;
+
+    @Column(name = "replaced_by_token_hash", length = 255)
+    private String replacedByTokenHash;
+
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
 
@@ -61,6 +67,22 @@ public class RefreshToken {
 
     public void setExpiresAt(LocalDateTime expiresAt) {
         this.expiresAt = expiresAt;
+    }
+
+    public LocalDateTime getRevokedAt() {
+        return revokedAt;
+    }
+
+    public void setRevokedAt(LocalDateTime revokedAt) {
+        this.revokedAt = revokedAt;
+    }
+
+    public String getReplacedByTokenHash() {
+        return replacedByTokenHash;
+    }
+
+    public void setReplacedByTokenHash(String replacedByTokenHash) {
+        this.replacedByTokenHash = replacedByTokenHash;
     }
 
     public LocalDateTime getCreatedAt() {

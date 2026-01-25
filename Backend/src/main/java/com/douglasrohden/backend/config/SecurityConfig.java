@@ -25,6 +25,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.core.env.Environment;
 import java.util.Arrays;
 import java.util.List;
 
@@ -46,16 +47,19 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final ApiRateLimitFilter apiRateLimitFilter;
     private final UserDetailsService userDetailsService;
+    private final Environment environment;
 
-    @Value("${ALLOWED_FRONTEND_URLS:}")
+    @Value("${cors.allowed-origins:}")
     private String corsAllowedOrigins;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter,
             ApiRateLimitFilter apiRateLimitFilter,
-            UserDetailsService userDetailsService) {
+            UserDetailsService userDetailsService,
+            Environment environment) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.apiRateLimitFilter = apiRateLimitFilter;
         this.userDetailsService = userDetailsService;
+        this.environment = environment;
     }
 
     @Bean
@@ -137,7 +141,11 @@ public class SecurityConfig {
         // env/property.
         // Ex.: CORS_ALLOWED_ORIGINS=https://meu-front.com,https://www.meu-front.com
         List<String> configuredOrigins = parseAllowedOrigins(corsAllowedOrigins);
+        boolean isProd = Arrays.asList(environment.getActiveProfiles()).contains("prod");
         if (configuredOrigins.isEmpty()) {
+            if (isProd) {
+                throw new IllegalStateException("cors.allowed-origins must be configured when SPRING_PROFILES_ACTIVE=prod");
+            }
             configuration.setAllowedOriginPatterns(List.of("http://localhost:*", "http://127.0.0.1:*"));
         } else {
             configuration.setAllowedOrigins(configuredOrigins);

@@ -14,7 +14,9 @@ function getWebSocketUrl() {
   return `${root}/ws`;
 }
 
-export function useAlbumCreatedWebSocket(onAlbumCreated: (msg: AlbumCreatedMessage) => void) {
+export function useAlbumCreatedWebSocket(
+  onAlbumCreated: (msg: AlbumCreatedMessage) => void,
+) {
   useEffect(() => {
     const client = new Client({
       webSocketFactory: () => new SockJS(getWebSocketUrl()),

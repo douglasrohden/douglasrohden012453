@@ -1,13 +1,16 @@
-import { useEffect } from 'react';
-import { useObservable } from './useObservable';
-import { albunsFacade } from '../facades/albuns.facade';
+import { useEffect } from "react";
+import { useObservable } from "./useObservable";
+import { albunsFacade } from "../facades/albuns.facade";
 
 export function useAlbuns() {
   const state = useObservable(albunsFacade.state$, albunsFacade.snapshot);
 
   useEffect(() => {
     // Fetch on mount if we don't have data yet (or if content is empty)
-    if (!state.loading && (!state.data?.content || state.data.content.length === 0)) {
+    if (
+      !state.loading &&
+      (!state.data?.content || state.data.content.length === 0)
+    ) {
       albunsFacade.fetch();
     }
   }, [state.data?.content, state.loading]);
@@ -25,6 +28,6 @@ export function useAlbuns() {
     last: state.data?.last ?? true,
     loading: state.loading,
     error: state.error,
-    setPage
+    setPage,
   };
 }

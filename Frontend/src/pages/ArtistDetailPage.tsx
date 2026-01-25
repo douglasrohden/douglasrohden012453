@@ -11,8 +11,16 @@ import { CardGrid } from "../components/common/CardGrid";
 import CreateAlbumForm from "../components/CreateAlbumForm";
 import { ListToolbar } from "../components/common/ListToolbar";
 import { getErrorMessage } from "../api/client";
+import { getAlbumImages } from "../services/albunsService";
 import axios from "axios";
 import ManageAlbumImagesModal from "../components/ManageAlbumImagesModal";
+
+type AlbumImageState =
+  | { status: "loading"; urls: string[] }
+  | { status: "ready"; urls: string[] }
+  | { status: "empty"; urls: [] };
+
+const PLACEHOLDER_IMAGE = "https://flowbite.com/docs/images/blog/image-1.jpg";
 
 interface Album {
   id: number;
@@ -40,7 +48,10 @@ export default function ArtistDetailPage() {
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState("titulo");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [manageImagesAlbumId, setManageImagesAlbumId] = useState<number | null>(null);
+  const [manageImagesAlbumId, setManageImagesAlbumId] = useState<number | null>(
+    null,
+  );
+  const [albumImages, setAlbumImages] = useState<Record<number, AlbumImageState>>({});
 
   const fetchArtist = useCallback(async () => {
     if (!id) return;
@@ -84,7 +95,9 @@ export default function ArtistDetailPage() {
 
     const normalizedQuery = debouncedSearch.trim().toLowerCase();
     const filtered = normalizedQuery
-      ? artist.albuns.filter((a) => (a?.titulo ?? "").toLowerCase().includes(normalizedQuery))
+      ? artist.albuns.filter((a) =>
+          (a?.titulo ?? "").toLowerCase().includes(normalizedQuery),
+        )
       : artist.albuns;
 
     const sorted = [...filtered].sort((a, b) => {
@@ -99,11 +112,67 @@ export default function ArtistDetailPage() {
         return aValue - bValue;
       }
 
-      return String(aValue).localeCompare(String(bValue), "pt-BR", { sensitivity: "base" });
+      return String(aValue).localeCompare(String(bValue), "pt-BR", {
+        sensitivity: "base",
+      });
     });
 
     return sortDir === "asc" ? sorted : sorted.reverse();
   }, [artist?.albuns, debouncedSearch, sortField, sortDir]);
+
+  // Load covers from MinIO for each album (first image is used as cover).
+  useEffect(() => {
+    let cancelled = false;
+    const albums = artist?.albuns ?? [];
+    const missing = albums.filter(
+      (a) => a?.id != null && albumImages[a.id] === undefined,
+    );
+    if (missing.length === 0) return;
+
+    setAlbumImages((prev) => {
+      const next = { ...prev };
+      for (const album of missing) {
+        if (album.id != null) {
+          next[album.id] = { status: "loading", urls: [] };
+        }
+      }
+      return next;
+    });
+
+    (async () => {
+      try {
+        const results = await Promise.all(
+          missing.map(async (album) => {
+            const images = await getAlbumImages(album.id);
+            return { albumId: album.id, urls: images.map((img) => img.url) };
+          }),
+        );
+
+        if (cancelled) return;
+        setAlbumImages((prev) => {
+          const next = { ...prev };
+          for (const { albumId, urls } of results) {
+            next[albumId] =
+              urls.length > 0
+                ? { status: "ready", urls }
+                : { status: "empty", urls: [] };
+          }
+          return next;
+        });
+      } catch (error) {
+        if (!cancelled) {
+          addToast(
+            getErrorMessage(error, "Erro ao carregar capas do álbum"),
+            "error",
+          );
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [artist?.albuns, albumImages, addToast]);
 
   return (
     <PageLayout>
@@ -115,9 +184,10 @@ export default function ArtistDetailPage() {
         <EmptyState message="Artista não encontrado" />
       ) : (
         <div>
-
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Álbuns</h3>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+              Álbuns
+            </h3>
           </div>
 
           <ListToolbar
@@ -153,23 +223,42 @@ export default function ArtistDetailPage() {
             emptyMessage="Nenhum álbum encontrado."
           >
             {visibleAlbuns.map((alb) => {
-              const cover = alb.capaUrl || "https://flowbite.com/docs/images/blog/image-1.jpg";
+              const imageState = albumImages[alb.id] ?? {
+                status: "loading",
+                urls: [],
+              };
+              const coverFromMinio =
+                imageState.status === "ready" && imageState.urls.length > 0
+                  ? imageState.urls[0]
+                  : undefined;
+              const cover =
+                coverFromMinio ||
+                (imageState.status === "empty" ? PLACEHOLDER_IMAGE : undefined) ||
+                PLACEHOLDER_IMAGE;
 
               return (
                 <Card
                   key={alb.id}
-                  className="h-full transition-shadow hover:shadow-lg flex flex-col"
+                  className="flex h-full flex-col transition-shadow hover:shadow-lg"
                   renderImage={() => (
                     <div>
                       {artist.nome && (
                         <div className="px-4 pt-4 pb-2">
-                          <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                          <p className="text-sm font-semibold tracking-wide text-gray-600 uppercase dark:text-gray-400">
                             <span className="mr-2">Nome:</span>
                             <span className="normal-case">{artist.nome}</span>
                           </p>
                           <p className="text-sm text-gray-600 dark:text-gray-400">
-                            <span className="font-semibold mr-2">Cantor/Banda:</span>
-                            <span>{artist.tipo ? (artist.tipo === 'BANDA' ? 'Banda' : 'Cantor(a)') : '—'}</span>
+                            <span className="mr-2 font-semibold">
+                              Cantor/Banda:
+                            </span>
+                            <span>
+                              {artist.tipo
+                                ? artist.tipo === "BANDA"
+                                  ? "Banda"
+                                  : "Cantor(a)"
+                                : "—"}
+                            </span>
                           </p>
                         </div>
                       )}
@@ -177,27 +266,38 @@ export default function ArtistDetailPage() {
                         src={cover}
                         alt={alb.titulo}
                         className="h-auto w-full object-cover"
+                        loading="lazy"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = PLACEHOLDER_IMAGE;
+                        }}
                       />
                     </div>
                   )}
                 >
-                  <div className="flex flex-col h-full">
+                  <div className="flex h-full flex-col">
                     <div className="flex-1">
-                      <h5 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white line-clamp-1" title={alb.titulo}>
-                        <span className="text-sm font-semibold text-gray-600 dark:text-gray-400 mr-2">Título:</span>
-                        <span>{alb.titulo ?? '—'}</span>
+                      <h5
+                        className="line-clamp-1 text-xl font-bold tracking-tight text-gray-900 dark:text-white"
+                        title={alb.titulo}
+                      >
+                        <span className="mr-2 text-sm font-semibold text-gray-600 dark:text-gray-400">
+                          Título:
+                        </span>
+                        <span>{alb.titulo ?? "—"}</span>
                       </h5>
                       <div className="mb-2">
                         <p className="font-normal text-gray-700 dark:text-gray-400">
-                          <span className="text-sm font-semibold text-gray-600 dark:text-gray-400 mr-2">Ano:</span>
-                          <span>{alb.ano ?? '—'}</span>
+                          <span className="mr-2 text-sm font-semibold text-gray-600 dark:text-gray-400">
+                            Ano:
+                          </span>
+                          <span>{alb.ano ?? "—"}</span>
                         </p>
                       </div>
                     </div>
 
                     <button
                       onClick={() => setManageImagesAlbumId(alb.id)}
-                      className="w-full mt-4 px-3 py-2 text-sm font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                      className="mt-4 w-full rounded-lg bg-blue-700 px-3 py-2 text-center text-sm font-medium text-white hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 focus:outline-none dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
                     >
                       Gerenciar Capas
                     </button>

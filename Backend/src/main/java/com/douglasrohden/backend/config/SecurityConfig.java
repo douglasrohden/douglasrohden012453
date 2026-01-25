@@ -24,6 +24,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import java.util.Arrays;
 import java.util.List;
 
@@ -95,7 +96,35 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        // Mitigation for CVE-2025-22228: ensure passwords longer than 72 chars are rejected
+        // BCrypt ignores bytes after 72 characters; this check prevents bypasses by enforcing a max length.
+        return new PasswordEncoder() {
+            private final BCryptPasswordEncoder delegate = new BCryptPasswordEncoder();
+            private static final int MAX_PASSWORD_LENGTH = 72;
+
+            @Override
+            public String encode(CharSequence rawPassword) {
+                if (rawPassword == null) {
+                    throw new IllegalArgumentException("Password cannot be null");
+                }
+                if (rawPassword.length() > MAX_PASSWORD_LENGTH) {
+                    throw new IllegalArgumentException("Password exceeds maximum length of " + MAX_PASSWORD_LENGTH);
+                }
+                return delegate.encode(rawPassword);
+            }
+
+            @Override
+            public boolean matches(CharSequence rawPassword, String encodedPassword) {
+                if (rawPassword == null) {
+                    return false;
+                }
+                if (rawPassword.length() > MAX_PASSWORD_LENGTH) {
+                    // Reject too-long passwords rather than delegating to BCrypt which would ignore the extra characters
+                    return false;
+                }
+                return delegate.matches(rawPassword, encodedPassword);
+            }
+        };
     }
 
     @Bean
@@ -129,6 +158,13 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+
+    @Bean
+    public FilterRegistrationBean<ApiRateLimitFilter> apiRateLimitFilterRegistration(ApiRateLimitFilter filter) {
+        FilterRegistrationBean<ApiRateLimitFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     private static List<String> parseAllowedOrigins(String value) {

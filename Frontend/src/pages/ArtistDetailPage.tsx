@@ -12,11 +12,13 @@ import CreateAlbumForm from "../components/CreateAlbumForm";
 import { ListToolbar } from "../components/common/ListToolbar";
 import { getErrorMessage } from "../api/client";
 import axios from "axios";
+import ManageAlbumImagesModal from "../components/ManageAlbumImagesModal";
 
 interface Album {
   id: number;
   titulo: string;
   ano?: number;
+  capaUrl?: string | null;
 }
 
 interface ArtistaDetalhado {
@@ -38,6 +40,7 @@ export default function ArtistDetailPage() {
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState("titulo");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [manageImagesAlbumId, setManageImagesAlbumId] = useState<number | null>(null);
 
   const fetchArtist = useCallback(async () => {
     if (!id) return;
@@ -149,45 +152,69 @@ export default function ArtistDetailPage() {
             isEmpty={visibleAlbuns.length === 0}
             emptyMessage="Nenhum álbum encontrado."
           >
-            {visibleAlbuns.map((alb) => (
-              <Card
-                key={alb.id}
-                className="h-full transition-shadow hover:shadow-lg"
-                renderImage={() => (
-                  <div>
-                    {artist.nome && (
-                      <div className="px-4 pt-4 pb-2">
-                        <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                          <span className="mr-2">Nome:</span>
-                          <span className="normal-case">{artist.nome}</span>
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          <span className="font-semibold mr-2">Cantor/Banda:</span>
-                          <span>{artist.tipo ? (artist.tipo === 'BANDA' ? 'Banda' : 'Cantor(a)') : '—'}</span>
+            {visibleAlbuns.map((alb) => {
+              const cover = alb.capaUrl || "https://flowbite.com/docs/images/blog/image-1.jpg";
+
+              return (
+                <Card
+                  key={alb.id}
+                  className="h-full transition-shadow hover:shadow-lg flex flex-col"
+                  renderImage={() => (
+                    <div>
+                      {artist.nome && (
+                        <div className="px-4 pt-4 pb-2">
+                          <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                            <span className="mr-2">Nome:</span>
+                            <span className="normal-case">{artist.nome}</span>
+                          </p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            <span className="font-semibold mr-2">Cantor/Banda:</span>
+                            <span>{artist.tipo ? (artist.tipo === 'BANDA' ? 'Banda' : 'Cantor(a)') : '—'}</span>
+                          </p>
+                        </div>
+                      )}
+                      <img
+                        src={cover}
+                        alt={alb.titulo}
+                        className="h-auto w-full object-cover"
+                      />
+                    </div>
+                  )}
+                >
+                  <div className="flex flex-col h-full">
+                    <div className="flex-1">
+                      <h5 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white line-clamp-1" title={alb.titulo}>
+                        <span className="text-sm font-semibold text-gray-600 dark:text-gray-400 mr-2">Título:</span>
+                        <span>{alb.titulo ?? '—'}</span>
+                      </h5>
+                      <div className="mb-2">
+                        <p className="font-normal text-gray-700 dark:text-gray-400">
+                          <span className="text-sm font-semibold text-gray-600 dark:text-gray-400 mr-2">Ano:</span>
+                          <span>{alb.ano ?? '—'}</span>
                         </p>
                       </div>
-                    )}
-                    <img
-                      src={"https://flowbite.com/docs/images/blog/image-1.jpg"}
-                      alt={alb.titulo}
-                      className="h-auto w-full object-cover"
-                    />
+                    </div>
+
+                    <button
+                      onClick={() => setManageImagesAlbumId(alb.id)}
+                      className="w-full mt-4 px-3 py-2 text-sm font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                    >
+                      Gerenciar Capas
+                    </button>
                   </div>
-                )}
-              >
-                <h5 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white line-clamp-1" title={alb.titulo}>
-                  <span className="text-sm font-semibold text-gray-600 dark:text-gray-400 mr-2">Título:</span>
-                  <span>{alb.titulo ?? '—'}</span>
-                </h5>
-                <div className="mb-2">
-                  <p className="font-normal text-gray-700 dark:text-gray-400">
-                    <span className="text-sm font-semibold text-gray-600 dark:text-gray-400 mr-2">Ano:</span>
-                    <span>{alb.ano ?? '—'}</span>
-                  </p>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </CardGrid>
+
+          <ManageAlbumImagesModal
+            show={!!manageImagesAlbumId}
+            albumId={manageImagesAlbumId}
+            onClose={() => {
+              setManageImagesAlbumId(null);
+              fetchArtist();
+            }}
+          />
         </div>
       )}
     </PageLayout>

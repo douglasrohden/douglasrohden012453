@@ -14,21 +14,12 @@ CREATE TABLE IF NOT EXISTS album_cover (
 CREATE INDEX IF NOT EXISTS idx_album_cover_album_id ON album_cover(album_id);
 
 CREATE TABLE IF NOT EXISTS regional (
-  id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-  external_id VARCHAR(255) NOT NULL,
-  nome VARCHAR(255) NOT NULL,
-  active BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  inactivated_at TIMESTAMP WITHOUT TIME ZONE,
-  notes VARCHAR(1000)
+  id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  nome VARCHAR(200) NOT NULL,
+  ativo BOOLEAN NOT NULL DEFAULT TRUE
 );
 
-CREATE INDEX IF NOT EXISTS idx_regional_external_id ON regional(external_id);
-
--- Postgres: ensure only one active row per external_id
--- This is Postgres-specific and may fail on some DBs; adapt if needed for H2 or others.
-CREATE UNIQUE INDEX IF NOT EXISTS uq_regional_external_id_active ON regional (external_id) WHERE active;
-
+  
 -- Ensure join table exists (should already exist from JPA mapping); creating if missing
 CREATE TABLE IF NOT EXISTS artista_album (
   artista_id BIGINT NOT NULL,

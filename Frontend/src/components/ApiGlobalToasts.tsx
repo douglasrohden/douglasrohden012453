@@ -88,7 +88,7 @@ export function ApiGlobalToasts() {
         }
       }, 1000);
     });
-  }, [addToast, updateToast]);
+  }, [addToast, updateToast, removeToast]);
 
   // Cleanup on unmount
   useEffect(() => {

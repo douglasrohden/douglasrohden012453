@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Modal, ModalBody, ModalHeader, ModalFooter, Button, FileInput, Spinner, Label } from 'flowbite-react';
 import { HiTrash, HiUpload } from 'react-icons/hi';
 import { useToast } from '../contexts/ToastContext';
@@ -22,6 +22,18 @@ export default function ManageAlbumImagesModal({ albumId, show, onClose }: Manag
     const [previews, setPreviews] = useState<string[]>([]);
     const [error, setError] = useState<string | null>(null);
 
+    const loadImages = useCallback(async (id: number) => {
+        setLoading(true);
+        try {
+            const data = await getAlbumImages(id);
+            setImages(data);
+        } catch (error) {
+            addToast(getErrorMessage(error, 'Erro ao carregar imagens'), 'error');
+        } finally {
+            setLoading(false);
+        }
+    }, [addToast]);
+
     useEffect(() => {
         if (show && albumId) {
             loadImages(albumId);
@@ -29,19 +41,7 @@ export default function ManageAlbumImagesModal({ albumId, show, onClose }: Manag
             setPreviews([]);
             setError(null);
         }
-    }, [show, albumId]);
-
-    const loadImages = async (id: number) => {
-        setLoading(true);
-        try {
-            const data = await getAlbumImages(id);
-            setImages(data);
-        } catch (err) {
-            addToast('Erro ao carregar imagens', 'error');
-        } finally {
-            setLoading(false);
-        }
-    };
+    }, [show, albumId, loadImages]);
 
     const handleDelete = async (imageId: number) => {
         if (!albumId) return;
@@ -51,8 +51,8 @@ export default function ManageAlbumImagesModal({ albumId, show, onClose }: Manag
             await deleteAlbumImage(albumId, imageId);
             setImages((prev) => prev.filter((img) => img.id !== imageId));
             addToast('Imagem removida com sucesso', 'success');
-        } catch (err) {
-            addToast(getErrorMessage(err, 'Erro ao remover imagem'), 'error');
+        } catch (error) {
+            addToast(getErrorMessage(error, 'Erro ao remover imagem'), 'error');
         }
     };
 
@@ -85,8 +85,8 @@ export default function ManageAlbumImagesModal({ albumId, show, onClose }: Manag
             setFiles([]);
             setPreviews([]);
             loadImages(albumId); // Reload list
-        } catch (err) {
-            addToast(getErrorMessage(err, 'Erro ao enviar imagens'), 'error');
+        } catch (error) {
+            addToast(getErrorMessage(error, 'Erro ao enviar imagens'), 'error');
         } finally {
             setUploading(false);
         }

@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { AlbumImage, getAlbumImages } from '../services/albunsService';
 import { getErrorMessage, getHttpStatus } from '../api/client';
@@ -40,18 +41,18 @@ class AlbumImagesFacade {
                 this.cache.set(albumId, { data, expiresAt: now + this.cacheTtlMs });
                 this.subject(albumId).next({ status: 'ready', data });
                 return data;
-            } catch (err) {
-                const status = getHttpStatus(err);
-                const retryAfter = typeof (err as any)?.response?.data?.retryAfter === 'number'
-                    ? (err as any).response.data.retryAfter
+            } catch (error) {
+                const status = getHttpStatus(error);
+                const retryAfter = axios.isAxiosError(error) && typeof error.response?.data?.retryAfter === 'number'
+                    ? error.response.data.retryAfter
                     : undefined;
-                const message = getErrorMessage(err, 'Erro ao carregar capas do álbum');
+                const message = getErrorMessage(error, 'Erro ao carregar capas do álbum');
                 if (status === 429 && retryAfter) {
                     this.subject(albumId).next({ status: 'error', message, retryAfter });
                 } else {
                     this.subject(albumId).next({ status: 'error', message });
                 }
-                throw err;
+                throw error;
             } finally {
                 this.inFlight.delete(albumId);
             }

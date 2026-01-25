@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useDebounce } from "../hooks/useDebounce";
 import { useParams } from "react-router-dom";
 import { PageLayout } from "../components/layout/PageLayout";
@@ -30,6 +30,7 @@ export default function ArtistDetailPage() {
   const { id } = useParams();
   const { addToast } = useToast();
   const retryTimeoutRef = useRef<number | null>(null);
+  const hasLoadedOnceRef = useRef(false);
   const [artist, setArtist] = useState<ArtistaDetalhado | null>(null);
   const [loading, setLoading] = useState(true);
   const [rateLimited, setRateLimited] = useState(false);
@@ -38,7 +39,7 @@ export default function ArtistDetailPage() {
   const [sortField, setSortField] = useState("titulo");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
-  const fetchArtist = async () => {
+  const fetchArtist = useCallback(async () => {
     if (!id) return;
 
     setRateLimited(false);
@@ -46,6 +47,7 @@ export default function ArtistDetailPage() {
     try {
       const data = await artistsService.getById(Number(id));
       setArtist(data);
+      hasLoadedOnceRef.current = true;
     } catch (e) {
       console.error(e);
       const status = axios.isAxiosError(e) ? e.response?.status : undefined;
@@ -54,13 +56,13 @@ export default function ArtistDetailPage() {
       if (status !== 429) addToast(msg, "error");
 
       // If the initial load is rate limited, don't keep user on this page.
-      if (status === 429 && !artist) {
+      if (status === 429 && !hasLoadedOnceRef.current) {
         setRateLimited(true);
       }
     } finally {
       setLoading(false);
     }
-  };
+  }, [addToast, id]);
 
   useEffect(() => {
     fetchArtist();
@@ -70,7 +72,7 @@ export default function ArtistDetailPage() {
         retryTimeoutRef.current = null;
       }
     };
-  }, [id]);
+  }, [id, fetchArtist]);
 
   const debouncedSearch = useDebounce(search, 300);
 

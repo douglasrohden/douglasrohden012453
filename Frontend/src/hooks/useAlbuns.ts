@@ -7,10 +7,10 @@ export function useAlbuns() {
 
   useEffect(() => {
     // Fetch on mount if we don't have data yet (or if content is empty)
-    if (!state.data?.content || state.data.content.length === 0) {
+    if (!state.loading && (!state.data?.content || state.data.content.length === 0)) {
       albunsFacade.fetch();
     }
-  }, []);
+  }, [state.data?.content, state.loading]);
 
   const setPage = (page: number) => {
     albunsFacade.fetch(page);

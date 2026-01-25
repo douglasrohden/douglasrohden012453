@@ -41,10 +41,10 @@ export async function getAlbumImages(albumId: number): Promise<AlbumImage[]> {
   return response.data;
 }
 
-export async function uploadAlbumImages(albumId: number, files: File[]): Promise<any> {
+export async function uploadAlbumImages(albumId: number, files: File[]): Promise<AlbumImage[]> {
   const formData = new FormData();
   files.forEach((file) => formData.append('files', file));
-  const response = await api.post(`/albuns/${albumId}/capas`, formData, {
+  const response = await api.post<AlbumImage[]>(`/albuns/${albumId}/capas`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
   return response.data;

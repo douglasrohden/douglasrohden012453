@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { searchAlbums, Album } from '../services/albunsService';
 import { debounce } from 'lodash';
 
@@ -7,8 +7,8 @@ export function useAlbums(searchQuery: string) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const performSearch = useCallback(
-        debounce(async (query: string) => {
+    const performSearch = useMemo(
+        () => debounce(async (query: string) => {
             if (!query.trim()) {
                 setAlbums([]);
                 setLoading(false);
@@ -21,7 +21,7 @@ export function useAlbums(searchQuery: string) {
             try {
                 const response = await searchAlbums(query);
                 setAlbums(response.content);
-            } catch (err) {
+            } catch {
                 setError('Erro ao buscar álbuns');
                 setAlbums([]);
             } finally {

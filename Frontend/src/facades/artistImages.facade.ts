@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { ArtistImage, getArtistImages } from '../services/artistsService';
 import { getErrorMessage, getHttpStatus } from '../api/client';
@@ -40,18 +41,18 @@ class ArtistImagesFacade {
                 this.cache.set(artistaId, { data, expiresAt: now + this.cacheTtlMs });
                 this.subject(artistaId).next({ status: 'ready', data });
                 return data;
-            } catch (err) {
-                const status = getHttpStatus(err);
-                const retryAfter = typeof (err as any)?.response?.data?.retryAfter === 'number'
-                    ? (err as any).response.data.retryAfter
+            } catch (error) {
+                const status = getHttpStatus(error);
+                const retryAfter = axios.isAxiosError(error) && typeof error.response?.data?.retryAfter === 'number'
+                    ? error.response.data.retryAfter
                     : undefined;
-                const message = getErrorMessage(err, 'Erro ao carregar imagens do artista');
+                const message = getErrorMessage(error, 'Erro ao carregar imagens do artista');
                 if (status === 429 && retryAfter) {
                     this.subject(artistaId).next({ status: 'error', message, retryAfter });
                 } else {
                     this.subject(artistaId).next({ status: 'error', message });
                 }
-                throw err;
+                throw error;
             } finally {
                 this.inFlight.delete(artistaId);
             }

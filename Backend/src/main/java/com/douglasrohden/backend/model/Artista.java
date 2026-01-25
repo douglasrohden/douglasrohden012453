@@ -10,6 +10,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.EqualsAndHashCode;
 
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.JoinColumn;
@@ -25,19 +26,19 @@ import jakarta.persistence.Enumerated;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Table(name = "artista")
 public class Artista {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @EqualsAndHashCode.Include
     private Long id;
 
     @Column(nullable = false, unique = true)
     @NotBlank(message = "Nome é obrigatório")
     @Size(max = 100, message = "Nome deve ter no máximo 100 caracteres")
     private String nome;
-
-
 
     @Builder.Default
     @Enumerated(EnumType.STRING)

@@ -6,12 +6,18 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.util.HashSet;
 
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+
 @Entity
 @Table(name = "album")
+@Data
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Album {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@EqualsAndHashCode.Include
 	private Long id;
 
 	private String titulo;

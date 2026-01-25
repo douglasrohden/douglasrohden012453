@@ -13,7 +13,7 @@ import java.util.Optional;
 
 public interface ArtistaRepository extends JpaRepository<Artista, Long> {
 
-    interface ArtistaComAlbumCount {
+    public interface ArtistaComAlbumCount {
         Long getId();
 
         String getNome();

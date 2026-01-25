@@ -43,9 +43,8 @@ export function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
 
       {/* Sidebar Container */}
       <div
-        className={`fixed inset-y-0 left-0 z-40 w-64 transform border-r border-gray-200 bg-white transition-transform duration-300 md:static md:translate-x-0 dark:border-gray-700 dark:bg-gray-800 ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed inset-y-0 left-0 z-40 w-64 transform border-r border-gray-200 bg-white transition-transform duration-300 md:static md:translate-x-0 dark:border-gray-700 dark:bg-gray-800 ${isOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
       >
         <Sidebar aria-label="Main Sidebar Navigation" className="w-full">
           <div className="mb-5 flex items-center justify-between pr-2 pl-2.5">
@@ -103,11 +102,17 @@ export function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
                 Álbuns
               </SidebarItem>
               <SidebarItem
-                href="#"
+                href="/regionais"
                 icon={HiMusicNote}
-                className="hover:bg-gray-200 dark:hover:bg-gray-600"
+                active={isActive("/regionais")}
+                onClick={(e) => {
+                  if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+                  e.preventDefault();
+                  handleNavigate("/regionais");
+                }}
+                className={`hover:bg-gray-200 dark:hover:bg-gray-600 ${isActive("/regionais") ? activeClass : ""}`}
               >
-                Playlists
+                Tbl Regional
               </SidebarItem>
             </SidebarItemGroup>
           </SidebarItems>

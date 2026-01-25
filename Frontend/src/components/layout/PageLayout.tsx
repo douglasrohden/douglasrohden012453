@@ -1,14 +1,15 @@
 import { ReactNode, useState } from "react";
 import { SidebarMenu } from "../SidebarMenu";
 import { PageHeader } from "../PageHeader";
-import { useAuth } from "../../contexts/AuthContext";
+import { authFacade } from "../../facades/AuthFacade";
+import { useBehaviorSubjectValue } from "../../hooks/useBehaviorSubjectValue";
 
 interface PageLayoutProps {
   children: ReactNode;
 }
 
 export function PageLayout({ children }: PageLayoutProps) {
-  const { user } = useAuth();
+  const user = useBehaviorSubjectValue(authFacade.user$);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
@@ -20,7 +21,7 @@ export function PageLayout({ children }: PageLayoutProps) {
 
       <div className="flex flex-1 flex-col">
         <PageHeader
-          title={`Bem-vindo, ${user ?? "usuário"}!`}
+          title={`Bem-vindo, ${user?.username ?? "usuário"}!`}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         />
 

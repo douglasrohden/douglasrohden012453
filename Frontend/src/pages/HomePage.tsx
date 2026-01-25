@@ -124,7 +124,10 @@ export default function HomePage() {
                   <HiPencil className="h-4 w-4" />
                 </button>
                 <img
-                  src={"https://flowbite.com/docs/images/blog/image-1.jpg"}
+                  src={
+                    artist.imageUrl ||
+                    "https://flowbite.com/docs/images/blog/image-1.jpg"
+                  }
                   alt={artist.nome}
                   className="h-48 w-full object-cover"
                 />

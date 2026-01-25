@@ -1,4 +1,4 @@
-import api from "../api/client";
+import { rawHttp } from "../lib/http";
 
 export interface LoginRequest {
   username: string;
@@ -13,7 +13,7 @@ export interface LoginResponse {
 
 export const authService = {
   login: async (username: string, password: string): Promise<LoginResponse> => {
-    const response = await api.post("/autenticacao/login", {
+    const response = await rawHttp.post("/autenticacao/login", {
       username,
       password,
     });
@@ -21,7 +21,9 @@ export const authService = {
   },
 
   refresh: async (refreshToken: string): Promise<LoginResponse> => {
-    const response = await api.post("/autenticacao/refresh", { refreshToken });
+    const response = await rawHttp.post("/autenticacao/refresh", {
+      refreshToken,
+    });
     return response.data;
   },
 };

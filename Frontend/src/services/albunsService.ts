@@ -1,4 +1,4 @@
-import api from "../api/client";
+import http from "../lib/http";
 import { Page } from "../types/Page";
 
 export interface Album {
@@ -40,7 +40,7 @@ export async function getAlbuns(
   if (filters.apenasArtistaTipo)
     params.apenasArtistaTipo = filters.apenasArtistaTipo;
 
-  const response = await api.get<Page<Album>>("/albuns", { params });
+  const response = await http.get<Page<Album>>("/albuns", { params });
   return response.data;
 }
 
@@ -50,7 +50,7 @@ export async function createAlbum(data: {
   artistaIds?: number[];
   individual?: boolean;
 }): Promise<Album | Album[]> {
-  const response = await api.post<Album | Album[]>("/albuns", data);
+  const response = await http.post<Album | Album[]>("/albuns", data);
   return response.data;
 }
 
@@ -58,7 +58,7 @@ export async function updateAlbum(
   albumId: number,
   data: { titulo: string; ano?: number },
 ): Promise<Album> {
-  const response = await api.put<Album>(`/albuns/${albumId}`, data);
+  const response = await http.put<Album>(`/albuns/${albumId}`, data);
   return response.data;
 }
 
@@ -67,14 +67,14 @@ export async function searchAlbums(
   page = 0,
   size = 10,
 ): Promise<Page<Album>> {
-  const response = await api.get<Page<Album>>("/albuns", {
+  const response = await http.get<Page<Album>>("/albuns", {
     params: { titulo: query, page, size },
   });
   return response.data;
 }
 
 export async function getAlbumImages(albumId: number): Promise<AlbumImage[]> {
-  const response = await api.get<AlbumImage[]>(`/albuns/${albumId}/capas`);
+  const response = await http.get<AlbumImage[]>(`/albuns/${albumId}/capas`);
   return response.data;
 }
 
@@ -84,7 +84,7 @@ export async function uploadAlbumImages(
 ): Promise<AlbumImage[]> {
   const formData = new FormData();
   files.forEach((file) => formData.append("files", file));
-  const response = await api.post<AlbumImage[]>(
+  const response = await http.post<AlbumImage[]>(
     `/albuns/${albumId}/capas`,
     formData,
     {
@@ -98,5 +98,5 @@ export async function deleteAlbumImage(
   albumId: number,
   imageId: number,
 ): Promise<void> {
-  await api.delete(`/albuns/${albumId}/capas/${imageId}`);
+  await http.delete(`/albuns/${albumId}/capas/${imageId}`);
 }

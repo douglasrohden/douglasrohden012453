@@ -1,19 +1,17 @@
-import { useState, useEffect } from "react";
-import { BehaviorSubject } from "rxjs";
+import { useSyncExternalStore } from "react";
+import type { BehaviorSubject } from "rxjs";
 
 /**
- * Hook to subscribe to a BehaviorSubject and return its current value.
- * Updates the component whenever the subject emits a new value.
- * @param subject The BehaviorSubject to subscribe to.
- * @returns The current value of the subject.
+ * Subscribes to a BehaviorSubject and always exposes the latest value.
+ * Uses React's external store API to avoid stale closures and double renders.
  */
 export function useBehaviorSubjectValue<T>(subject: BehaviorSubject<T>): T {
-    const [value, setValue] = useState<T>(subject.getValue());
-
-    useEffect(() => {
-        const subscription = subject.subscribe(setValue);
-        return () => subscription.unsubscribe();
-    }, [subject]);
-
-    return value;
+  return useSyncExternalStore(
+    (onStoreChange) => {
+      const subscription = subject.subscribe(onStoreChange);
+      return () => subscription.unsubscribe();
+    },
+    () => subject.getValue(),
+    () => subject.getValue(),
+  );
 }

@@ -77,6 +77,19 @@ export class AlbunsFacade extends BaseFacade<Page<Album>> {
     await job;
   }
 
+  updateAlbumInState(updated: Album) {
+    const current = this.snapshot.data;
+    if (!current || !current.content) return;
+
+    const index = current.content.findIndex((album) => album.id === updated.id);
+    if (index === -1) return;
+
+    const nextContent = [...current.content];
+    nextContent[index] = { ...nextContent[index], ...updated };
+
+    this.setData({ ...current, content: nextContent });
+  }
+
   invalidateCache() {
     // Mantido apenas para compatibilidade com testes/consumidores.
     // Não há cache local de dados na facade.

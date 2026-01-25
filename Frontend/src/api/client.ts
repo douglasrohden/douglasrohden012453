@@ -4,7 +4,7 @@ import { emitApiRateLimit } from "./apiRateLimitEvents";
 import { auth } from "../auth/auth.singleton";
 
 type RateLimitInfo = {
-  retryAfter: number;
+  retryAfter: number; // seconds
   message: string;
   limitPerWindow?: number;
   windowSeconds?: number;
@@ -32,44 +32,40 @@ export function getRateLimitInfo(err: unknown): RateLimitInfo | undefined {
   if (!isRecord(info)) return undefined;
   const retryAfter = info.retryAfter;
   const message = info.message;
-  if (typeof retryAfter !== "number" || typeof message !== "string")
-    return undefined;
-  const limitPerWindow =
-    typeof info.limitPerWindow === "number" ? info.limitPerWindow : undefined;
-  const windowSeconds =
-    typeof info.windowSeconds === "number" ? info.windowSeconds : undefined;
-  const limitPerMinute =
-    typeof info.limitPerMinute === "number" ? info.limitPerMinute : undefined;
-  const remaining =
-    typeof info.remaining === "number" ? info.remaining : undefined;
+  if (typeof retryAfter !== "number" || typeof message !== "string") return undefined;
+
   return {
     retryAfter,
     message,
-    limitPerWindow,
-    windowSeconds,
-    limitPerMinute,
-    remaining,
+    limitPerWindow: typeof info.limitPerWindow === "number" ? info.limitPerWindow : undefined,
+    windowSeconds: typeof info.windowSeconds === "number" ? info.windowSeconds : undefined,
+    limitPerMinute: typeof info.limitPerMinute === "number" ? info.limitPerMinute : undefined,
+    remaining: typeof info.remaining === "number" ? info.remaining : undefined,
   };
 }
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/v1";
+// Padronização: VITE_API_URL deve ser só host/porta (ex.: http://localhost:8080)
+// e aqui você garante /v1
+const API_HOST = import.meta.env.VITE_API_URL || "http://localhost:8080";
+const BASE_URL = API_HOST.endsWith("/v1") ? API_HOST : `${API_HOST}/v1`;
 
+// rawApi: usado para refresh/login sem interceptors (evita loop)
 export const rawApi: AxiosInstance = axios.create({
   baseURL: BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
+  headers: { "Content-Type": "application/json" },
 });
 
 const api: AxiosInstance = axios.create({
   baseURL: BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
+  headers: { "Content-Type": "application/json" },
 });
 
-// Request queue with low concurrency and backoff on 429
-type QueueTask<T = unknown> = {
+/**
+ * Opcional (mas alinhado ao edital de rate limit 10/min):
+ * - baixa concorrência + espaçamento mínimo entre requests
+ * - pausa automática quando receber 429 (Retry-After)
+ */
+type QueueTask<T> = {
   fn: () => Promise<T>;
   resolve: (v: T) => void;
   reject: (e: unknown) => void;
@@ -79,13 +75,17 @@ const MIN_SPACING_MS = 400;
 let lastStartMs = 0;
 let active = 0;
 let pauseUntil = 0;
-const queue: QueueTask[] = [];
+const queue: Array<QueueTask<unknown>> = [];
 
 const baseAdapter = api.defaults.adapter ?? axios.defaults.adapter;
 
 function schedule<T>(fn: () => Promise<T>): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    queue.push({ fn, resolve, reject });
+    queue.push({
+      fn,
+      resolve: (v) => resolve(v as T),
+      reject,
+    });
     processQueue();
   });
 }
@@ -118,13 +118,13 @@ function processQueue(): void {
     .catch((err) => {
       const status = getHttpStatus(err);
       if (status === 429) {
-        const retryAfterHeader = err?.response?.headers?.["retry-after"];
+        const retryAfterHeader = (err as AxiosError)?.response?.headers?.["retry-after"];
         const retryAfter =
           typeof retryAfterHeader === "string"
             ? parseInt(retryAfterHeader, 10)
             : undefined;
-        if (Number.isFinite(retryAfter) && retryAfter! > 0) {
-          pauseUntil = Date.now() + retryAfter! * 1000;
+        if (Number.isFinite(retryAfter) && (retryAfter as number) > 0) {
+          pauseUntil = Date.now() + (retryAfter as number) * 1000;
         }
       }
       task.reject(err);
@@ -147,20 +147,26 @@ type RefreshResponse = {
 
 let refreshPromise: Promise<boolean> | null = null;
 
+function getAccessToken(): string | null {
+  return authStore.currentState.accessToken ?? localStorage.getItem("accessToken");
+}
+
 async function tryRefreshToken(): Promise<boolean> {
   if (refreshPromise) return refreshPromise;
 
   refreshPromise = (async () => {
     const refreshToken =
-      authStore.currentState.refreshToken ??
-      localStorage.getItem("refreshToken");
+      authStore.currentState.refreshToken ?? localStorage.getItem("refreshToken");
     const user = authStore.currentState.user ?? localStorage.getItem("user");
+
     if (!refreshToken || !user) return false;
 
     try {
       const resp = await rawApi.post("/autenticacao/refresh", { refreshToken });
       const data = resp.data as Partial<RefreshResponse>;
+
       if (!data?.accessToken || !data?.refreshToken) return false;
+
       authStore.setAuthenticated(data.accessToken, data.refreshToken, user);
       return true;
     } catch {
@@ -173,15 +179,9 @@ async function tryRefreshToken(): Promise<boolean> {
   return refreshPromise;
 }
 
-function getAccessToken(): string | null {
-  return (
-    authStore.currentState.accessToken ?? localStorage.getItem("accessToken")
-  );
-}
-
 function forceLogoutAndRedirect(reason?: string) {
   console.warn(
-    `[API Client] 401 Unauthorized${reason ? ` - ${reason}` : ""} - Clearing auth and redirecting to login`,
+    `[API] 401 Unauthorized${reason ? ` - ${reason}` : ""} - logout`,
   );
   auth.logout("/login");
 }
@@ -221,18 +221,18 @@ api.interceptors.response.use(
 
     // Handle 429 Too Many Requests (Rate Limit)
     if (error.response?.status === 429) {
+      const retryAfterHeader = error.response.headers?.["retry-after"];
+      const retryAfterFromHeader =
+        typeof retryAfterHeader === "string"
+          ? parseInt(retryAfterHeader, 10)
+          : undefined;
+
       const retryAfterFromBody =
         typeof body?.retryAfter === "number"
           ? (body.retryAfter as number)
           : typeof body?.retryAfter === "string"
             ? parseInt(body.retryAfter as string, 10)
             : undefined;
-
-      const retryAfterHeader = error.response.headers?.["retry-after"];
-      const retryAfterFromHeader =
-        typeof retryAfterHeader === "string"
-          ? parseInt(retryAfterHeader, 10)
-          : undefined;
 
       const retryAfterSeconds =
         Number.isFinite(retryAfterFromBody) &&
@@ -252,9 +252,10 @@ api.interceptors.response.use(
       const limitFromHeader =
         typeof limitHeader === "string" ? parseInt(limitHeader, 10) : undefined;
       const windowSecondsFromHeader =
-        typeof windowHeader === "string"
-          ? parseInt(windowHeader, 10)
-          : undefined;
+        typeof windowHeader === "string" ? parseInt(windowHeader, 10) : undefined;
+      const remaining =
+        typeof remainingHeader === "string" ? parseInt(remainingHeader, 10) : undefined;
+
       const limitFromBody =
         typeof body?.limit === "number" ? (body.limit as number) : undefined;
       const windowSecondsFromBody =
@@ -272,17 +273,12 @@ api.interceptors.response.use(
         limitPerWindow && windowSeconds && windowSeconds > 0
           ? Math.round((limitPerWindow * 60) / windowSeconds)
           : undefined;
-      const remaining =
-        typeof remainingHeader === "string"
-          ? parseInt(remainingHeader, 10)
-          : undefined;
-
       const friendlyMessage =
         typeof body?.message === "string" && (body.message as string).trim()
           ? (body.message as string)
           : typeof message === "string" && message.trim()
             ? message
-            : "Muitas requisições. Por favor, aguarde antes de tentar novamente.";
+            : "Muitas requisições. Aguarde antes de tentar novamente.";
 
       // Enhance error with rate limit information
       const info: RateLimitInfo = {
@@ -361,14 +357,8 @@ export function getErrorMessage(
 ): string {
   if (!err) return fallback;
 
-  const rateLimitInfo: RateLimitInfo | undefined =
-    isRecord(err) && isRecord((err as Record<string, unknown>).rateLimitInfo)
-      ? ((err as Record<string, unknown>).rateLimitInfo as RateLimitInfo)
-      : undefined;
-  if (rateLimitInfo?.message && typeof rateLimitInfo.message === "string") {
-    // Return the message as-is; toast/UI components handle retry time display
-    return rateLimitInfo.message;
-  }
+  const rateLimitInfo = getRateLimitInfo(err);
+  if (rateLimitInfo?.message) return rateLimitInfo.message;
 
   if (axios.isAxiosError(err)) {
     const data = err.response?.data;

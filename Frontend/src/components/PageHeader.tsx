@@ -48,7 +48,7 @@ export function PageHeader({
       </div>
       <div className="flex items-center gap-3">
         <DarkThemeToggle />
-        <Button color="light" size="sm" onClick={logout}>
+        <Button color="light" size="sm" onClick={() => logout()}>
           Sair
         </Button>
       </div>

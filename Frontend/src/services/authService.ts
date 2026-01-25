@@ -1,4 +1,4 @@
-import { api } from "../lib/http";
+import api from "../api/client";
 
 export interface LoginRequest {
   username: string;

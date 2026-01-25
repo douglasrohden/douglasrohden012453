@@ -24,11 +24,11 @@ public class Regional {
     @Column(name = "external_id", nullable = false, length = 255)
     private String externalId;
 
-    @Column(name = "nome", nullable = false, length = 255)
+    @Column(name = "nome", nullable = false, length = 200)
     private String nome;
 
-    @Column(name = "active", nullable = false)
-    private Boolean active = true;
+    @Column(name = "ativo", nullable = false)
+    private Boolean ativo = true;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -38,5 +38,15 @@ public class Regional {
 
     @Column(name = "notes", length = 1000)
     private String notes;
+
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+        if (ativo == null) {
+            ativo = true;
+        }
+    }
 
 }

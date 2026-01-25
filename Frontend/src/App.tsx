@@ -21,7 +21,7 @@ const ROUTES = {
 
 function FullScreenFallback() {
   return (
-    <div className="min-h-screen w-full flex items-center justify-center">
+    <div className="flex min-h-screen w-full items-center justify-center">
       <LoadingSpinner />
     </div>
   );
@@ -36,7 +36,10 @@ export default function App() {
           <AuthProvider>
             <Routes>
               {/* rota raiz */}
-              <Route path="/" element={<Navigate to={ROUTES.artists} replace />} />
+              <Route
+                path="/"
+                element={<Navigate to={ROUTES.artists} replace />}
+              />
 
               {/* rotas públicas */}
               <Route element={<PublicRoute />}>
@@ -46,12 +49,18 @@ export default function App() {
               {/* rotas protegidas */}
               <Route element={<ProtectedRoute />}>
                 <Route path={ROUTES.artists} element={<HomePage />} />
-                <Route path={ROUTES.artistDetail} element={<ArtistDetailPage />} />
+                <Route
+                  path={ROUTES.artistDetail}
+                  element={<ArtistDetailPage />}
+                />
                 <Route path={ROUTES.albuns} element={<AlbunsPage />} />
               </Route>
 
               {/* fallback */}
-              <Route path="*" element={<Navigate to={ROUTES.artists} replace />} />
+              <Route
+                path="*"
+                element={<Navigate to={ROUTES.artists} replace />}
+              />
             </Routes>
           </AuthProvider>
         </Suspense>

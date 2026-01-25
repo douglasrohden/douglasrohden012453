@@ -32,12 +32,24 @@ export function getRateLimitInfo(err: unknown): RateLimitInfo | undefined {
   if (!isRecord(info)) return undefined;
   const retryAfter = info.retryAfter;
   const message = info.message;
-  if (typeof retryAfter !== "number" || typeof message !== "string") return undefined;
-  const limitPerWindow = typeof info.limitPerWindow === "number" ? info.limitPerWindow : undefined;
-  const windowSeconds = typeof info.windowSeconds === "number" ? info.windowSeconds : undefined;
-  const limitPerMinute = typeof info.limitPerMinute === "number" ? info.limitPerMinute : undefined;
-  const remaining = typeof info.remaining === "number" ? info.remaining : undefined;
-  return { retryAfter, message, limitPerWindow, windowSeconds, limitPerMinute, remaining };
+  if (typeof retryAfter !== "number" || typeof message !== "string")
+    return undefined;
+  const limitPerWindow =
+    typeof info.limitPerWindow === "number" ? info.limitPerWindow : undefined;
+  const windowSeconds =
+    typeof info.windowSeconds === "number" ? info.windowSeconds : undefined;
+  const limitPerMinute =
+    typeof info.limitPerMinute === "number" ? info.limitPerMinute : undefined;
+  const remaining =
+    typeof info.remaining === "number" ? info.remaining : undefined;
+  return {
+    retryAfter,
+    message,
+    limitPerWindow,
+    windowSeconds,
+    limitPerMinute,
+    remaining,
+  };
 }
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/v1";
@@ -57,7 +69,11 @@ const api: AxiosInstance = axios.create({
 });
 
 // Request queue with low concurrency and backoff on 429
-type QueueTask<T = unknown> = { fn: () => Promise<T>; resolve: (v: T) => void; reject: (e: unknown) => void };
+type QueueTask<T = unknown> = {
+  fn: () => Promise<T>;
+  resolve: (v: T) => void;
+  reject: (e: unknown) => void;
+};
 const MAX_CONCURRENCY = 2;
 const MIN_SPACING_MS = 400;
 let lastStartMs = 0;
@@ -96,13 +112,17 @@ function processQueue(): void {
   active += 1;
   lastStartMs = Date.now();
 
-  task.fn()
+  task
+    .fn()
     .then(task.resolve)
     .catch((err) => {
       const status = getHttpStatus(err);
       if (status === 429) {
         const retryAfterHeader = err?.response?.headers?.["retry-after"];
-        const retryAfter = typeof retryAfterHeader === "string" ? parseInt(retryAfterHeader, 10) : undefined;
+        const retryAfter =
+          typeof retryAfterHeader === "string"
+            ? parseInt(retryAfterHeader, 10)
+            : undefined;
         if (Number.isFinite(retryAfter) && retryAfter! > 0) {
           pauseUntil = Date.now() + retryAfter! * 1000;
         }
@@ -115,7 +135,7 @@ function processQueue(): void {
     });
 }
 
-if (typeof baseAdapter === 'function') {
+if (typeof baseAdapter === "function") {
   api.defaults.adapter = (config) => schedule(() => baseAdapter(config));
 }
 
@@ -131,7 +151,9 @@ async function tryRefreshToken(): Promise<boolean> {
   if (refreshPromise) return refreshPromise;
 
   refreshPromise = (async () => {
-    const refreshToken = authStore.currentState.refreshToken ?? localStorage.getItem("refreshToken");
+    const refreshToken =
+      authStore.currentState.refreshToken ??
+      localStorage.getItem("refreshToken");
     const user = authStore.currentState.user ?? localStorage.getItem("user");
     if (!refreshToken || !user) return false;
 
@@ -152,7 +174,9 @@ async function tryRefreshToken(): Promise<boolean> {
 }
 
 function getAccessToken(): string | null {
-  return authStore.currentState.accessToken ?? localStorage.getItem("accessToken");
+  return (
+    authStore.currentState.accessToken ?? localStorage.getItem("accessToken")
+  );
 }
 
 function forceLogoutAndRedirect(reason?: string) {
@@ -181,7 +205,9 @@ api.interceptors.response.use(
 
     const originalRequest = error.config;
     const url: string = originalRequest?.url ?? "";
-    const isAuthRequest = url.includes("/autenticacao/login") || url.includes("/autenticacao/refresh");
+    const isAuthRequest =
+      url.includes("/autenticacao/login") ||
+      url.includes("/autenticacao/refresh");
 
     const responseData = error.response?.data;
     const body = isRecord(responseData) ? responseData : {};
@@ -204,25 +230,41 @@ api.interceptors.response.use(
 
       const retryAfterHeader = error.response.headers?.["retry-after"];
       const retryAfterFromHeader =
-        typeof retryAfterHeader === "string" ? parseInt(retryAfterHeader, 10) : undefined;
+        typeof retryAfterHeader === "string"
+          ? parseInt(retryAfterHeader, 10)
+          : undefined;
 
       const retryAfterSeconds =
-        Number.isFinite(retryAfterFromBody) && (retryAfterFromBody as number) > 0
+        Number.isFinite(retryAfterFromBody) &&
+        (retryAfterFromBody as number) > 0
           ? (retryAfterFromBody as number)
-          : Number.isFinite(retryAfterFromHeader) && (retryAfterFromHeader as number) > 0
+          : Number.isFinite(retryAfterFromHeader) &&
+              (retryAfterFromHeader as number) > 0
             ? (retryAfterFromHeader as number)
             : 60;
 
       const limitHeader = error.response.headers?.["x-rate-limit-limit"];
-      const windowHeader = error.response.headers?.["x-rate-limit-window-seconds"];
-      const remainingHeader = error.response.headers?.["x-rate-limit-remaining"];
+      const windowHeader =
+        error.response.headers?.["x-rate-limit-window-seconds"];
+      const remainingHeader =
+        error.response.headers?.["x-rate-limit-remaining"];
 
-      const limitFromHeader = typeof limitHeader === "string" ? parseInt(limitHeader, 10) : undefined;
-      const windowSecondsFromHeader = typeof windowHeader === "string" ? parseInt(windowHeader, 10) : undefined;
-      const limitFromBody = typeof body?.limit === "number" ? (body.limit as number) : undefined;
-      const windowSecondsFromBody = typeof body?.windowSeconds === "number" ? (body.windowSeconds as number) : undefined;
+      const limitFromHeader =
+        typeof limitHeader === "string" ? parseInt(limitHeader, 10) : undefined;
+      const windowSecondsFromHeader =
+        typeof windowHeader === "string"
+          ? parseInt(windowHeader, 10)
+          : undefined;
+      const limitFromBody =
+        typeof body?.limit === "number" ? (body.limit as number) : undefined;
+      const windowSecondsFromBody =
+        typeof body?.windowSeconds === "number"
+          ? (body.windowSeconds as number)
+          : undefined;
 
-      const limitPerWindow = Number.isFinite(limitFromBody) ? (limitFromBody as number) : limitFromHeader;
+      const limitPerWindow = Number.isFinite(limitFromBody)
+        ? (limitFromBody as number)
+        : limitFromHeader;
       const windowSeconds = Number.isFinite(windowSecondsFromBody)
         ? (windowSecondsFromBody as number)
         : windowSecondsFromHeader;
@@ -230,7 +272,10 @@ api.interceptors.response.use(
         limitPerWindow && windowSeconds && windowSeconds > 0
           ? Math.round((limitPerWindow * 60) / windowSeconds)
           : undefined;
-      const remaining = typeof remainingHeader === "string" ? parseInt(remainingHeader, 10) : undefined;
+      const remaining =
+        typeof remainingHeader === "string"
+          ? parseInt(remainingHeader, 10)
+          : undefined;
 
       const friendlyMessage =
         typeof body?.message === "string" && (body.message as string).trim()
@@ -249,7 +294,8 @@ api.interceptors.response.use(
         remaining,
       };
 
-      (error as AxiosError & { rateLimitInfo?: RateLimitInfo }).rateLimitInfo = info;
+      (error as AxiosError & { rateLimitInfo?: RateLimitInfo }).rateLimitInfo =
+        info;
 
       // Global toast/event for all screens (avoid duplicating on login/refresh page)
       if (!isAuthRequest) {
@@ -278,10 +324,14 @@ api.interceptors.response.use(
 
       // Fluxo esperado: ao expirar/401, tentar refresh UMA vez e repetir a requisição.
       // Se falhar, desloga e redireciona para /login (sem loops).
-      const req = (originalRequest ?? {}) as typeof originalRequest & { _retry?: boolean };
+      const req = (originalRequest ?? {}) as typeof originalRequest & {
+        _retry?: boolean;
+      };
       if (req._retry) {
         forceLogoutAndRedirect(
-          backendSaysExpired ? "401 after refresh attempt (expired/invalid)" : "401 after refresh attempt",
+          backendSaysExpired
+            ? "401 after refresh attempt (expired/invalid)"
+            : "401 after refresh attempt",
         );
         return Promise.reject(error);
       }
@@ -294,7 +344,9 @@ api.interceptors.response.use(
       }
 
       forceLogoutAndRedirect(
-        backendSaysExpired ? "refresh failed (expired/invalid)" : "refresh failed",
+        backendSaysExpired
+          ? "refresh failed (expired/invalid)"
+          : "refresh failed",
       );
       return Promise.reject(error);
     }
@@ -303,8 +355,10 @@ api.interceptors.response.use(
   },
 );
 
-
-export function getErrorMessage(err: unknown, fallback = 'Erro inesperado'): string {
+export function getErrorMessage(
+  err: unknown,
+  fallback = "Erro inesperado",
+): string {
   if (!err) return fallback;
 
   const rateLimitInfo: RateLimitInfo | undefined =
@@ -320,10 +374,16 @@ export function getErrorMessage(err: unknown, fallback = 'Erro inesperado'): str
     const data = err.response?.data;
     const obj = isRecord(data) ? data : {};
     const axiosMessage: unknown = obj?.message ?? obj?.error;
-    if (typeof axiosMessage === 'string' && axiosMessage.trim()) return axiosMessage;
+    if (typeof axiosMessage === "string" && axiosMessage.trim())
+      return axiosMessage;
   }
 
-  if (err instanceof Error && typeof err.message === 'string' && err.message.trim()) return err.message;
+  if (
+    err instanceof Error &&
+    typeof err.message === "string" &&
+    err.message.trim()
+  )
+    return err.message;
   return fallback;
 }
 

@@ -2,16 +2,15 @@ import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
 export function ProtectedRoute() {
-    const { isAuthenticated, initializing } = useAuth();
+  const { isAuthenticated, initializing } = useAuth();
 
-    if (initializing) return null;
+  if (initializing) return null;
 
-    // If not authenticated, redirect to login page
-    if (!isAuthenticated) {
-        return <Navigate to="/login" replace />;
-    }
+  // If not authenticated, redirect to login page
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
 
-    // If authenticated, render child routes
-    return <Outlet />;
+  // If authenticated, render child routes
+  return <Outlet />;
 }
-

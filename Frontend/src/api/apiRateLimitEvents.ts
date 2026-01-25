@@ -13,10 +13,14 @@ export type ApiRateLimitEventDetail = {
 const EVENT_NAME = "api:rate-limit" as const;
 
 export function emitApiRateLimit(detail: ApiRateLimitEventDetail): void {
-  window.dispatchEvent(new CustomEvent<ApiRateLimitEventDetail>(EVENT_NAME, { detail }));
+  window.dispatchEvent(
+    new CustomEvent<ApiRateLimitEventDetail>(EVENT_NAME, { detail }),
+  );
 }
 
-export function onApiRateLimit(handler: (detail: ApiRateLimitEventDetail) => void): () => void {
+export function onApiRateLimit(
+  handler: (detail: ApiRateLimitEventDetail) => void,
+): () => void {
   const listener = (event: Event) => {
     const custom = event as CustomEvent<ApiRateLimitEventDetail>;
     if (custom?.detail) handler(custom.detail);

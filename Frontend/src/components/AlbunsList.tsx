@@ -1,14 +1,13 @@
-
-import { Pagination, Card, Alert } from 'flowbite-react';
-import { useAlbuns } from '../hooks/useAlbuns';
-import { useMemo, useState } from 'react';
-import { HiSearch, HiClock } from 'react-icons/hi';
-import { CardGrid } from './common/CardGrid';
-import { ListToolbar } from './common/ListToolbar';
-import CreateAlbumForm from './CreateAlbumForm';
-import ManageAlbumImagesModal from './ManageAlbumImagesModal';
-import { useDebounce } from '../hooks/useDebounce';
-import type { Album } from '../services/albunsService';
+import { Pagination, Card, Alert } from "flowbite-react";
+import { useAlbuns } from "../hooks/useAlbuns";
+import { useMemo, useState } from "react";
+import { HiSearch, HiClock } from "react-icons/hi";
+import { CardGrid } from "./common/CardGrid";
+import { ListToolbar } from "./common/ListToolbar";
+import CreateAlbumForm from "./CreateAlbumForm";
+import ManageAlbumImagesModal from "./ManageAlbumImagesModal";
+import { useDebounce } from "../hooks/useDebounce";
+import type { Album } from "../services/albunsService";
 
 export default function AlbunsList() {
   const { albuns, loading, error, page, totalPages, setPage } = useAlbuns();
@@ -17,13 +16,17 @@ export default function AlbunsList() {
   const [sortField, setSortField] = useState("titulo");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [manageImagesAlbumId, setManageImagesAlbumId] = useState<number | null>(null);
+  const [manageImagesAlbumId, setManageImagesAlbumId] = useState<number | null>(
+    null,
+  );
   const debouncedSearch = useDebounce(search, 300);
 
   const visibleAlbuns = useMemo(() => {
     const normalizedQuery = debouncedSearch.trim().toLowerCase();
     const filtered = normalizedQuery
-      ? albuns.filter((a) => (a?.titulo ?? "").toLowerCase().includes(normalizedQuery))
+      ? albuns.filter((a) =>
+          (a?.titulo ?? "").toLowerCase().includes(normalizedQuery),
+        )
       : albuns;
 
     const sorted = [...filtered].sort((a, b) => {
@@ -38,7 +41,9 @@ export default function AlbunsList() {
         return aValue - bValue;
       }
 
-      return String(aValue).localeCompare(String(bValue), "pt-BR", { sensitivity: "base" });
+      return String(aValue).localeCompare(String(bValue), "pt-BR", {
+        sensitivity: "base",
+      });
     });
 
     return sortDir === "asc" ? sorted : sorted.reverse();
@@ -46,10 +51,16 @@ export default function AlbunsList() {
 
   if (error) {
     const lower = String(error).toLowerCase();
-    const isRateLimit = lower.includes("muitas requisi") || lower.includes("rate") && lower.includes("limit") || lower.includes("429");
+    const isRateLimit =
+      lower.includes("muitas requisi") ||
+      (lower.includes("rate") && lower.includes("limit")) ||
+      lower.includes("429");
 
     return (
-      <Alert color={isRateLimit ? "warning" : "failure"} icon={isRateLimit ? HiClock : undefined}>
+      <Alert
+        color={isRateLimit ? "warning" : "failure"}
+        icon={isRateLimit ? HiClock : undefined}
+      >
         {String(error)}
       </Alert>
     );
@@ -58,7 +69,9 @@ export default function AlbunsList() {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Álbuns</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+          Álbuns
+        </h2>
       </div>
 
       <ListToolbar
@@ -98,7 +111,7 @@ export default function AlbunsList() {
       </CardGrid>
 
       {totalPages > 1 && (
-        <div className="flex justify-center mt-8">
+        <div className="mt-8 flex justify-center">
           <Pagination
             currentPage={page + 1}
             totalPages={totalPages}
@@ -128,16 +141,22 @@ export default function AlbunsList() {
   );
 }
 
-function AlbumCard({ album, onManageImages }: { album: Album; onManageImages: () => void }) {
+function AlbumCard({
+  album,
+  onManageImages,
+}: {
+  album: Album;
+  onManageImages: () => void;
+}) {
   const src = album?.capaUrl || undefined;
 
   return (
     <Card
-      className="h-full transition-shadow hover:shadow-lg flex flex-col"
+      className="flex h-full flex-col transition-shadow hover:shadow-lg"
       renderImage={() => (
-        <div className="relative group">
+        <div className="group relative">
           {album.artistaNome && (
-            <div className="absolute top-0 left-0 bg-black/50 text-white text-xs px-2 py-1 rounded-br z-10">
+            <div className="absolute top-0 left-0 z-10 rounded-br bg-black/50 px-2 py-1 text-xs text-white">
               {album.artistaNome}
             </div>
           )}
@@ -149,34 +168,48 @@ function AlbumCard({ album, onManageImages }: { album: Album; onManageImages: ()
         </div>
       )}
     >
-      <div className="flex flex-col h-full justify-between">
+      <div className="flex h-full flex-col justify-between">
         <div>
-          <h5 className="truncate text-xl font-bold tracking-tight text-gray-900 dark:text-white line-clamp-1" title={album.titulo}>
-            <span className="text-sm font-semibold text-gray-600 dark:text-gray-400 mr-2">Título:</span>
-            <span>{album.titulo ?? '—'}</span>
+          <h5
+            className="line-clamp-1 truncate text-xl font-bold tracking-tight text-gray-900 dark:text-white"
+            title={album.titulo}
+          >
+            <span className="mr-2 text-sm font-semibold text-gray-600 dark:text-gray-400">
+              Título:
+            </span>
+            <span>{album.titulo ?? "—"}</span>
           </h5>
           <div className="mb-4">
             <p className="font-normal text-gray-700 dark:text-gray-400">
-              <span className="text-sm font-semibold text-gray-600 dark:text-gray-400 mr-2">Cantor/Banda:</span>
-              <span>{album.artistaNome ?? '—'}</span>
+              <span className="mr-2 text-sm font-semibold text-gray-600 dark:text-gray-400">
+                Cantor/Banda:
+              </span>
+              <span>{album.artistaNome ?? "—"}</span>
             </p>
 
             <p className="font-normal text-gray-700 dark:text-gray-400">
-              <span className="text-sm font-semibold text-gray-600 dark:text-gray-400 mr-2">Ano:</span>
-              <span>{album.ano ?? '—'}</span>
+              <span className="mr-2 text-sm font-semibold text-gray-600 dark:text-gray-400">
+                Ano:
+              </span>
+              <span>{album.ano ?? "—"}</span>
             </p>
 
             {album.individual !== undefined && (
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                <span className="text-sm font-semibold text-gray-600 dark:text-gray-400 mr-2">Tipo:</span>
-                <span>{album.individual ? 'Cantor(a)' : 'Banda'}</span>
+                <span className="mr-2 text-sm font-semibold text-gray-600 dark:text-gray-400">
+                  Tipo:
+                </span>
+                <span>{album.individual ? "Cantor(a)" : "Banda"}</span>
               </p>
             )}
           </div>
         </div>
         <button
-          onClick={(e) => { e.stopPropagation(); onManageImages(); }}
-          className="w-full mt-2 px-3 py-2 text-sm font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+          onClick={(e) => {
+            e.stopPropagation();
+            onManageImages();
+          }}
+          className="mt-2 w-full rounded-lg bg-blue-700 px-3 py-2 text-center text-sm font-medium text-white hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 focus:outline-none dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
         >
           Gerenciar Capas
         </button>

@@ -64,7 +64,7 @@ export function ListToolbar({
 
   return (
     <ToolbarCard
-      left={(
+      left={
         <TextInput
           id={queryId}
           type="text"
@@ -73,8 +73,8 @@ export function ListToolbar({
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
         />
-      )}
-      right={(
+      }
+      right={
         <>
           {extra}
 
@@ -120,15 +120,19 @@ export function ListToolbar({
             >
               {sortDir === "asc" ? "A-Z" : "Z-A"}
               {sortDir === "asc" ? (
-                <HiArrowUp className="ml-2 -mr-1 h-5 w-5" />
+                <HiArrowUp className="-mr-1 ml-2 h-5 w-5" />
               ) : (
-                <HiArrowDown className="ml-2 -mr-1 h-5 w-5" />
+                <HiArrowDown className="-mr-1 ml-2 h-5 w-5" />
               )}
             </Button>
           </div>
 
           {onAdd ? (
-            <Button className="w-full md:w-auto" onClick={onAdd} disabled={addDisabled}>
+            <Button
+              className="w-full md:w-auto"
+              onClick={onAdd}
+              disabled={addDisabled}
+            >
               <span className="flex items-center gap-2">
                 <AddIcon className="h-5 w-5" />
                 {addLabel}
@@ -136,7 +140,7 @@ export function ListToolbar({
             </Button>
           ) : null}
         </>
-      )}
+      }
     />
   );
 }

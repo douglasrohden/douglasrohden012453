@@ -1,12 +1,17 @@
 import { useEffect, useRef } from "react";
-import { onApiRateLimit, type ApiRateLimitEventDetail } from "../api/apiRateLimitEvents";
+import {
+  onApiRateLimit,
+  type ApiRateLimitEventDetail,
+} from "../api/apiRateLimitEvents";
 import { useToast } from "../contexts/ToastContext";
 
 function formatRetryAfter(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds <= 0) return "alguns segundos";
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
-  return mins > 0 ? `${mins}m ${secs.toString().padStart(2, "0")}s` : `${secs}s`;
+  return mins > 0
+    ? `${mins}m ${secs.toString().padStart(2, "0")}s`
+    : `${secs}s`;
 }
 
 export function ApiGlobalToasts() {
@@ -21,7 +26,11 @@ export function ApiGlobalToasts() {
       // Basic de-dupe so a burst of requests doesn't spam the user.
       const now = Date.now();
       const key = `${detail.endpoint ?? ""}|${detail.method ?? ""}|${detail.retryAfterSeconds}|${detail.message}`;
-      if (key === lastToastKeyRef.current && now - lastToastAtRef.current < 1500) return;
+      if (
+        key === lastToastKeyRef.current &&
+        now - lastToastAtRef.current < 1500
+      )
+        return;
 
       lastToastKeyRef.current = key;
       lastToastAtRef.current = now;
@@ -39,7 +48,10 @@ export function ApiGlobalToasts() {
       }
 
       const limitText = (() => {
-        if (Number.isFinite(detail.limitPerWindow) && Number.isFinite(detail.windowSeconds)) {
+        if (
+          Number.isFinite(detail.limitPerWindow) &&
+          Number.isFinite(detail.windowSeconds)
+        ) {
           return ` (limite: ${detail.limitPerWindow}/${detail.windowSeconds}s)`;
         }
         if (Number.isFinite(detail.limitPerMinute)) {

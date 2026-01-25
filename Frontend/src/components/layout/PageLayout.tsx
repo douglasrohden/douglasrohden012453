@@ -4,27 +4,30 @@ import { PageHeader } from "../PageHeader";
 import { useAuth } from "../../contexts/AuthContext";
 
 interface PageLayoutProps {
-    children: ReactNode;
+  children: ReactNode;
 }
 
 export function PageLayout({ children }: PageLayoutProps) {
-    const { user } = useAuth();
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { user } = useAuth();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-    return (
-        <main className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
-            <SidebarMenu isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+  return (
+    <main className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
+      <SidebarMenu
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+      />
 
-            <div className="flex-1 flex flex-col">
-                <PageHeader
-                    title={`Bem-vindo, ${user ?? "usuário"}!`}
-                    onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-                />
+      <div className="flex flex-1 flex-col">
+        <PageHeader
+          title={`Bem-vindo, ${user ?? "usuário"}!`}
+          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        />
 
-                <div className="p-4 overflow-y-auto h-[calc(100vh-73px)] md:p-6">
-                    {children}
-                </div>
-            </div>
-        </main>
-    );
+        <div className="h-[calc(100vh-73px)] overflow-y-auto p-4 md:p-6">
+          {children}
+        </div>
+      </div>
+    </main>
+  );
 }

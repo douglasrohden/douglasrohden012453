@@ -22,7 +22,7 @@ export function ToolbarCard({
   return (
     <div
       className={mergeClassNames(
-        "mb-6 flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 md:flex-row md:items-end md:justify-between",
+        "mb-6 flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm md:flex-row md:items-end md:justify-between dark:border-gray-700 dark:bg-gray-800",
         className,
       )}
     >

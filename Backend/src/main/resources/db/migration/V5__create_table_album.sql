@@ -1,8 +1,7 @@
 CREATE TABLE album (
     id SERIAL PRIMARY KEY,
     titulo VARCHAR(255) NOT NULL,
-    ano INTEGER,
-    UNIQUE (titulo, ano)
+    ano INTEGER
 );
 
 -- Tabela de associação N:N entre artista e álbum

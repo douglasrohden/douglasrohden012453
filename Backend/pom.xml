@@ -176,7 +176,7 @@
         <groupId>org.flywaydb</groupId>
         <artifactId>flyway-maven-plugin</artifactId>
         <configuration>
-          <url>jdbc:postgresql://localhost:5433/musicplayer</url>
+          <url>jdbc:postgresql://localhost:5433/dbmusicplayer</url>
           <user>postgres</user>
           <password>postgres</password>
           <validateOnMigrate>true</validateOnMigrate>

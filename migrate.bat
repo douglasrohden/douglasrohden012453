@@ -3,7 +3,7 @@ setlocal
 
 rem Use env vars if present, otherwise fallback to defaults
 set "DB=%POSTGRES_DB%"
-if "%DB%"=="" set "DB=musicplayer"
+if "%DB%"=="" set "DB=dbmusicplayer"
 set "USER=%POSTGRES_USER%"
 if "%USER%"=="" set "USER=postgres"
 set "PASSWORD=%POSTGRES_PASSWORD%"
@@ -29,6 +29,9 @@ if "%DB_EXISTS%"=="1" (
     echo ➕ Criando database "%DB%"...
     docker compose exec db psql -U %USER% -p %PORT% -c "CREATE DATABASE \"%DB%\";"
 )
+
+echo 🧹 Executando Flyway repair (ajuste de checksums)...
+docker compose run --rm --entrypoint sh backend -c "mvn -DskipTests -Dflyway.baselineOnMigrate=true -Dflyway.baselineVersion=0 -Dflyway.url=jdbc:postgresql://db:%PORT%/%DB% -Dflyway.user=%USER% -Dflyway.password=%PASSWORD% -Dflyway.outOfOrder=true flyway:repair"
 
 echo 🚀 Executando as migrations via Flyway (Maven)...
 docker compose run --rm --entrypoint sh backend -c "mvn -DskipTests -Dflyway.baselineOnMigrate=true -Dflyway.baselineVersion=0 -Dflyway.url=jdbc:postgresql://db:%PORT%/%DB% -Dflyway.user=%USER% -Dflyway.password=%PASSWORD% -Dflyway.outOfOrder=true flyway:migrate"

@@ -1,18 +1,29 @@
-import { Badge, Table, TableBody, TableCell, TableHead, TableHeadCell, TableRow } from "flowbite-react";
+import { Badge, Button, Table, TableBody, TableCell, TableHead, TableHeadCell, TableRow } from "flowbite-react";
 import { useEffect } from "react";
 import { regionalFacade } from "../facades/RegionalFacade";
 import { LoadingSpinner } from "../components/common/LoadingSpinner";
 import { useBehaviorSubjectValue } from "../hooks/useBehaviorSubjectValue";
 import { PageLayout } from "../components/layout/PageLayout";
+import { useToast } from "../contexts/ToastContext";
 
 export default function RegionalPage() {
     const data = useBehaviorSubjectValue(regionalFacade.data$);
     const loading = useBehaviorSubjectValue(regionalFacade.loading$);
     const error = useBehaviorSubjectValue(regionalFacade.error$);
+    const { addToast } = useToast();
 
     useEffect(() => {
         regionalFacade.load();
     }, []);
+
+    const handleSync = async () => {
+        try {
+            const r = await regionalFacade.sync();
+            addToast(`Sincronizado: ${r.inserted} novos, ${r.inactivated} inativados, ${r.changed} alterados`, "success");
+        } catch {
+            addToast("Erro ao sincronizar regionais", "error");
+        }
+    };
 
     if (loading && data.length === 0) {
         return (
@@ -28,13 +39,18 @@ export default function RegionalPage() {
 
     return (
         <PageLayout>
-            <h1 className="mb-4 text-2xl font-bold dark:text-white">
-                Tabela Regional
-            </h1>
+            <div className="mb-4 flex items-center justify-between">
+                <h1 className="text-2xl font-bold dark:text-white">
+                    Tabela Regional
+                </h1>
+                <Button onClick={handleSync} disabled={loading}>
+                    {loading ? "Sincronizando..." : "Sincronizar"}
+                </Button>
+            </div>
             <div className="overflow-x-auto">
                 <Table hoverable>
                     <TableHead>
-                        <TableHeadCell>ID</TableHeadCell>
+                        <TableHeadCell>ID Externo</TableHeadCell>
                         <TableHeadCell>Nome</TableHeadCell>
                         <TableHeadCell>Ativo</TableHeadCell>
                     </TableHead>
@@ -45,7 +61,7 @@ export default function RegionalPage() {
                                 className="bg-white dark:border-gray-700 dark:bg-gray-800"
                             >
                                 <TableCell className="whitespace-nowrap font-medium text-gray-900 dark:text-white">
-                                    {regional.id}
+                                    {regional.externalId}
                                 </TableCell>
                                 <TableCell>{regional.nome}</TableCell>
                                 <TableCell>

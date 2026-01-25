@@ -1,9 +1,6 @@
 package com.douglasrohden.backend.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,7 +15,11 @@ import lombok.NoArgsConstructor;
 public class Regional {
 
     @Id
-    private Integer id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "external_id", nullable = false)
+    private Integer externalId;
 
     @Column(name = "nome", nullable = false, length = 200)
     private String nome;

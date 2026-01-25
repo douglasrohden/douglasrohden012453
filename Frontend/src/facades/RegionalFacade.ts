@@ -31,6 +31,20 @@ export class RegionalFacade {
             this.loading$.next(false);
         }
     }
+
+    async sync() {
+        this.loading$.next(true);
+        this.error$.next(null);
+        try {
+            const result = await regionalService.sync();
+            await this.load();
+            return result;
+        } catch (error) {
+            this.error$.next(getErrorMessage(error, "Erro ao sincronizar regionais"));
+            this.loading$.next(false);
+            throw error;
+        }
+    }
 }
 
 export const regionalFacade = new RegionalFacade();

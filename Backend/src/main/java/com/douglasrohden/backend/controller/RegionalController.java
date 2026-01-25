@@ -1,14 +1,12 @@
 package com.douglasrohden.backend.controller;
 
+import com.douglasrohden.backend.model.Regional;
+import com.douglasrohden.backend.repository.RegionalRepository;
 import com.douglasrohden.backend.service.RegionalSyncService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import java.util.List;
 
 @RestController
 @RequestMapping("/v1/regionais")
@@ -16,22 +14,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class RegionalController {
 
     private final RegionalSyncService regionalSyncService;
-    private final com.douglasrohden.backend.repository.RegionalRepository regionalRepository;
+    private final RegionalRepository regionalRepository;
 
-    @Operation(summary = "Sincronizar regionais", description = "Sincroniza a tabela local `regional` via GET https://integrador-argus-api.geia.vip/v1/regionais.")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Sincronizacao executada"),
-            @ApiResponse(responseCode = "401", description = "Nao autenticado"),
-            @ApiResponse(responseCode = "503", description = "Integrador indisponivel")
-    })
+    @Operation(summary = "Sincronizar regionais com endpoint externo")
     @PostMapping("/sync")
-    public ResponseEntity<RegionalSyncService.SyncResult> sync() {
-        return ResponseEntity.ok(regionalSyncService.sync());
-    }
+    public RegionalSyncService.SyncResult sync() { return regionalSyncService.sync(); }
 
     @Operation(summary = "Listar todas as regionais")
-    @org.springframework.web.bind.annotation.GetMapping
-    public ResponseEntity<java.util.List<com.douglasrohden.backend.model.Regional>> findAll() {
-        return ResponseEntity.ok(regionalRepository.findAll());
-    }
+    @GetMapping
+    public List<Regional> findAll() { return regionalRepository.findAll(); }
 }

@@ -1,8 +1,8 @@
-import { rawApi } from "../api/client";
+import { api } from "../lib/http";
 
 export interface LoginRequest {
   username: string;
-  passwordHash: string; // The API expects 'password', adapted below
+  passwordHash: string;
 }
 
 export interface LoginResponse {
@@ -13,25 +13,15 @@ export interface LoginResponse {
 
 export const authService = {
   login: async (username: string, password: string): Promise<LoginResponse> => {
-    const response = await rawApi.post("/autenticacao/login", {
+    const response = await api.post("/autenticacao/login", {
       username,
       password,
     });
-    return response.data as LoginResponse;
+    return response.data;
   },
 
   refresh: async (refreshToken: string): Promise<LoginResponse> => {
-    const resp = await rawApi.post("/autenticacao/refresh", { refreshToken });
-    return resp.data as LoginResponse;
-  },
-
-  logout: () => {},
-
-  getCurrentUser: () => {
-    return localStorage.getItem("user");
-  },
-
-  isAuthenticated: () => {
-    return !!localStorage.getItem("accessToken");
+    const response = await api.post("/autenticacao/refresh", { refreshToken });
+    return response.data;
   },
 };

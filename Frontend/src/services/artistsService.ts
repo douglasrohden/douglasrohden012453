@@ -56,6 +56,13 @@ export const artistsService = {
     const response = await api.post<Artista>("/artistas", payload);
     return response.data;
   },
+  update: async (
+    id: number,
+    payload: { nome: string; tipo?: string; albumIds?: number[] },
+  ) => {
+    const response = await api.put<Artista>(`/artistas/${id}`, payload);
+    return response.data;
+  },
   addAlbum: async (id: number, payload: { titulo: string; ano?: number }) => {
     // Retorna o artista com o álbum recém-criado; usamos o id do novo álbum para subir as capas.
     const response = await api.post<Artista & { albuns?: Album[] }>(

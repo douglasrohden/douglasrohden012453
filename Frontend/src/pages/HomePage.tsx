@@ -1,16 +1,23 @@
-import { Pagination, Select, Card, Label } from "flowbite-react";
+import { Pagination, Select, Card, Label, Button } from "flowbite-react";
 import { PageLayout } from "../components/layout/PageLayout";
 import CreateArtistForm from "../components/CreateArtistForm";
+import EditArtistForm from "../components/EditArtistForm";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { CardGrid } from "../components/common/CardGrid";
 import { ListToolbar } from "../components/common/ListToolbar";
 import { useArtists } from "../hooks/useArtists";
+import { HiPencil } from "react-icons/hi";
 
 export default function HomePage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [showCreate, setShowCreate] = useState(false);
+  const [editingArtist, setEditingArtist] = useState<{
+    id: number;
+    nome: string;
+    tipo?: string;
+  } | null>(null);
   const [navLock, setNavLock] = useState(false);
 
   // Release navigation lock when route changes.
@@ -82,6 +89,17 @@ export default function HomePage() {
         onCreated={refresh}
       />
 
+      <EditArtistForm
+        isOpen={!!editingArtist}
+        artist={editingArtist}
+        onClose={() => setEditingArtist(null)}
+        onUpdated={async () => {
+          // Small delay to ensure backend commit
+          await new Promise((resolve) => setTimeout(resolve, 200));
+          refresh();
+        }}
+      />
+
       <CardGrid
         loading={loading}
         isEmpty={artists.length === 0}
@@ -91,8 +109,27 @@ export default function HomePage() {
           <Card
             key={artist.id}
             className="h-full cursor-pointer transition-shadow hover:shadow-lg"
-            imgAlt={artist.nome}
-            imgSrc={"https://flowbite.com/docs/images/blog/image-1.jpg"}
+            renderImage={() => (
+              <div className="group relative">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingArtist(artist);
+                  }}
+                  className="absolute top-1 right-1 z-10 rounded-full bg-black/60 p-1.5 text-white hover:bg-black/80 focus:outline-none focus:ring-2 focus:ring-white"
+                  title="Editar artista"
+                  aria-label="Editar artista"
+                >
+                  <HiPencil className="h-4 w-4" />
+                </button>
+                <img
+                  src={"https://flowbite.com/docs/images/blog/image-1.jpg"}
+                  alt={artist.nome}
+                  className="h-48 w-full object-cover"
+                />
+              </div>
+            )}
             onClick={() => {
               if (navLock) return;
               setNavLock(true);
@@ -131,15 +168,15 @@ export default function HomePage() {
               </p>
             )}
 
-            <button
+            <Button
+              className="mt-4 w-full bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700"
               onClick={(e) => {
                 e.stopPropagation();
                 navigate(`/artista/${artist.id}`);
               }}
-              className="mt-4 w-full rounded-lg bg-blue-700 px-3 py-2 text-center text-sm font-medium text-white hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 focus:outline-none dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
             >
               Álbuns
-            </button>
+            </Button>
           </Card>
         ))}
       </CardGrid>

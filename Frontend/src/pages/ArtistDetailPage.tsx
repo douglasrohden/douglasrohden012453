@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useDebounce } from "../hooks/useDebounce";
+import { useObservable } from "../hooks/useObservable";
 import { useParams } from "react-router-dom";
 import { PageLayout } from "../components/layout/PageLayout";
 import { artistsService } from "../services/artistsService";
@@ -9,16 +10,12 @@ import { LoadingSpinner } from "../components/common/LoadingSpinner";
 import { EmptyState } from "../components/common/EmptyState";
 import { CardGrid } from "../components/common/CardGrid";
 import CreateAlbumForm from "../components/CreateAlbumForm";
+
 import { ListToolbar } from "../components/common/ListToolbar";
 import { getErrorMessage } from "../api/client";
-import { getAlbumImages } from "../services/albunsService";
+import { albunsFacade } from "../facades/albuns.facade";
 import axios from "axios";
 import ManageAlbumImagesModal from "../components/ManageAlbumImagesModal";
-
-type AlbumImageState =
-  | { status: "loading"; urls: string[] }
-  | { status: "ready"; urls: string[] }
-  | { status: "empty"; urls: [] };
 
 const PLACEHOLDER_IMAGE = "https://flowbite.com/docs/images/blog/image-1.jpg";
 
@@ -39,11 +36,13 @@ interface ArtistaDetalhado {
 export default function ArtistDetailPage() {
   const { id } = useParams();
   const { addToast } = useToast();
+  const albunsState = useObservable(albunsFacade.state$, albunsFacade.snapshot);
   const retryTimeoutRef = useRef<number | null>(null);
   const hasLoadedOnceRef = useRef(false);
   const [artist, setArtist] = useState<ArtistaDetalhado | null>(null);
   const [loading, setLoading] = useState(true);
   const [rateLimited, setRateLimited] = useState(false);
+
   const [showAddAlbumModal, setShowAddAlbumModal] = useState(false);
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState("titulo");
@@ -51,7 +50,6 @@ export default function ArtistDetailPage() {
   const [manageImagesAlbumId, setManageImagesAlbumId] = useState<number | null>(
     null,
   );
-  const [albumImages, setAlbumImages] = useState<Record<number, AlbumImageState>>({});
 
   const fetchArtist = useCallback(async () => {
     if (!id) return;
@@ -96,8 +94,8 @@ export default function ArtistDetailPage() {
     const normalizedQuery = debouncedSearch.trim().toLowerCase();
     const filtered = normalizedQuery
       ? artist.albuns.filter((a) =>
-          (a?.titulo ?? "").toLowerCase().includes(normalizedQuery),
-        )
+        (a?.titulo ?? "").toLowerCase().includes(normalizedQuery),
+      )
       : artist.albuns;
 
     const sorted = [...filtered].sort((a, b) => {
@@ -120,59 +118,22 @@ export default function ArtistDetailPage() {
     return sortDir === "asc" ? sorted : sorted.reverse();
   }, [artist?.albuns, debouncedSearch, sortField, sortDir]);
 
-  // Load covers from MinIO for each album (first image is used as cover).
   useEffect(() => {
-    let cancelled = false;
-    const albums = artist?.albuns ?? [];
-    const missing = albums.filter(
-      (a) => a?.id != null && albumImages[a.id] === undefined,
-    );
-    if (missing.length === 0) return;
+    if (!artist?.nome) return;
+    const albumCount = artist.albuns?.length ?? 0;
+    if (albumCount === 0) return;
+    albunsFacade.fetch(0, Math.max(albumCount, 10), { artistaNome: artist.nome });
+  }, [artist?.id, artist?.nome, artist?.albuns?.length]);
 
-    setAlbumImages((prev) => {
-      const next = { ...prev };
-      for (const album of missing) {
-        if (album.id != null) {
-          next[album.id] = { status: "loading", urls: [] };
-        }
+  const capaUrlByAlbumId = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const album of albunsState.data?.content ?? []) {
+      if (album?.id != null && album.capaUrl) {
+        map.set(album.id, album.capaUrl);
       }
-      return next;
-    });
-
-    (async () => {
-      try {
-        const results = await Promise.all(
-          missing.map(async (album) => {
-            const images = await getAlbumImages(album.id);
-            return { albumId: album.id, urls: images.map((img) => img.url) };
-          }),
-        );
-
-        if (cancelled) return;
-        setAlbumImages((prev) => {
-          const next = { ...prev };
-          for (const { albumId, urls } of results) {
-            next[albumId] =
-              urls.length > 0
-                ? { status: "ready", urls }
-                : { status: "empty", urls: [] };
-          }
-          return next;
-        });
-      } catch (error) {
-        if (!cancelled) {
-          addToast(
-            getErrorMessage(error, "Erro ao carregar capas do álbum"),
-            "error",
-          );
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [artist?.albuns, albumImages, addToast]);
+    }
+    return map;
+  }, [albunsState.data?.content]);
 
   return (
     <PageLayout>
@@ -184,6 +145,25 @@ export default function ArtistDetailPage() {
         <EmptyState message="Artista não encontrado" />
       ) : (
         <div>
+          <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+                {artist.nome}
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                <span className="mr-2 font-semibold">Cantor/Banda:</span>
+                <span>
+                  {artist.tipo
+                    ? artist.tipo === "BANDA"
+                      ? "Banda"
+                      : "Cantor(a)"
+                    : "—"}
+                </span>
+              </p>
+            </div>
+
+          </div>
+
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
               Álbuns
@@ -223,17 +203,9 @@ export default function ArtistDetailPage() {
             emptyMessage="Nenhum álbum encontrado."
           >
             {visibleAlbuns.map((alb) => {
-              const imageState = albumImages[alb.id] ?? {
-                status: "loading",
-                urls: [],
-              };
-              const coverFromMinio =
-                imageState.status === "ready" && imageState.urls.length > 0
-                  ? imageState.urls[0]
-                  : undefined;
               const cover =
-                coverFromMinio ||
-                (imageState.status === "empty" ? PLACEHOLDER_IMAGE : undefined) ||
+                capaUrlByAlbumId.get(alb.id) ||
+                alb.capaUrl ||
                 PLACEHOLDER_IMAGE;
 
               return (
@@ -245,7 +217,7 @@ export default function ArtistDetailPage() {
                       {artist.nome && (
                         <div className="px-4 pt-4 pb-2">
                           <p className="text-sm font-semibold tracking-wide text-gray-600 uppercase dark:text-gray-400">
-                            <span className="mr-2">Nome:</span>
+                            <span className="mr-2">Nome1:</span>
                             <span className="normal-case">{artist.nome}</span>
                           </p>
                           <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -313,6 +285,14 @@ export default function ArtistDetailPage() {
             onClose={() => {
               setManageImagesAlbumId(null);
               fetchArtist();
+              if (artist?.nome) {
+                const albumCount = artist.albuns?.length ?? 0;
+                if (albumCount > 0) {
+                  albunsFacade.fetch(0, Math.max(albumCount, 10), {
+                    artistaNome: artist.nome,
+                  });
+                }
+              }
             }}
           />
         </div>

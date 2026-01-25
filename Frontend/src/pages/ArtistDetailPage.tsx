@@ -1,21 +1,17 @@
-import { useEffect, useState, useMemo, useRef, useCallback } from "react";
-import { useDebounce } from "../hooks/useDebounce";
-import { useObservable } from "../hooks/useObservable";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { PageLayout } from "../components/layout/PageLayout";
-import { artistsService } from "../services/artistsService";
 import { Card } from "flowbite-react";
+import { PageLayout } from "../components/layout/PageLayout";
 import { useToast } from "../contexts/ToastContext";
 import { LoadingSpinner } from "../components/common/LoadingSpinner";
 import { EmptyState } from "../components/common/EmptyState";
 import { CardGrid } from "../components/common/CardGrid";
 import CreateAlbumForm from "../components/CreateAlbumForm";
-
 import { ListToolbar } from "../components/common/ListToolbar";
-import { getErrorMessage } from "../api/client";
-import { albunsFacade } from "../facades/albuns.facade";
-import axios from "axios";
 import ManageAlbumImagesModal from "../components/ManageAlbumImagesModal";
+import EditAlbumModal from "../components/EditAlbumModal";
+import { artistDetailFacade } from "../facades/ArtistDetailFacade";
+import { useBehaviorSubjectValue } from "../hooks/useBehaviorSubjectValue";
 
 const PLACEHOLDER_IMAGE = "https://flowbite.com/docs/images/blog/image-1.jpg";
 
@@ -36,104 +32,62 @@ interface ArtistaDetalhado {
 export default function ArtistDetailPage() {
   const { id } = useParams();
   const { addToast } = useToast();
-  const albunsState = useObservable(albunsFacade.state$, albunsFacade.snapshot);
   const retryTimeoutRef = useRef<number | null>(null);
-  const hasLoadedOnceRef = useRef(false);
-  const [artist, setArtist] = useState<ArtistaDetalhado | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [rateLimited, setRateLimited] = useState(false);
+  const [hasWarnedRateLimit, setHasWarnedRateLimit] = useState(false);
+  const data = useBehaviorSubjectValue(artistDetailFacade.data$);
+  const loading = useBehaviorSubjectValue(artistDetailFacade.loading$);
+  const error = useBehaviorSubjectValue(artistDetailFacade.error$);
+  const status = useBehaviorSubjectValue(artistDetailFacade.status$);
+  const params = useBehaviorSubjectValue(artistDetailFacade.params$);
+  const search = params.search;
+  const sortField = params.sortField;
+  const sortDir = params.sortDir;
 
   const [showAddAlbumModal, setShowAddAlbumModal] = useState(false);
-  const [search, setSearch] = useState("");
-  const [sortField, setSortField] = useState("titulo");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [manageImagesAlbumId, setManageImagesAlbumId] = useState<number | null>(
     null,
   );
-
-  const fetchArtist = useCallback(async () => {
-    if (!id) return;
-
-    setRateLimited(false);
-    setLoading(true);
-    try {
-      const data = await artistsService.getById(Number(id));
-      setArtist(data);
-      hasLoadedOnceRef.current = true;
-    } catch (e) {
-      console.error(e);
-      const status = axios.isAxiosError(e) ? e.response?.status : undefined;
-      const msg = getErrorMessage(e, "Erro ao carregar detalhes do artista");
-      // 429 already triggers a global warning toast
-      if (status !== 429) addToast(msg, "error");
-
-      // If the initial load is rate limited, don't keep user on this page.
-      if (status === 429 && !hasLoadedOnceRef.current) {
-        setRateLimited(true);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [addToast, id]);
+  const [editingAlbum, setEditingAlbum] = useState<Album | null>(null);
 
   useEffect(() => {
-    fetchArtist();
+    if (!id) return;
+    artistDetailFacade.setArtistId(Number(id));
+    artistDetailFacade.refresh();
     return () => {
       if (retryTimeoutRef.current) {
         clearTimeout(retryTimeoutRef.current);
         retryTimeoutRef.current = null;
       }
     };
-  }, [id, fetchArtist]);
-
-  const debouncedSearch = useDebounce(search, 300);
-
-  const visibleAlbuns = useMemo(() => {
-    if (!artist?.albuns) return [];
-
-    const normalizedQuery = debouncedSearch.trim().toLowerCase();
-    const filtered = normalizedQuery
-      ? artist.albuns.filter((a) =>
-        (a?.titulo ?? "").toLowerCase().includes(normalizedQuery),
-      )
-      : artist.albuns;
-
-    const sorted = [...filtered].sort((a, b) => {
-      const aValue = a?.[sortField as keyof Album];
-      const bValue = b?.[sortField as keyof Album];
-
-      if (aValue == null && bValue == null) return 0;
-      if (aValue == null) return 1;
-      if (bValue == null) return -1;
-
-      if (typeof aValue === "number" && typeof bValue === "number") {
-        return aValue - bValue;
-      }
-
-      return String(aValue).localeCompare(String(bValue), "pt-BR", {
-        sensitivity: "base",
-      });
-    });
-
-    return sortDir === "asc" ? sorted : sorted.reverse();
-  }, [artist?.albuns, debouncedSearch, sortField, sortDir]);
+  }, [id]);
 
   useEffect(() => {
-    if (!artist?.nome) return;
-    const albumCount = artist.albuns?.length ?? 0;
-    if (albumCount === 0) return;
-    albunsFacade.fetch(0, Math.max(albumCount, 10), { artistaNome: artist.nome });
-  }, [artist?.id, artist?.nome, artist?.albuns?.length]);
-
-  const capaUrlByAlbumId = useMemo(() => {
-    const map = new Map<number, string>();
-    for (const album of albunsState.data?.content ?? []) {
-      if (album?.id != null && album.capaUrl) {
-        map.set(album.id, album.capaUrl);
-      }
+    if (status === 429 && !hasWarnedRateLimit) {
+      addToast("Muitas requisições. Tente novamente em instantes.", "warning");
+      setHasWarnedRateLimit(true);
     }
-    return map;
-  }, [albunsState.data?.content]);
+    if (status !== 429 && hasWarnedRateLimit) {
+      setHasWarnedRateLimit(false);
+    }
+  }, [status, addToast, hasWarnedRateLimit]);
+
+  const visibleAlbuns = data.visibleAlbums ?? [];
+  const artist = data.artist as ArtistaDetalhado | null;
+  const rateLimited = status === 429;
+
+  const handleSortFieldChange = (next: string) => {
+    if (next === "titulo" || next === "ano") {
+      artistDetailFacade.setSortField(next);
+    }
+  };
+
+  const handleSortDirChange = (next: "asc" | "desc") => {
+    artistDetailFacade.setSortDir(next);
+  };
+
+  const handleSearchChange = (value: string) => {
+    artistDetailFacade.setSearch(value);
+  };
 
   return (
     <PageLayout>
@@ -141,6 +95,8 @@ export default function ArtistDetailPage() {
         <LoadingSpinner message="Carregando detalhes..." />
       ) : rateLimited ? (
         <EmptyState message="Muitas requisições. Aguarde e tente novamente." />
+      ) : error ? (
+        <EmptyState message={error} />
       ) : !artist ? (
         <EmptyState message="Artista não encontrado" />
       ) : (
@@ -172,11 +128,11 @@ export default function ArtistDetailPage() {
 
           <ListToolbar
             query={search}
-            onQueryChange={setSearch}
+            onQueryChange={handleSearchChange}
             queryPlaceholder="Buscar álbum..."
             queryId="search-albuns-artista"
             sortField={sortField}
-            onSortFieldChange={setSortField}
+            onSortFieldChange={handleSortFieldChange}
             sortFieldId="sort-albuns-artista"
             sortFieldLabel="Ordenar por"
             sortFieldOptions={[
@@ -184,7 +140,7 @@ export default function ArtistDetailPage() {
               { value: "ano", label: "Ano" },
             ]}
             sortDir={sortDir}
-            onSortDirChange={setSortDir}
+            onSortDirChange={handleSortDirChange}
             sortDirId="sort-dir-albuns-artista"
             sortDirLabel="Ordem"
             addLabel="Adicionar Álbum"
@@ -195,7 +151,7 @@ export default function ArtistDetailPage() {
             artistId={artist.id}
             show={showAddAlbumModal}
             onClose={() => setShowAddAlbumModal(false)}
-            onSuccess={fetchArtist}
+            onSuccess={() => artistDetailFacade.refresh()}
           />
 
           <CardGrid
@@ -204,7 +160,6 @@ export default function ArtistDetailPage() {
           >
             {visibleAlbuns.map((alb) => {
               const cover =
-                capaUrlByAlbumId.get(alb.id) ||
                 alb.capaUrl ||
                 PLACEHOLDER_IMAGE;
 
@@ -273,6 +228,12 @@ export default function ArtistDetailPage() {
                     >
                       Gerenciar Capas
                     </button>
+                    <button
+                      onClick={() => setEditingAlbum(alb)}
+                      className="mt-2 w-full rounded-lg bg-gray-200 px-3 py-2 text-center text-sm font-medium text-gray-800 hover:bg-gray-300 focus:ring-4 focus:ring-gray-100 focus:outline-none dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-600"
+                    >
+                      Editar
+                    </button>
                   </div>
                 </Card>
               );
@@ -284,15 +245,16 @@ export default function ArtistDetailPage() {
             albumId={manageImagesAlbumId}
             onClose={() => {
               setManageImagesAlbumId(null);
-              fetchArtist();
-              if (artist?.nome) {
-                const albumCount = artist.albuns?.length ?? 0;
-                if (albumCount > 0) {
-                  albunsFacade.fetch(0, Math.max(albumCount, 10), {
-                    artistaNome: artist.nome,
-                  });
-                }
-              }
+              artistDetailFacade.refresh();
+            }}
+          />
+
+          <EditAlbumModal
+            show={!!editingAlbum}
+            album={editingAlbum}
+            onClose={() => setEditingAlbum(null)}
+            onSuccess={() => {
+              artistDetailFacade.refresh();
             }}
           />
         </div>

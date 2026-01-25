@@ -13,7 +13,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.douglasrohden.backend.model.ArtistaTipo;
+import com.douglasrohden.backend.repository.ArtistImageRepository;
+import com.douglasrohden.backend.model.ArtistImage;
 import java.util.List;
+import java.util.Map;
+import java.util.Collections;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +26,8 @@ public class ArtistaService {
 
     private final ArtistaRepository repository;
     private final AlbumService albumService;
+    private final ArtistImageRepository artistImageRepository;
+    private final ArtistImageStorageService imageStorageService;
 
     private static ArtistaTipo parseTipo(String tipo) {
         if (tipo == null || tipo.isBlank())
@@ -48,19 +55,33 @@ public class ArtistaService {
         ArtistaTipo artistaTipo = parseTipo(tipo);
 
         Page<ArtistaComAlbumCount> resultados = repository.searchWithAlbumCount(query, artistaTipo, pageable);
-        return resultados.map(this::converterParaDto);
+
+        List<Long> ids = resultados.getContent().stream().map(ArtistaComAlbumCount::getId).toList();
+        Map<Long, String> imageMap;
+        if (ids.isEmpty()) {
+            imageMap = Collections.emptyMap();
+        } else {
+            List<ArtistImage> images = artistImageRepository.findFirstImagesByArtistaIds(ids);
+            imageMap = images.stream().collect(Collectors.toMap(
+                    img -> img.getArtista().getId(),
+                    img -> imageStorageService.generatePresignedUrl(img.getObjectKey()),
+                    (existing, replacement) -> existing));
+        }
+
+        return resultados.map(res -> converterParaDto(res, imageMap.get(res.getId())));
     }
 
     /**
      * Converte um resultado de projeção em um DTO de artista.
      * Este método facilita a leitura ao dar um nome claro para a conversão.
      */
-    private ArtistaDto converterParaDto(ArtistaComAlbumCount resultado) {
+    private ArtistaDto converterParaDto(ArtistaComAlbumCount resultado, String imageUrl) {
         return new ArtistaDto(
                 resultado.getId(),
                 resultado.getNome(),
                 resultado.getAlbumCount(),
-                resultado.getTipo() != null ? resultado.getTipo().name() : null);
+                resultado.getTipo() != null ? resultado.getTipo().name() : null,
+                imageUrl);
     }
 
     @Transactional(readOnly = true)

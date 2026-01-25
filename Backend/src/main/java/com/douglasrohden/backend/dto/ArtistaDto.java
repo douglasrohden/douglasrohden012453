@@ -10,4 +10,5 @@ public class ArtistaDto {
     private String nome;
     private Long albumCount;
     private String tipo;
+    private String imageUrl;
 }

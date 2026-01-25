@@ -17,14 +17,18 @@ public class RegionalController {
 
     private final RegionalSyncService regionalSyncService;
 
-    @Operation(summary = "Sincronizar regionais", description = "Sincroniza tabela regional com integrador externo (cria/inativa/cria nova versão)")
+    @Operation(
+            summary = "Sincronizar regionais",
+            description = "Sincroniza a tabela local `regional` via GET https://integrador-argus-api.geia.vip/v1/regionais."
+    )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Sincronização executada"),
-            @ApiResponse(responseCode = "401", description = "Não autenticado"),
-            @ApiResponse(responseCode = "503", description = "Integrador indisponível")
+            @ApiResponse(responseCode = "200", description = "Sincronizacao executada"),
+            @ApiResponse(responseCode = "401", description = "Nao autenticado"),
+            @ApiResponse(responseCode = "503", description = "Integrador indisponivel")
     })
     @PostMapping("/sync")
     public ResponseEntity<RegionalSyncService.SyncResult> sync() {
         return ResponseEntity.ok(regionalSyncService.sync());
     }
 }
+

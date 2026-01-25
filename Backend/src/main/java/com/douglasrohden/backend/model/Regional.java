@@ -1,7 +1,9 @@
 package com.douglasrohden.backend.model;
 
-import jakarta.persistence.*;
-import java.time.LocalDateTime;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -12,41 +14,17 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "regional", indexes = {
-    @Index(name = "idx_regional_external_id_jpa", columnList = "external_id")
-})
+@Table(name = "regional")
 public class Regional {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(name = "external_id", nullable = false, length = 255)
-    private String externalId;
+    private Integer id;
 
     @Column(name = "nome", nullable = false, length = 200)
     private String nome;
 
+    @Builder.Default
     @Column(name = "ativo", nullable = false)
-    private Boolean ativo = true;
-
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
-
-    @Column(name = "inactivated_at")
-    private LocalDateTime inactivatedAt;
-
-    @Column(name = "notes", length = 1000)
-    private String notes;
-
-    @PrePersist
-    protected void onCreate() {
-        if (createdAt == null) {
-            createdAt = LocalDateTime.now();
-        }
-        if (ativo == null) {
-            ativo = true;
-        }
-    }
+    private boolean ativo = true;
 
 }

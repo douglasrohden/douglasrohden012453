@@ -5,20 +5,25 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record IntegradorRegionalDto(
-        @JsonProperty("externalId") String externalId,
         @JsonProperty("id") Object id,
         @JsonProperty("nome") String nome,
         @JsonProperty("ativo") Boolean ativo
 ) {
 
-    public String resolvedExternalId() {
-        if (externalId != null && !externalId.isBlank()) {
-            return externalId;
-        }
+    public Integer resolvedId() {
         if (id == null) {
             return null;
         }
-        String asString = String.valueOf(id);
-        return asString.isBlank() ? null : asString;
+
+        String asString = String.valueOf(id).trim();
+        if (asString.isEmpty()) {
+            return null;
+        }
+
+        try {
+            return Integer.valueOf(asString);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }

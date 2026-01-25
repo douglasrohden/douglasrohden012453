@@ -20,7 +20,8 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 
 @Service
@@ -57,7 +58,7 @@ public class AuthenticationService {
         RefreshToken refreshToken = new RefreshToken();
         refreshToken.setUsuario(usuario);
         refreshToken.setTokenHash(refreshTokenHash);
-        refreshToken.setExpiresAt(LocalDateTime.now().plus(refreshExpiration, ChronoUnit.MILLIS));
+        refreshToken.setExpiresAt(OffsetDateTime.now(ZoneOffset.UTC).plus(refreshExpiration, ChronoUnit.MILLIS));
         refreshToken = refreshTokenRepository.save(refreshToken);
 
         return new LoginResponse(accessToken, rawRefreshToken, jwtExpiration / 1000);
@@ -78,8 +79,9 @@ public class AuthenticationService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token inválido");
         }
 
-        if (refreshToken.getExpiresAt().isBefore(LocalDateTime.now())) {
-            refreshToken.setRevokedAt(LocalDateTime.now());
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        if (refreshToken.getExpiresAt().isBefore(now)) {
+            refreshToken.setRevokedAt(now);
             refreshTokenRepository.save(refreshToken);
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token expirado");
         }
@@ -92,7 +94,6 @@ public class AuthenticationService {
         String newRawRefreshToken = refreshTokenCrypto.generateOpaqueToken();
         String newHash = refreshTokenCrypto.hash(newRawRefreshToken);
 
-        LocalDateTime now = LocalDateTime.now();
         refreshToken.setRevokedAt(now);
         refreshToken.setReplacedByTokenHash(newHash);
         refreshTokenRepository.save(refreshToken);

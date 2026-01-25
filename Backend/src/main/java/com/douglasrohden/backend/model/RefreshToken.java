@@ -1,7 +1,8 @@
 package com.douglasrohden.backend.model;
 
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 @Entity
 @Table(name = "refresh_tokens")
@@ -15,24 +16,24 @@ public class RefreshToken {
     @JoinColumn(name = "user_id", nullable = false)
     private Usuario usuario;
 
-    @Column(name = "token_hash", nullable = false, unique = true)
+    @Column(name = "token_hash", nullable = false, unique = true, length = 64)
     private String tokenHash;
 
     @Column(name = "revoked_at")
-    private LocalDateTime revokedAt;
+    private OffsetDateTime revokedAt;
 
-    @Column(name = "replaced_by_token_hash", length = 255)
+    @Column(name = "replaced_by_token_hash", length = 64)
     private String replacedByTokenHash;
 
     @Column(name = "expires_at", nullable = false)
-    private LocalDateTime expiresAt;
+    private OffsetDateTime expiresAt;
 
     @Column(name = "created_at")
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
+        createdAt = OffsetDateTime.now(ZoneOffset.UTC);
     }
 
     // Getters and Setters
@@ -61,19 +62,19 @@ public class RefreshToken {
         this.tokenHash = tokenHash;
     }
 
-    public LocalDateTime getExpiresAt() {
+    public OffsetDateTime getExpiresAt() {
         return expiresAt;
     }
 
-    public void setExpiresAt(LocalDateTime expiresAt) {
+    public void setExpiresAt(OffsetDateTime expiresAt) {
         this.expiresAt = expiresAt;
     }
 
-    public LocalDateTime getRevokedAt() {
+    public OffsetDateTime getRevokedAt() {
         return revokedAt;
     }
 
-    public void setRevokedAt(LocalDateTime revokedAt) {
+    public void setRevokedAt(OffsetDateTime revokedAt) {
         this.revokedAt = revokedAt;
     }
 
@@ -85,11 +86,11 @@ public class RefreshToken {
         this.replacedByTokenHash = replacedByTokenHash;
     }
 
-    public LocalDateTime getCreatedAt() {
+    public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
 
-    public void setCreatedAt(LocalDateTime createdAt) {
+    public void setCreatedAt(OffsetDateTime createdAt) {
         this.createdAt = createdAt;
     }
 }

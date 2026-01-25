@@ -78,7 +78,7 @@ public class ArtistaController {
         // Tenta converter o tipo de artista, se fornecido
         if (request.getTipo() != null) {
             try {
-                artista.setTipo(ArtistaTipo.valueOf(request.getTipo()));
+                artista.setTipo(ArtistaTipo.valueOf(request.getTipo().toUpperCase()));
             } catch (IllegalArgumentException e) {
                 // Tipo inválido será ignorado; o service define CANTOR como padrão
             }

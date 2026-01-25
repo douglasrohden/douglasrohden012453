@@ -9,4 +9,5 @@ public class ArtistaDto {
     private Long id;
     private String nome;
     private Long albumCount;
+    private String tipo;
 }

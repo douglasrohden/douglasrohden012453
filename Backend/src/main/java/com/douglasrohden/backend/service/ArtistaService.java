@@ -59,7 +59,8 @@ public class ArtistaService {
         return new ArtistaDto(
                 resultado.getId(),
                 resultado.getNome(),
-                resultado.getAlbumCount());
+                resultado.getAlbumCount(),
+                resultado.getTipo() != null ? resultado.getTipo().name() : null);
     }
 
     @Transactional(readOnly = true)

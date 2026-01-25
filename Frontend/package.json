@@ -10,6 +10,8 @@
     "preview": "vite preview",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
+    "generate-tests": "node scripts/generate-tests.js",
+    "clean-generated-tests": "node scripts/clean-generated-tests.js",
     "test": "vitest",
     "test:ui": "vitest --ui"
   },

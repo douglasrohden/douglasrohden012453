@@ -241,7 +241,7 @@ export default function CreateAlbumForm({
         <ModalHeader>Adicionar Álbum</ModalHeader>
         <ModalBody>
           <div className="flex flex-col gap-4">
-            {!artistId && (
+            {!artistId && show && (
               <div>
                 <ArtistSelector
                   value={artistSearch}

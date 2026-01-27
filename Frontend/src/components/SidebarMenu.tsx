@@ -25,10 +25,10 @@ export function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
   const handleNavigate = (path: string) => {
     const alreadyHere = isActive(path);
     if (alreadyHere) {
-      navigate(path, { replace: true, state: { refreshAt: Date.now() } });
-    } else {
-      navigate(path);
+      onClose();
+      return;
     }
+    navigate(path);
     onClose(); // Close sidebar on mobile after navigation
   };
   return (

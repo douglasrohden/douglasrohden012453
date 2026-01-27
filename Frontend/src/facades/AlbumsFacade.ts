@@ -1,9 +1,14 @@
 import {
     BehaviorSubject,
-    combineLatest,
+    Subject,
+    Subscription,
+    merge,
     debounceTime,
+    distinctUntilChanged,
     from,
     switchMap,
+    map,
+    skip,
 } from "rxjs";
 import {
     createAlbum as createAlbumRequest,
@@ -14,7 +19,7 @@ import {
     uploadAlbumImages,
 } from "../services/albunsService";
 import { type Page } from "../types/Page";
-import { getErrorMessage, getHttpStatus } from "../lib/http";
+import { getErrorMessage, getHttpStatus, getRateLimitInfo } from "../lib/http";
 
 type AlbumParams = {
     page: number;
@@ -49,6 +54,10 @@ const INITIAL_PARAMS: AlbumParams = {
     artistType: undefined,
 };
 
+const CACHE_TTL_MS = 15_000;
+const LOAD_DEDUPE_MS = 500;
+const MIN_QUERY_LENGTH = 2;
+
 function isSameParams(a: AlbumParams, b: AlbumParams): boolean {
     return (
         a.page === b.page &&
@@ -61,37 +70,18 @@ function isSameParams(a: AlbumParams, b: AlbumParams): boolean {
     );
 }
 
-function applySort(data: Page<Album>, params: AlbumParams): Page<Album> {
-    const sorted = [...(data.content ?? [])].sort((a, b) => {
-        const aVal = a?.[params.sortField];
-        const bVal = b?.[params.sortField];
+type ResolvedParams = {
+    page: number;
+    size: number;
+    filters: GetAlbunsFilters;
+    sortField: AlbumParams["sortField"];
+    sortDir: AlbumParams["sortDir"];
+};
 
-        if (aVal == null && bVal == null) return 0;
-        if (aVal == null) return 1;
-        if (bVal == null) return -1;
-
-        if (typeof aVal === "number" && typeof bVal === "number") {
-            return aVal - bVal;
-        }
-
-        return String(aVal).localeCompare(String(bVal), "pt-BR", {
-            sensitivity: "base",
-        });
-    });
-
-    return {
-        ...data,
-        content: params.sortDir === "asc" ? sorted : sorted.reverse(),
-    };
-}
-
-function buildFilters(params: AlbumParams): GetAlbunsFilters {
-    const filters: GetAlbunsFilters = {};
-    if (params.search.trim()) filters.titulo = params.search.trim();
-    if (params.artistName) filters.artistaNome = params.artistName;
-    if (params.artistType) filters.artistaTipo = params.artistType;
-    return filters;
-}
+type LoadResult =
+    | { ok: true; data: Page<Album>; fromCache: boolean }
+    | { ok: false; error: unknown }
+    | { skipped: true };
 
 export class AlbumsFacade {
     readonly data$ = new BehaviorSubject<Page<Album>>(INITIAL_PAGE);
@@ -99,28 +89,63 @@ export class AlbumsFacade {
     readonly error$ = new BehaviorSubject<string | null>(null);
     readonly params$ = new BehaviorSubject<AlbumParams>(INITIAL_PARAMS);
 
-    private readonly refresh$ = new BehaviorSubject<number>(0);
+    private readonly refresh$ = new Subject<void>();
+    private sub: Subscription | null = null;
+    private lastLoadKey: string | null = null;
+    private lastLoadAtMs = 0;
+    private activeCount = 0;
+    private loadingCount = 0;
 
-    constructor() {
-        combineLatest([this.params$, this.refresh$])
+    private readonly cache = new Map<string, { data: Page<Album>; expiresAt: number }>();
+    private readonly inFlight = new Map<string, Promise<Page<Album>>>();
+    private currentAbort: AbortController | null = null;
+    private currentKey: string | null = null;
+    private blockedUntilMs = 0;
+    private retryTimer: ReturnType<typeof setTimeout> | null = null;
+    private pendingRefresh = false;
+    private forceReload = false;
+
+    activate(): void {
+        this.activeCount += 1;
+        if (this.sub) return; // idempotente
+
+        const paramsChanged$ = this.params$.pipe(
+            distinctUntilChanged((prev, next) => this.isSameRequestParams(prev, next)),
+            skip(1),
+            map(() => undefined),
+        );
+
+        this.sub = merge(paramsChanged$, this.refresh$)
             .pipe(
                 debounceTime(250),
-                switchMap(([params]) => from(this.loadRequest(params))),
+                switchMap(() => from(this.loadRequest(this.params$.getValue()))),
             )
             .subscribe((result) => {
-                this.loading$.next(false);
+                if ("skipped" in result) return;
                 if (result.ok) {
-                    this.data$.next(applySort(result.data, this.params$.getValue()));
+                    this.data$.next(result.data);
                     return;
                 }
 
                 const status = getHttpStatus(result.error);
                 if (status !== 429) {
-                    this.error$.next(
-                        getErrorMessage(result.error, "Erro ao carregar albuns"),
-                    );
+                    this.error$.next(getErrorMessage(result.error, "Erro ao carregar albuns"));
                 }
             });
+
+        // 1 load inicial
+        this.load(true);
+    }
+
+    deactivate(): void {
+        if (this.activeCount > 0) {
+            this.activeCount -= 1;
+        }
+        if (this.activeCount > 0) return;
+        this.sub?.unsubscribe();
+        this.sub = null;
+        this.clearRetryTimer();
+        this.abortCurrent();
     }
 
     get snapshot() {
@@ -160,12 +185,25 @@ export class AlbumsFacade {
         this.updateParams({ artistType: artistType || undefined, page: 0 });
     }
 
-    refresh() {
-        this.refresh$.next(this.refresh$.getValue() + 1);
+    load(force = false): void {
+        if (!force && this.loading$.getValue()) return;
+
+        const now = Date.now();
+        const key = this.buildKey(this.resolveParams(this.params$.getValue()));
+
+        // evita "dobro" dentro de ~500ms (StrictMode DEV / double click / remount)
+        if (!force && this.lastLoadKey === key && now - this.lastLoadAtMs < LOAD_DEDUPE_MS) {
+            return;
+        }
+        this.lastLoadKey = key;
+        this.lastLoadAtMs = now;
+
+        this.refresh$.next();
     }
 
-    load() {
-        this.refresh();
+    refresh() {
+        this.forceReload = true;
+        this.load(true);
     }
 
     async createAlbum(
@@ -177,7 +215,7 @@ export class AlbumsFacade {
         },
         files?: File[],
     ): Promise<Album | Album[]> {
-        this.loading$.next(true);
+        this.setLoading(true);
         this.error$.next(null);
         try {
             const created = await createAlbumRequest(payload);
@@ -191,14 +229,20 @@ export class AlbumsFacade {
                 );
             }
 
+            this.invalidateCache();
             this.refresh();
             return created;
         } catch (err) {
+            const status = getHttpStatus(err);
+            if (status === 429) {
+                this.handleRateLimit(err);
+                throw err;
+            }
             const message = getErrorMessage(err, "Erro ao criar album");
             this.error$.next(message);
             throw err;
         } finally {
-            this.loading$.next(false);
+            this.setLoading(false);
         }
     }
 
@@ -206,18 +250,24 @@ export class AlbumsFacade {
         albumId: number,
         payload: { titulo: string; ano?: number },
     ): Promise<Album> {
-        this.loading$.next(true);
+        this.setLoading(true);
         this.error$.next(null);
         try {
             const updated = await updateAlbumRequest(albumId, payload);
             this.updateAlbumInState(updated);
+            this.invalidateCache();
             return updated;
         } catch (err) {
+            const status = getHttpStatus(err);
+            if (status === 429) {
+                this.handleRateLimit(err);
+                throw err;
+            }
             const message = getErrorMessage(err, "Erro ao atualizar album");
             this.error$.next(message);
             throw err;
         } finally {
-            this.loading$.next(false);
+            this.setLoading(false);
         }
     }
 
@@ -241,15 +291,186 @@ export class AlbumsFacade {
     }
 
     private async loadRequest(params: AlbumParams) {
-        this.loading$.next(true);
+        const resolved = this.resolveParams(params);
+        const key = this.buildKey(resolved);
+        const now = Date.now();
+        const forceReload = this.consumeForceReload();
+
+        if (!forceReload) {
+            const cached = this.cache.get(key);
+            if (cached && cached.expiresAt > now) {
+                this.error$.next(null);
+                return { ok: true, data: cached.data, fromCache: true } as const;
+            }
+        }
+
+        if (!forceReload && now < this.blockedUntilMs) {
+            this.scheduleRetry();
+            return { skipped: true } as const;
+        }
+
+        if (!forceReload) {
+            const existing = this.inFlight.get(key);
+            if (existing) {
+                try {
+                    const data = await existing;
+                    return { ok: true, data, fromCache: false } as const;
+                } catch (error) {
+                    if (this.isAbortError(error)) return { skipped: true } as const;
+                    const status = getHttpStatus(error);
+                    if (status === 429) {
+                        this.handleRateLimit(error);
+                    }
+                    return { ok: false, error } as const;
+                }
+            }
+        }
+
+        if (this.currentAbort && this.currentKey && (this.currentKey !== key || forceReload)) {
+            this.currentAbort.abort();
+        }
+
+        const controller = new AbortController();
+        this.currentAbort = controller;
+        this.currentKey = key;
+
+        if (forceReload) {
+            this.cache.delete(key);
+            this.inFlight.delete(key);
+        }
+
+        this.setLoading(true);
         this.error$.next(null);
+
+        const request = getAlbuns(resolved.page, resolved.size, resolved.filters, {
+            sortField: resolved.sortField,
+            sortDir: resolved.sortDir,
+            signal: controller.signal,
+        })
+            .then((data) => {
+                this.cache.set(key, { data, expiresAt: Date.now() + CACHE_TTL_MS });
+                return data;
+            })
+            .finally(() => {
+                this.inFlight.delete(key);
+                if (this.currentAbort === controller) {
+                    this.currentKey = null;
+                    this.currentAbort = null;
+                }
+                this.setLoading(false);
+            });
+
+        this.inFlight.set(key, request);
+
         try {
-            const filters = buildFilters(params);
-            const data = await getAlbuns(params.page, params.size, filters);
-            return { ok: true, data } as const;
+            const data = await request;
+            return { ok: true, data, fromCache: false } as const;
         } catch (error) {
+            if (this.isAbortError(error)) return { skipped: true } as const;
+            const status = getHttpStatus(error);
+            if (status === 429) {
+                this.handleRateLimit(error);
+            }
             return { ok: false, error } as const;
         }
+    }
+
+    private resolveParams(params: AlbumParams): ResolvedParams {
+        const normalizedSearch = this.normalizeSearch(params.search);
+        const filters: GetAlbunsFilters = {};
+        if (normalizedSearch) filters.titulo = normalizedSearch;
+        if (params.artistName?.trim()) filters.artistaNome = params.artistName.trim();
+        if (params.artistType) filters.artistaTipo = params.artistType;
+        return {
+            page: params.page,
+            size: params.size,
+            filters,
+            sortField: params.sortField,
+            sortDir: params.sortDir,
+        };
+    }
+
+    private isSameRequestParams(a: AlbumParams, b: AlbumParams): boolean {
+        return this.buildKey(this.resolveParams(a)) === this.buildKey(this.resolveParams(b));
+    }
+
+    private buildKey(resolved: ResolvedParams): string {
+        return JSON.stringify({
+            page: resolved.page,
+            size: resolved.size,
+            filters: resolved.filters,
+            sortField: resolved.sortField,
+            sortDir: resolved.sortDir,
+        });
+    }
+
+    private normalizeSearch(search: string): string {
+        const trimmed = search.trim();
+        if (trimmed.length < MIN_QUERY_LENGTH) return "";
+        return trimmed;
+    }
+
+    private setLoading(isLoading: boolean) {
+        if (isLoading) {
+            this.loadingCount += 1;
+        } else {
+            this.loadingCount = Math.max(0, this.loadingCount - 1);
+        }
+        this.loading$.next(this.loadingCount > 0);
+    }
+
+    private invalidateCache() {
+        this.cache.clear();
+    }
+
+    private handleRateLimit(error: unknown) {
+        const info = getRateLimitInfo(error);
+        const retryAfterSeconds = info?.retryAfter ?? 1;
+        const now = Date.now();
+        const nextBlock = now + Math.max(1, retryAfterSeconds) * 1000;
+        this.blockedUntilMs = Math.max(this.blockedUntilMs, nextBlock);
+        this.scheduleRetry();
+    }
+
+    private scheduleRetry() {
+        if (this.retryTimer) return;
+        const now = Date.now();
+        if (this.blockedUntilMs <= now) return;
+        this.pendingRefresh = true;
+        this.retryTimer = setTimeout(() => {
+            this.retryTimer = null;
+            if (!this.pendingRefresh) return;
+            this.pendingRefresh = false;
+            this.load(true);
+        }, this.blockedUntilMs - now);
+    }
+
+    private clearRetryTimer() {
+        if (this.retryTimer) {
+            clearTimeout(this.retryTimer);
+            this.retryTimer = null;
+        }
+        this.pendingRefresh = false;
+    }
+
+    private abortCurrent() {
+        if (this.currentAbort) {
+            this.currentAbort.abort();
+        }
+        this.currentAbort = null;
+        this.currentKey = null;
+    }
+
+    private consumeForceReload(): boolean {
+        if (!this.forceReload) return false;
+        this.forceReload = false;
+        return true;
+    }
+
+    private isAbortError(error: unknown): boolean {
+        if (!error || typeof error !== "object") return false;
+        const err = error as { name?: string; code?: string };
+        return err.code === "ERR_CANCELED" || err.name === "CanceledError" || err.name === "AbortError";
     }
 }
 

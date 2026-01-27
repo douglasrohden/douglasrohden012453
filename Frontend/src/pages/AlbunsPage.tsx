@@ -6,6 +6,12 @@ import { useLocation } from "react-router-dom";
 
 export default function AlbunsPage() {
   const location = useLocation();
+  console.log('location', location)
+
+  useEffect(() => {
+    albunsFacade.activate();
+    return () => albunsFacade.deactivate();
+  }, []);
 
   useEffect(() => {
     albunsFacade.load();

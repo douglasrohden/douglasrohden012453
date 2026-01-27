@@ -35,6 +35,11 @@ export async function getAlbuns(
   page = 0,
   size = 10,
   filters: GetAlbunsFilters = {},
+  options: {
+    sortField?: "titulo" | "ano";
+    sortDir?: "asc" | "desc";
+    signal?: AbortSignal;
+  } = {},
 ): Promise<Page<Album>> {
   const params: Record<string, string | number> = { page, size };
   if (filters.titulo) params.titulo = filters.titulo;
@@ -43,8 +48,14 @@ export async function getAlbuns(
   if (filters.artistaTipo) params.artistaTipo = filters.artistaTipo;
   if (filters.apenasArtistaTipo)
     params.apenasArtistaTipo = filters.apenasArtistaTipo;
+  if (options.sortField) {
+    params.sort = `${options.sortField},${options.sortDir ?? "asc"}`;
+  }
 
-  const response = await http.get<Page<Album>>("/albuns", { params });
+  const response = await http.get<Page<Album>>("/albuns", {
+    params,
+    signal: options.signal,
+  });
   return response.data;
 }
 

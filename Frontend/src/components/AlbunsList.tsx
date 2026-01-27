@@ -1,5 +1,5 @@
 import { Pagination, Card, Alert } from "flowbite-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { HiSearch, HiClock, HiPencil } from "react-icons/hi";
 import { CardGrid } from "./common/CardGrid";
 import { ListToolbar } from "./common/ListToolbar";
@@ -21,14 +21,6 @@ export default function AlbunsList() {
   const [manageImagesAlbumId, setManageImagesAlbumId] = useState<number | null>(
     null,
   );
-
-  useEffect(() => {
-    // garante carregamento inicial caso esta lista seja usada fora da página
-    if (!loading && (data?.content?.length ?? 0) === 0) {
-      albunsFacade.load();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   if (error) {
     const lower = String(error).toLowerCase();

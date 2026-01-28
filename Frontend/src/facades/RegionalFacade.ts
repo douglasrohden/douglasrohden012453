@@ -1,14 +1,23 @@
 import { BehaviorSubject } from "rxjs";
-import { getErrorMessage } from "../lib/http";
+import { getErrorMessage, getHttpStatus } from "../lib/http";
 import { type Regional, regionalService } from "../services/regionalService";
 
 export class RegionalFacade {
     readonly data$ = new BehaviorSubject<Regional[]>([]);
     readonly loading$ = new BehaviorSubject<boolean>(false);
     readonly error$ = new BehaviorSubject<string | null>(null);
+    private activeCount = 0;
 
-    constructor() {
+    activate(): void {
+        this.activeCount += 1;
+        if (this.activeCount > 1) return; // idempotente
         this.load();
+    }
+
+    deactivate(): void {
+        if (this.activeCount > 0) {
+            this.activeCount -= 1;
+        }
     }
 
     get snapshot() {
@@ -26,7 +35,10 @@ export class RegionalFacade {
             const data = await regionalService.getAll();
             this.data$.next(data);
         } catch (error) {
-            this.error$.next(getErrorMessage(error, "Erro ao carregar regionais"));
+            const status = getHttpStatus(error);
+            if (status !== 429) {
+                this.error$.next(getErrorMessage(error, "Erro ao carregar regionais"));
+            }
         } finally {
             this.loading$.next(false);
         }
@@ -40,7 +52,10 @@ export class RegionalFacade {
             await this.load();
             return result;
         } catch (error) {
-            this.error$.next(getErrorMessage(error, "Erro ao sincronizar regionais"));
+            const status = getHttpStatus(error);
+            if (status !== 429) {
+                this.error$.next(getErrorMessage(error, "Erro ao sincronizar regionais"));
+            }
             this.loading$.next(false);
             throw error;
         }

@@ -1,5 +1,16 @@
-import { Badge, Button, Table, TableBody, TableCell, TableHead, TableHeadCell, TableRow } from "flowbite-react";
+import {
+    Alert,
+    Badge,
+    Button,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeadCell,
+    TableRow,
+} from "flowbite-react";
 import { useEffect } from "react";
+import { HiClock } from "react-icons/hi";
 import { regionalFacade } from "../facades/RegionalFacade";
 import { LoadingSpinner } from "../components/common/LoadingSpinner";
 import { useBehaviorSubjectValue } from "../hooks/useBehaviorSubjectValue";
@@ -13,7 +24,8 @@ export default function RegionalPage() {
     const { addToast } = useToast();
 
     useEffect(() => {
-        regionalFacade.load();
+        regionalFacade.activate();
+        return () => regionalFacade.deactivate();
     }, []);
 
     const handleSync = async () => {
@@ -25,20 +37,25 @@ export default function RegionalPage() {
         }
     };
 
-    if (loading && data.length === 0) {
-        return (
-            <div className="flex justify-center p-10">
-                <LoadingSpinner />
-            </div>
-        );
-    }
-
-    if (error) {
-        return <div className="p-4 text-red-500">Erro: {error}</div>;
-    }
+    const isRateLimit = Boolean(
+        error &&
+            (error.toLowerCase().includes("muitas requisi") ||
+                (error.toLowerCase().includes("rate") &&
+                    error.toLowerCase().includes("limit")) ||
+                error.toLowerCase().includes("429")),
+    );
 
     return (
         <PageLayout>
+            {error && (
+                <Alert
+                    className="mb-4"
+                    color={isRateLimit ? "warning" : "failure"}
+                    icon={isRateLimit ? HiClock : undefined}
+                >
+                    {error}
+                </Alert>
+            )}
             <div className="mb-4 flex items-center justify-between">
                 <h1 className="text-2xl font-bold dark:text-white">
                     Tabela Regional
@@ -47,6 +64,11 @@ export default function RegionalPage() {
                     {loading ? "Sincronizando..." : "Sincronizar"}
                 </Button>
             </div>
+            {loading && data.length === 0 ? (
+                <div className="flex justify-center p-10">
+                    <LoadingSpinner />
+                </div>
+            ) : (
             <div className="overflow-x-auto">
                 <Table hoverable>
                     <TableHead>
@@ -83,6 +105,7 @@ export default function RegionalPage() {
                     </TableBody>
                 </Table>
             </div>
+            )}
         </PageLayout>
     );
 }

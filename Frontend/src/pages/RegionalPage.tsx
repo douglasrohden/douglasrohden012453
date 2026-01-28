@@ -72,9 +72,11 @@ export default function RegionalPage() {
             <div className="overflow-x-auto">
                 <Table hoverable>
                     <TableHead>
-                        <TableHeadCell>ID Externo</TableHeadCell>
-                        <TableHeadCell>Nome</TableHeadCell>
-                        <TableHeadCell>Ativo</TableHeadCell>
+                        <TableRow>
+                            <TableHeadCell>ID Externo</TableHeadCell>
+                            <TableHeadCell>Nome</TableHeadCell>
+                            <TableHeadCell>Ativo</TableHeadCell>
+                        </TableRow>
                     </TableHead>
                     <TableBody className="divide-y">
                         {data.map((regional) => (
@@ -109,3 +111,4 @@ export default function RegionalPage() {
         </PageLayout>
     );
 }
+

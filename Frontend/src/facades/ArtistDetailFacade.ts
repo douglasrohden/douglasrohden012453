@@ -1,9 +1,13 @@
 import {
   BehaviorSubject,
-  combineLatest,
+  Subject,
+  Subscription,
+  merge,
   debounceTime,
+  distinctUntilChanged,
   from,
   switchMap,
+  map,
 } from "rxjs";
 import { getErrorMessage, getHttpStatus } from "../lib/http";
 import {
@@ -75,15 +79,31 @@ export class ArtistDetailFacade {
   readonly params$ = new BehaviorSubject<ArtistDetailParams>(INITIAL_PARAMS);
   readonly status$ = new BehaviorSubject<number | null>(null);
 
-  private readonly refresh$ = new BehaviorSubject<number>(0);
+  private readonly refresh$ = new Subject<void>();
+  private sub: Subscription | null = null;
+  private lastLoadKey: string | null = null;
+  private lastLoadAtMs = 0;
+  private activeCount = 0;
+  private inFlightKey: string | null = null;
+  private pendingKey: string | null = null;
 
-  constructor() {
-    combineLatest([this.params$, this.refresh$])
+  activate(): void {
+    if (this.activeCount > 0) return; // idempotente
+    this.activeCount = 1;
+    if (this.sub) return; // seguranca extra
+
+    const paramsChanged$ = this.params$.pipe(
+      distinctUntilChanged((a, b) => a.artistId === b.artistId),
+      map(() => undefined),
+    );
+
+    this.sub = merge(paramsChanged$, this.refresh$)
       .pipe(
         debounceTime(200),
-        switchMap(([params]) => from(this.load(params))),
+        switchMap(() => from(this.loadRequest(this.params$.getValue()))),
       )
       .subscribe((result) => {
+        if ("skipped" in result) return;
         this.loading$.next(false);
         if (result.ok) {
           this.status$.next(null);
@@ -98,6 +118,17 @@ export class ArtistDetailFacade {
           );
         }
       });
+
+    // 1 load inicial
+    this.loadData(true);
+  }
+
+  deactivate(): void {
+    if (this.activeCount === 0) return;
+    this.activeCount = 0;
+    this.sub?.unsubscribe();
+    this.sub = null;
+    this.pendingKey = null;
   }
 
   get snapshot() {
@@ -106,31 +137,57 @@ export class ArtistDetailFacade {
       params: this.params$.getValue(),
       loading: this.loading$.getValue(),
       error: this.error$.getValue(),
+      status: this.status$.getValue(),
     };
   }
 
   setArtistId(artistId: number | null) {
-    this.params$.next({ ...this.params$.getValue(), artistId });
+    const current = this.params$.getValue();
+    if (current.artistId === artistId) return;
+    this.params$.next({ ...current, artistId });
+    // Mudanca de artista deve limpar dados/status imediatamente (evita flash).
+    this.data$.next(EMPTY_DATA);
+    this.error$.next(null);
+    this.status$.next(null);
   }
 
   setSearch(search: string) {
+    // Busca/ordenacao sao locais e nao disparam carga remota.
     const trimmed = search.trim();
     this.params$.next({ ...this.params$.getValue(), search: trimmed });
     this.recomputeVisibleAlbums();
   }
 
   setSortField(sortField: ArtistDetailParams["sortField"]) {
+    // Busca/ordenacao sao locais e nao disparam carga remota.
     this.params$.next({ ...this.params$.getValue(), sortField });
     this.recomputeVisibleAlbums();
   }
 
   setSortDir(sortDir: ArtistDetailParams["sortDir"]) {
+    // Busca/ordenacao sao locais e nao disparam carga remota.
     this.params$.next({ ...this.params$.getValue(), sortDir });
     this.recomputeVisibleAlbums();
   }
 
+  loadData(force = false): void {
+    if (!force && this.loading$.getValue()) return;
+
+    const now = Date.now();
+    const key = JSON.stringify(this.params$.getValue());
+
+    // evita "dobro" dentro de ~500ms (StrictMode DEV / double click / remount)
+    if (!force && this.lastLoadKey === key && now - this.lastLoadAtMs < 500) {
+      return;
+    }
+    this.lastLoadKey = key;
+    this.lastLoadAtMs = now;
+
+    this.refresh$.next();
+  }
+
   refresh() {
-    this.refresh$.next(this.refresh$.getValue() + 1);
+    this.loadData(true);
   }
 
   async addAlbumToArtist(
@@ -140,18 +197,23 @@ export class ArtistDetailFacade {
     const artistId = this.params$.getValue().artistId;
     if (!artistId) return null;
 
+    const previousAlbums = this.data$.getValue().albums ?? [];
+    const previousIds = new Set(previousAlbums.map((album) => album.id));
+
     this.loading$.next(true);
     this.error$.next(null);
     try {
       const artist = await artistsService.addAlbum(artistId, payload);
-      const created = artist.albuns?.[artist.albuns.length - 1];
+      const albums = artist.albuns ?? [];
+      // Nao assumir ordem do backend; identificar album criado de forma segura.
+      const created = this.findCreatedAlbum(albums, previousIds, payload);
       if (created?.id && files?.length) {
         await uploadAlbumImages(created.id, files);
       }
       this.data$.next({
         artist,
-        albums: artist.albuns ?? [],
-        visibleAlbums: sortAlbums(artist.albuns ?? [], this.params$.getValue()),
+        albums,
+        visibleAlbums: sortAlbums(albums, this.params$.getValue()),
       });
       return created ?? null;
     } catch (err) {
@@ -189,19 +251,26 @@ export class ArtistDetailFacade {
   }
 
   private recomputeVisibleAlbums() {
-    const { albums } = this.data$.getValue();
+    const state = this.data$.getValue();
+    const params = this.params$.getValue();
     this.data$.next({
-      ...this.data$.getValue(),
-      visibleAlbums: sortAlbums(albums, this.params$.getValue()),
+      ...state,
+      visibleAlbums: sortAlbums(state.albums, params),
     });
   }
 
-  private async load(params: ArtistDetailParams) {
+  private async loadRequest(params: ArtistDetailParams) {
     if (!params.artistId) {
       this.data$.next(EMPTY_DATA);
       return { ok: true } as const;
     }
 
+    if (this.inFlightKey) {
+      this.pendingKey = String(params.artistId);
+      return { skipped: true } as const;
+    }
+
+    this.inFlightKey = String(params.artistId);
     this.loading$.next(true);
     this.error$.next(null);
 
@@ -216,7 +285,35 @@ export class ArtistDetailFacade {
       return { ok: true } as const;
     } catch (error) {
       return { ok: false, error } as const;
+    } finally {
+      const finishedKey = this.inFlightKey;
+      this.inFlightKey = null;
+      const pendingKey = this.pendingKey;
+      this.pendingKey = null;
+      if (pendingKey && pendingKey !== finishedKey) {
+        this.loadData(true);
+      }
     }
+  }
+
+  private findCreatedAlbum(
+    albums: Album[],
+    previousIds: Set<number>,
+    payload: { titulo: string; ano?: number },
+  ): Album | null {
+    const byDiff = albums.filter(
+      (album) => album.id != null && !previousIds.has(album.id),
+    );
+    if (byDiff.length === 1) return byDiff[0];
+
+    const title = payload.titulo.trim().toLowerCase();
+    const byPayload = albums.filter((album) => {
+      if (album.titulo?.trim().toLowerCase() !== title) return false;
+      if (payload.ano == null) return album.ano == null;
+      return album.ano === payload.ano;
+    });
+
+    return byPayload.length === 1 ? byPayload[0] : null;
   }
 }
 

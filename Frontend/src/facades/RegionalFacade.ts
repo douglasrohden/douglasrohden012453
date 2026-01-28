@@ -9,15 +9,14 @@ export class RegionalFacade {
     private activeCount = 0;
 
     activate(): void {
-        this.activeCount += 1;
-        if (this.activeCount > 1) return; // idempotente
+        if (this.activeCount > 0) return; // idempotente
+        this.activeCount = 1;
         this.load();
     }
 
     deactivate(): void {
-        if (this.activeCount > 0) {
-            this.activeCount -= 1;
-        }
+        if (this.activeCount === 0) return;
+        this.activeCount = 0;
     }
 
     get snapshot() {

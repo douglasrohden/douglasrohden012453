@@ -45,6 +45,12 @@ export default function CreateArtistForm({
   const albumsLoading = useBehaviorSubjectValue(albumsLookupFacade.loading$);
 
   useEffect(() => {
+    if (!isOpen) return;
+    albumsLookupFacade.activate();
+    return () => albumsLookupFacade.deactivate();
+  }, [albumsLookupFacade, isOpen]);
+
+  useEffect(() => {
     albumsLookupFacade.setQuery(albumSearch);
   }, [albumsLookupFacade, albumSearch]);
 

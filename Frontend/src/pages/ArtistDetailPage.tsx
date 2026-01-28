@@ -50,6 +50,11 @@ export default function ArtistDetailPage() {
   const [editingAlbum, setEditingAlbum] = useState<Album | null>(null);
 
   useEffect(() => {
+    artistDetailFacade.activate();
+    return () => artistDetailFacade.deactivate();
+  }, []);
+
+  useEffect(() => {
     if (!id) return;
     artistDetailFacade.setArtistId(Number(id));
     artistDetailFacade.refresh();

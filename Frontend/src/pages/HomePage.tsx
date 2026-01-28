@@ -8,6 +8,7 @@ import { CardGrid } from "../components/common/CardGrid";
 import { ListToolbar } from "../components/common/ListToolbar";
 import { useArtists } from "../hooks/useArtists";
 import { HiPencil } from "react-icons/hi";
+import { artistsFacade } from "../facades/ArtistsFacade";
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -19,6 +20,12 @@ export default function HomePage() {
     tipo?: string;
   } | null>(null);
   const [navLock, setNavLock] = useState(false);
+
+  // Activate/deactivate facade
+  useEffect(() => {
+    artistsFacade.activate();
+    return () => artistsFacade.deactivate();
+  }, []);
 
   // Release navigation lock when route changes.
   useEffect(() => {

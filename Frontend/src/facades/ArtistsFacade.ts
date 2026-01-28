@@ -1,9 +1,13 @@
 import {
     BehaviorSubject,
-    combineLatest,
+    Subject,
+    Subscription,
+    merge,
     debounceTime,
+    distinctUntilChanged,
     from,
     switchMap,
+    map,
 } from "rxjs";
 import { getErrorMessage, getHttpStatus } from "../lib/http";
 import {
@@ -61,16 +65,33 @@ export class ArtistsFacade {
     readonly error$ = new BehaviorSubject<string | null>(null);
     readonly params$ = new BehaviorSubject<ArtistsParams>(INITIAL_PARAMS);
 
-    private readonly refresh$ = new BehaviorSubject<number>(0);
+    private readonly refresh$ = new Subject<void>();
+    private sub: Subscription | null = null;
+    private lastLoadKey: string | null = null;
+    private lastLoadAtMs = 0;
+    private activeCount = 0;
+    private inFlightKey: string | null = null;
+    private pendingKey: string | null = null;
 
-    constructor() {
-        combineLatest([this.params$, this.refresh$])
+    activate(): void {
+        if (this.activeCount > 0) return; // idempotente
+        this.activeCount = 1;
+        if (this.sub) return; // seguranca extra
+
+        const paramsChanged$ = this.params$.pipe(
+            distinctUntilChanged(isSameParams),
+            map(() => undefined),
+        );
+
+        this.sub = merge(paramsChanged$, this.refresh$)
             .pipe(
                 debounceTime(250),
-                switchMap(([params]) => from(this.loadRequest(params))),
+                switchMap(() => from(this.loadRequest(this.params$.getValue()))),
             )
             .subscribe((result) => {
+                if ("skipped" in result) return;
                 this.loading$.next(false);
+
                 if (result.ok) {
                     this.data$.next(result.data);
                     return;
@@ -78,11 +99,20 @@ export class ArtistsFacade {
 
                 const status = getHttpStatus(result.error);
                 if (status !== 429) {
-                    this.error$.next(
-                        getErrorMessage(result.error, "Erro ao carregar artistas"),
-                    );
+                    this.error$.next(getErrorMessage(result.error, "Erro ao carregar artistas"));
                 }
             });
+
+        // 1 load inicial
+        this.load(true);
+    }
+
+    deactivate(): void {
+        if (this.activeCount === 0) return;
+        this.activeCount = 0;
+        this.sub?.unsubscribe();
+        this.sub = null;
+        this.pendingKey = null;
     }
 
     get snapshot() {
@@ -115,12 +145,24 @@ export class ArtistsFacade {
         this.updateParams({ tipo, page: 0 });
     }
 
-    refresh() {
-        this.refresh$.next(this.refresh$.getValue() + 1);
+    load(force = false): void {
+        if (!force && this.loading$.getValue()) return;
+
+        const now = Date.now();
+        const key = JSON.stringify(this.params$.getValue());
+
+        // evita "dobro" dentro de ~500ms (StrictMode DEV / double click / remount)
+        if (!force && this.lastLoadKey === key && now - this.lastLoadAtMs < 500) {
+            return;
+        }
+        this.lastLoadKey = key;
+        this.lastLoadAtMs = now;
+
+        this.refresh$.next();
     }
 
-    load() {
-        this.refresh();
+    refresh() {
+        this.load(true);
     }
 
     async create(
@@ -197,6 +239,13 @@ export class ArtistsFacade {
     }
 
     private async loadRequest(params: ArtistsParams) {
+        const key = JSON.stringify(params);
+        if (this.inFlightKey) {
+            this.pendingKey = key;
+            return { skipped: true } as const;
+        }
+
+        this.inFlightKey = key;
         this.loading$.next(true);
         this.error$.next(null);
         try {
@@ -211,6 +260,13 @@ export class ArtistsFacade {
             return { ok: true, data } as const;
         } catch (error) {
             return { ok: false, error } as const;
+        } finally {
+            this.inFlightKey = null;
+            const pendingKey = this.pendingKey;
+            this.pendingKey = null;
+            if (pendingKey && pendingKey !== key) {
+                this.load(true);
+            }
         }
     }
 }

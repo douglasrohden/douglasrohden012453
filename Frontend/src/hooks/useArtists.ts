@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { artistsFacade } from "../facades/ArtistsFacade";
 import { useBehaviorSubjectValue } from "./useBehaviorSubjectValue";
 import { Artista } from "../services/artistsService";
@@ -19,6 +20,11 @@ interface UseArtistsReturn {
 }
 
 export function useArtists(): UseArtistsReturn {
+  useEffect(() => {
+    artistsFacade.activate();
+    return () => artistsFacade.deactivate();
+  }, []);
+
   const params = useBehaviorSubjectValue(artistsFacade.params$);
   const data = useBehaviorSubjectValue(artistsFacade.data$);
   const loading = useBehaviorSubjectValue(artistsFacade.loading$);

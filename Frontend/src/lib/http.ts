@@ -133,50 +133,47 @@ function schedule<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 function processQueue(): void {
-  if (active >= MAX_CONCURRENCY) return;
-  if (queue.length === 0) return;
+  while (active < MAX_CONCURRENCY && queue.length > 0) {
+    const now = Date.now();
+    if (now < pauseUntil) {
+      setTimeout(processQueue, pauseUntil - now);
+      return;
+    }
 
-  const now = Date.now();
-  if (now < pauseUntil) {
-    setTimeout(processQueue, pauseUntil - now);
-    return;
-  }
+    const sinceLast = now - lastStartMs;
+    if (sinceLast < MIN_SPACING_MS) {
+      setTimeout(processQueue, MIN_SPACING_MS - sinceLast);
+      return;
+    }
 
-  const sinceLast = now - lastStartMs;
-  if (sinceLast < MIN_SPACING_MS) {
-    setTimeout(processQueue, MIN_SPACING_MS - sinceLast);
-    return;
-  }
+    const task = queue.shift();
+    if (!task) return;
 
-  const task = queue.shift();
-  if (!task) return;
+    active += 1;
+    lastStartMs = Date.now();
 
-  active += 1;
-  lastStartMs = Date.now();
-
-  task
-    .fn()
-    .then(task.resolve)
-    .catch((err) => {
-      const status = getHttpStatus(err);
-      if (status === 429) {
-        const retryAfterHeader = (err as AxiosError)?.response?.headers?.[
-          "retry-after"
-        ];
-        const retryAfter =
-          typeof retryAfterHeader === "string"
-            ? parseInt(retryAfterHeader, 10)
-            : undefined;
-        if (Number.isFinite(retryAfter) && (retryAfter as number) > 0) {
-          pauseUntil = Date.now() + (retryAfter as number) * 1000;
+    Promise.resolve()
+      .then(task.fn)
+      .then(task.resolve)
+      .catch((err) => {
+        const status = getHttpStatus(err);
+        if (status === 429) {
+          const info = axios.isAxiosError(err) ? parseRateLimit(err) : null;
+          const retryAfter = info?.retryAfter;
+          if (Number.isFinite(retryAfter) && (retryAfter as number) > 0) {
+            pauseUntil = Math.max(
+              pauseUntil,
+              Date.now() + (retryAfter as number) * 1000,
+            );
+          }
         }
-      }
-      task.reject(err);
-    })
-    .finally(() => {
-      active -= 1;
-      processQueue();
-    });
+        task.reject(err);
+      })
+      .finally(() => {
+        active -= 1;
+        processQueue();
+      });
+  }
 }
 
 if (typeof baseAdapter === "function") {
@@ -186,10 +183,26 @@ if (typeof baseAdapter === "function") {
 http.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = authAdapter?.getAccessToken();
+    if (!config.headers) {
+      config.headers = {} as any;
+    }
     if (token) {
-      config.headers = config.headers ?? {};
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Add X-Request-Id for tracing/log correlation (NOT for deduplication)
+    const requestId =
+      globalThis.crypto?.randomUUID?.() ??
+      `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    config.headers["X-Request-Id"] = requestId;
+    
+    // Log in DEV for debugging
+    if (import.meta.env.DEV) {
+      console.log(
+        `[HTTP] ${config.method?.toUpperCase()} ${config.url} [${requestId}]`,
+      );
+    }
+    
     return config;
   },
   (error) => Promise.reject(error),
@@ -318,6 +331,13 @@ http.interceptors.response.use(
     if (status === 429) {
       const info = parseRateLimit(error);
       (error as ExtendedAxiosError).rateLimitInfo = info;
+
+      if (Number.isFinite(info.retryAfter) && info.retryAfter > 0) {
+        pauseUntil = Math.max(
+          pauseUntil,
+          Date.now() + info.retryAfter * 1000,
+        );
+      }
 
       if (!isAuthRequest(url)) {
         emitApiRateLimit({

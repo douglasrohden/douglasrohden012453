@@ -1,7 +1,10 @@
 # IDE - VSCode
 .vscode/
 *.code-workspace
-
+.venv/
+.vite/
+.qodo/
+.vscode/
 # Maven
 .mvn/
 target/

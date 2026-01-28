@@ -11,7 +11,7 @@ export function ProtectedRoute() {
   if (!initialized || loading) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center">
-        <LoadingSpinner message="Carregando sessão..." />
+        <LoadingSpinner message="" />
       </div>
     );
   }

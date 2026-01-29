@@ -1,4 +1,4 @@
--- Fix regional schema to match JPA entity + edital rules
+-- V8: Fix regional schema to match JPA entity + edital rules
 -- - Adds external_id (required)
 -- - Ensures id is auto-generated for inserts (IDENTITY or sequence default)
 -- - Enforces: only one active row per external_id (partial unique index)

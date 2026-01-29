@@ -1,3 +1,5 @@
+-- V7: Refresh tokens rotation and hashing improvements
+
 -- 1) Novas colunas para rotação/invalidação
 ALTER TABLE refresh_tokens ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMPTZ;
 ALTER TABLE refresh_tokens ADD COLUMN IF NOT EXISTS replaced_by_token_hash VARCHAR(64);

@@ -1,6 +1,6 @@
 CREATE TABLE album (
     id BIGSERIAL PRIMARY KEY,
-    titulo VARCHAR(255) NOT NULL UNIQUE,
+    titulo VARCHAR(255) NOT NULL ,
     ano INTEGER
 );
 

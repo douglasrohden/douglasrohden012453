@@ -35,6 +35,7 @@ public class AlbumImageStorageService {
     private final AlbumRepository albumRepository;
     private final AlbumImageRepository albumImageRepository;
     private final MinioClient minioClient;
+    private final MinioClient presignClient;
     private final MinioProperties properties;
     private final AtomicBoolean bucketEnsured = new AtomicBoolean(false);
 
@@ -47,6 +48,7 @@ public class AlbumImageStorageService {
         this.albumImageRepository = albumImageRepository;
         this.minioClient = minioClient;
         this.properties = properties;
+        this.presignClient = buildPresignClient(minioClient, properties);
     }
 
     public List<AlbumImageResponse> uploadCovers(Long albumId, MultipartFile[] files) {
@@ -140,7 +142,7 @@ public class AlbumImageStorageService {
     public String generatePresignedUrl(String objectKey) {
         try {
             int expirySeconds = (int) Duration.ofMinutes(resolveExpirationMinutes()).getSeconds();
-            return minioClient.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
+            return presignClient.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
                     .method(Method.GET)
                     .bucket(properties.getBucket())
                     .object(objectKey)
@@ -149,6 +151,20 @@ public class AlbumImageStorageService {
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Falha ao gerar URL assinada", e);
         }
+    }
+
+    private MinioClient buildPresignClient(MinioClient fallback, MinioProperties props) {
+        String externalEndpoint = props.getExternalEndpoint();
+        if (!StringUtils.hasText(externalEndpoint)) {
+            return fallback;
+        }
+        MinioClient.Builder builder = MinioClient.builder()
+                .endpoint(externalEndpoint)
+                .credentials(props.getAccessKey(), props.getSecretKey());
+        if (StringUtils.hasText(props.getRegion())) {
+            builder.region(props.getRegion());
+        }
+        return builder.build();
     }
 
     private void ensureBucket() {

@@ -8,37 +8,14 @@ services:
       - ~/.m2:/root/.m2
     environment:
       - SPRING_PROFILES_ACTIVE=dev
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:${POSTGRES_PORT:-5433}/${POSTGRES_DB:-dbmusicplayer}
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-      - MINIO_ENDPOINT=http://minio:9000
-      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
-      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin123}
-      - MINIO_BUCKET=${MINIO_BUCKET:-album-covers}
-      - MINIO_REGION=${MINIO_REGION:-us-east-1}
-      - MINIO_PRESIGN_EXPIRATION_MINUTES=${MINIO_PRESIGN_EXPIRATION_MINUTES:-30}
-      - MINIO_MAX_FILE_SIZE_BYTES=${MINIO_MAX_FILE_SIZE_BYTES:-5242880}
-      - MINIO_MAX_REQUEST_SIZE_BYTES=${MINIO_MAX_REQUEST_SIZE_BYTES:-26214400}
-    ports:
-      - "3001:3001"
-    depends_on:
-      db:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
+      - SERVER_ADDRESS=0.0.0.0
 
   frontend:
     build:
       context: ./Frontend
-      dockerfile: Dockerfile
-    working_dir: /app
+      dockerfile: Dockerfile.dev
     volumes:
       - ./Frontend:/app
       - /app/node_modules
-    command: sh -lc "npm ci --silent && npm run dev -- --host 0.0.0.0 --port 5173"
     ports:
       - "5173:5173"
-    environment:
-      - PORT=5173
-    depends_on:
-      - backend

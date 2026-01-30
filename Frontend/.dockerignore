@@ -1,0 +1,9 @@
+node_modules
+dist
+.flowbite-react
+.vscode
+.git
+*.log
+.env.development
+.env.production
+.env

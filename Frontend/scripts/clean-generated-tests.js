@@ -90,6 +90,22 @@ function main() {
   }
 
   console.log(`Done. Deleted ${deleted} generated test file(s).`);
+
+  // Cleanup empty __tests__ directories
+  const cleanupEmptyDirs = (dir) => {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        const fullPath = path.join(dir, entry.name);
+        cleanupEmptyDirs(fullPath);
+        if (entry.name === "__tests__" && fs.readdirSync(fullPath).length === 0) {
+          fs.rmdirSync(fullPath);
+          console.log("Removed empty directory", path.relative(process.cwd(), fullPath));
+        }
+      }
+    }
+  };
+  cleanupEmptyDirs(srcDir);
 }
 
 main();

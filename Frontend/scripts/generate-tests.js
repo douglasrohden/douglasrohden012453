@@ -7,8 +7,12 @@ function walkDir(dir) {
   const files = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) files.push(...walkDir(full));
-    else files.push(full);
+    if (entry.isDirectory()) {
+      if (entry.name === "__tests__") continue; // Skip tests folder
+      files.push(...walkDir(full));
+    } else {
+      files.push(full);
+    }
   }
   return files;
 }
@@ -21,18 +25,18 @@ function isComponentFile(file) {
   );
 }
 
-function relativeImport(from, to) {
-  let rel = path.relative(path.dirname(from), to).replace(/\\/g, "/");
-  if (!rel.startsWith(".")) rel = "./" + rel;
-  return rel.replace(/\.tsx?$/, "");
-}
-
 function createTestFor(file) {
   const name = path.basename(file, ".tsx");
-  const testPath = file.replace(/\.tsx$/, ".test.tsx");
-  const importPath = "./" + path.basename(file);
+  const dir = path.dirname(file);
+  const testsDir = path.join(dir, "__tests__");
+  const testPath = path.join(testsDir, `${name}.test.tsx`);
+  const importPath = `../${path.basename(file, ".tsx")}`;
 
   const template = `// AUTO-GENERATED TEST - you can customize and remove this marker if you keep the test\nimport { render, screen } from '@testing-library/react';\nimport userEvent from '@testing-library/user-event';\nimport { vi, describe, it, expect, beforeEach } from 'vitest';\nimport ${name} from '${importPath}';\n\n// Add provider wrappers or mocks below if your component depends on context/hooks/services\n\ndescribe('${name}', () => {\n  beforeEach(() => {\n    vi.clearAllMocks();\n  });\n\n  it('renders default structure', () => {\n    const { container } = render(<${name} />);\n    expect(container.firstChild).toBeTruthy();\n  });\n\n  it.skip('handles a basic user interaction', async () => {\n    const user = userEvent.setup();\n    render(<${name} />);\n    // TODO: replace this with a real interaction/assertion for ${name}\n    await user.keyboard(' ');\n    expect(document.body).toBeDefined();\n  });\n\n  it.skip('responds to prop changes', () => {\n    // TODO: replace exampleProp with a real prop\n    const { rerender } = render(<${name} /* exampleProp=\"initial\" */ />);\n    rerender(<${name} /* exampleProp=\"updated\" */ />);\n    expect(true).toBe(true);\n  });\n\n  it.skip('invokes callback props', async () => {\n    const onAction = vi.fn();\n    const user = userEvent.setup();\n    render(<${name} /* onAction={onAction} */ />);\n    // TODO: trigger UI that should call onAction\n    await user.keyboard(' ');\n    expect(onAction).not.toBeCalled();\n  });\n});\n`;
+
+  if (!fs.existsSync(testsDir)) {
+    fs.mkdirSync(testsDir, { recursive: true });
+  }
 
   // if test exists, only overwrite if it's an old auto-generated test
   if (fs.existsSync(testPath)) {

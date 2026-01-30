@@ -15,7 +15,17 @@ public class MinioProperties {
     private String secretKey;
     private String bucket = "album-covers";
     private String region;
+    private String externalEndpoint; // URL externa visível para o usuário (ex: http://localhost:9000)
     private Integer presignExpirationMinutes = 30;
+
+    public void setExternalEndpoint(String externalEndpoint) {
+        this.externalEndpoint = externalEndpoint;
+    }
+
+    public String getExternalEndpoint() {
+        return externalEndpoint;
+    }
+
     private Long maxFileSizeBytes = 5_242_880L; // default 5 MB
     private List<String> allowedContentTypes = new ArrayList<>();
 

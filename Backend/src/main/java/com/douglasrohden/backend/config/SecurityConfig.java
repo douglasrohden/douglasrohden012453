@@ -101,8 +101,10 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        // Mitigation for CVE-2025-22228: ensure passwords longer than 72 chars are rejected
-        // BCrypt ignores bytes after 72 characters; this check prevents bypasses by enforcing a max length.
+        // Mitigation for CVE-2025-22228: ensure passwords longer than 72 chars are
+        // rejected
+        // BCrypt ignores bytes after 72 characters; this check prevents bypasses by
+        // enforcing a max length.
         return new PasswordEncoder() {
             private final BCryptPasswordEncoder delegate = new BCryptPasswordEncoder();
             private static final int MAX_PASSWORD_LENGTH = 72;
@@ -124,7 +126,8 @@ public class SecurityConfig {
                     return false;
                 }
                 if (rawPassword.length() > MAX_PASSWORD_LENGTH) {
-                    // Reject too-long passwords rather than delegating to BCrypt which would ignore the extra characters
+                    // Reject too-long passwords rather than delegating to BCrypt which would ignore
+                    // the extra characters
                     return false;
                 }
                 return delegate.matches(rawPassword, encodedPassword);
@@ -145,11 +148,12 @@ public class SecurityConfig {
         boolean isProd = Arrays.asList(environment.getActiveProfiles()).contains("prod");
         if (configuredOrigins.isEmpty()) {
             if (isProd) {
-                throw new IllegalStateException("cors.allowed-origins must be configured when SPRING_PROFILES_ACTIVE=prod");
+                throw new IllegalStateException(
+                        "cors.allowed-origins must be configured when SPRING_PROFILES_ACTIVE=prod");
             }
             configuration.setAllowedOriginPatterns(List.of("http://localhost:*", "http://127.0.0.1:*"));
         } else {
-            configuration.setAllowedOrigins(configuredOrigins);
+            configuration.setAllowedOriginPatterns(configuredOrigins);
         }
 
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));

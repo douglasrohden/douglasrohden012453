@@ -8,8 +8,7 @@ set "USER=%POSTGRES_USER%"
 if "%USER%"=="" set "USER=postgres"
 set "PASSWORD=%POSTGRES_PASSWORD%"
 if "%PASSWORD%"=="" set "PASSWORD=postgres"
-set "PORT=%POSTGRES_PORT%"
-if "%PORT%"=="" set "PORT=5433"
+set "PORT=5433"
 
 echo ✅ Garantindo que o serviço Postgres esteja em execução...
 docker compose up -d db

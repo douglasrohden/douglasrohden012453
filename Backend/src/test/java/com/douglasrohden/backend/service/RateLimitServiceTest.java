@@ -1,39 +1,33 @@
 package com.douglasrohden.backend.service;
 
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
 
-// AUTO-GENERATED TEST - you can customize and remove this marker if you keep the test
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 @DisplayName("RateLimitService service tests")
 class RateLimitServiceTest {
 
     @Test
-    @DisplayName("loads RateLimitService via reflection")
-    void loadsClass() {
-        assertDoesNotThrow(() -> Class.forName("com.douglasrohden.backend.service.RateLimitService"));
+    @DisplayName("consumes tokens until limit is reached")
+    void consumesTokensUntilLimit() {
+        RateLimitService service = new RateLimitService(2, 60, 120, 1000);
+
+        RateLimitService.Probe first = service.tryConsume("user:1");
+        RateLimitService.Probe second = service.tryConsume("user:1");
+        RateLimitService.Probe third = service.tryConsume("user:1");
+
+        assertTrue(first.consumed());
+        assertTrue(second.consumed());
+        assertFalse(third.consumed());
     }
 
-    @Nested
-    @DisplayName("scenarios to implement for service")
-    class Scenarios {
-
-        @Test
-        @Disabled("Replace with a real happy-path test")
-        void happyPath() {
-            // TODO: wire RateLimitService with mocks and assert behaviour
-            // Example: when(dependency.method()).thenReturn(...);
-            assertTrue(true); // placeholder
-        }
-
-        @Test
-        @Disabled("Replace with an edge case test")
-        void handlesEdgeCases() {
-            // TODO: wire RateLimitService with mocks and assert behaviour
-            // Example: when(dependency.method()).thenReturn(...);
-            assertTrue(true); // placeholder
-        }
+    @Test
+    @DisplayName("retryAfterSeconds never returns zero")
+    void retryAfterSecondsNeverZero() {
+        assertEquals(1, RateLimitService.retryAfterSeconds(0));
+        assertEquals(1, RateLimitService.retryAfterSeconds(-100));
     }
 }

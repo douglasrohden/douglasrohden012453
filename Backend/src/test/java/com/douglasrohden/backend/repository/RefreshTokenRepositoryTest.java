@@ -1,39 +1,49 @@
 package com.douglasrohden.backend.repository;
 
+import com.douglasrohden.backend.model.RefreshToken;
+import com.douglasrohden.backend.model.Usuario;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 
-// AUTO-GENERATED TEST - you can customize and remove this marker if you keep the test
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+@DataJpaTest(properties = {
+    "spring.jpa.hibernate.ddl-auto=create-drop",
+    "spring.flyway.enabled=false"
+})
 @DisplayName("RefreshTokenRepository repository tests")
 class RefreshTokenRepositoryTest {
 
+    @Autowired
+    private RefreshTokenRepository repository;
+
+    @Autowired
+    private TestEntityManager entityManager;
+
     @Test
-    @DisplayName("loads RefreshTokenRepository via reflection")
-    void loadsClass() {
-        assertDoesNotThrow(() -> Class.forName("com.douglasrohden.backend.repository.RefreshTokenRepository"));
-    }
+    @DisplayName("findByTokenHash returns persisted token and deleteByUsuario removes it")
+    void findByTokenHashAndDeleteByUsuario() {
+        Usuario user = new Usuario();
+        user.setUsername("admin");
+        user.setPasswordHash("hash");
+        entityManager.persist(user);
 
-    @Nested
-    @DisplayName("scenarios to implement for repository")
-    class Scenarios {
+        RefreshToken token = new RefreshToken();
+        token.setUsuario(user);
+        token.setTokenHash("token-hash");
+        token.setExpiresAt(OffsetDateTime.now(ZoneOffset.UTC).plusDays(1));
+        entityManager.persist(token);
+        entityManager.flush();
 
-        @Test
-        @Disabled("Replace with a real happy-path test")
-        void happyPath() {
-            // TODO: persist a Refresh Token entity and assert it can be read back
-            // Example: repository.save(entity); assertThat(repository.findAll()).isNotEmpty();
-            assertTrue(true); // placeholder
-        }
+        assertTrue(repository.findByTokenHash("token-hash").isPresent());
 
-        @Test
-        @Disabled("Replace with an edge case test")
-        void handlesEdgeCases() {
-            // TODO: persist a Refresh Token entity and assert it can be read back
-            // Example: repository.save(entity); assertThat(repository.findAll()).isNotEmpty();
-            assertTrue(true); // placeholder
-        }
+        int deleted = repository.deleteByUsuario(user);
+        assertEquals(1, deleted);
     }
 }

@@ -1,39 +1,42 @@
 package com.douglasrohden.backend.repository;
 
+import com.douglasrohden.backend.model.Regional;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 
-// AUTO-GENERATED TEST - you can customize and remove this marker if you keep the test
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+@DataJpaTest(properties = {
+    "spring.jpa.hibernate.ddl-auto=create-drop",
+    "spring.flyway.enabled=false"
+})
 @DisplayName("RegionalRepository repository tests")
 class RegionalRepositoryTest {
 
+    @Autowired
+    private RegionalRepository repository;
+
+    @Autowired
+    private TestEntityManager entityManager;
+
     @Test
-    @DisplayName("loads RegionalRepository via reflection")
-    void loadsClass() {
-        assertDoesNotThrow(() -> Class.forName("com.douglasrohden.backend.repository.RegionalRepository"));
-    }
+    @DisplayName("findAllByAtivoTrue and findByExternalIdAndAtivoTrue filter correctly")
+    void findActiveByExternalId() {
+        Regional active = Regional.builder().externalId(1).nome("Ativa").ativo(true).build();
+        Regional inactive = Regional.builder().externalId(1).nome("Inativa").ativo(false).build();
+        entityManager.persist(active);
+        entityManager.persist(inactive);
+        entityManager.flush();
 
-    @Nested
-    @DisplayName("scenarios to implement for repository")
-    class Scenarios {
+        List<Regional> actives = repository.findAllByAtivoTrue();
+        assertEquals(1, actives.size());
+        assertTrue(actives.get(0).isAtivo());
 
-        @Test
-        @Disabled("Replace with a real happy-path test")
-        void happyPath() {
-            // TODO: persist a Regional entity and assert it can be read back
-            // Example: repository.save(entity); assertThat(repository.findAll()).isNotEmpty();
-            assertTrue(true); // placeholder
-        }
-
-        @Test
-        @Disabled("Replace with an edge case test")
-        void handlesEdgeCases() {
-            // TODO: persist a Regional entity and assert it can be read back
-            // Example: repository.save(entity); assertThat(repository.findAll()).isNotEmpty();
-            assertTrue(true); // placeholder
-        }
+        assertTrue(repository.findByExternalIdAndAtivoTrue(1).isPresent());
     }
 }

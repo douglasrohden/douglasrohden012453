@@ -1,39 +1,34 @@
 package com.douglasrohden.backend.repository;
 
+import com.douglasrohden.backend.model.Album;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 
-// AUTO-GENERATED TEST - you can customize and remove this marker if you keep the test
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+@DataJpaTest(properties = {
+    "spring.jpa.hibernate.ddl-auto=create-drop",
+    "spring.flyway.enabled=false"
+})
 @DisplayName("AlbumRepository repository tests")
 class AlbumRepositoryTest {
 
+    @Autowired
+    private AlbumRepository repository;
+
     @Test
-    @DisplayName("loads AlbumRepository via reflection")
-    void loadsClass() {
-        assertDoesNotThrow(() -> Class.forName("com.douglasrohden.backend.repository.AlbumRepository"));
-    }
+    @DisplayName("persists and retrieves album")
+    void persistsAndRetrievesAlbum() {
+        Album album = new Album();
+        album.setTitulo("Harakiri");
+        album.setAno(2012);
 
-    @Nested
-    @DisplayName("scenarios to implement for repository")
-    class Scenarios {
+        Album saved = repository.save(album);
 
-        @Test
-        @Disabled("Replace with a real happy-path test")
-        void happyPath() {
-            // TODO: persist a Album entity and assert it can be read back
-            // Example: repository.save(entity); assertThat(repository.findAll()).isNotEmpty();
-            assertTrue(true); // placeholder
-        }
-
-        @Test
-        @Disabled("Replace with an edge case test")
-        void handlesEdgeCases() {
-            // TODO: persist a Album entity and assert it can be read back
-            // Example: repository.save(entity); assertThat(repository.findAll()).isNotEmpty();
-            assertTrue(true); // placeholder
-        }
+        assertTrue(repository.findById(saved.getId()).isPresent());
+        assertEquals("Harakiri", repository.findById(saved.getId()).get().getTitulo());
     }
 }

@@ -1,39 +1,37 @@
 package com.douglasrohden.backend.repository;
 
+import com.douglasrohden.backend.model.Usuario;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 
-// AUTO-GENERATED TEST - you can customize and remove this marker if you keep the test
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+@DataJpaTest(properties = {
+    "spring.jpa.hibernate.ddl-auto=create-drop",
+    "spring.flyway.enabled=false"
+})
 @DisplayName("UsuarioRepository repository tests")
 class UsuarioRepositoryTest {
 
+    @Autowired
+    private UsuarioRepository repository;
+
+    @Autowired
+    private TestEntityManager entityManager;
+
     @Test
-    @DisplayName("loads UsuarioRepository via reflection")
-    void loadsClass() {
-        assertDoesNotThrow(() -> Class.forName("com.douglasrohden.backend.repository.UsuarioRepository"));
-    }
+    @DisplayName("existsByUsername and findByUsername work")
+    void existsAndFindByUsername() {
+        Usuario user = new Usuario();
+        user.setUsername("admin");
+        user.setPasswordHash("hash");
+        entityManager.persist(user);
+        entityManager.flush();
 
-    @Nested
-    @DisplayName("scenarios to implement for repository")
-    class Scenarios {
-
-        @Test
-        @Disabled("Replace with a real happy-path test")
-        void happyPath() {
-            // TODO: persist a Usuario entity and assert it can be read back
-            // Example: repository.save(entity); assertThat(repository.findAll()).isNotEmpty();
-            assertTrue(true); // placeholder
-        }
-
-        @Test
-        @Disabled("Replace with an edge case test")
-        void handlesEdgeCases() {
-            // TODO: persist a Usuario entity and assert it can be read back
-            // Example: repository.save(entity); assertThat(repository.findAll()).isNotEmpty();
-            assertTrue(true); // placeholder
-        }
+        assertTrue(repository.existsByUsername("admin"));
+        assertTrue(repository.findByUsername("admin").isPresent());
     }
 }

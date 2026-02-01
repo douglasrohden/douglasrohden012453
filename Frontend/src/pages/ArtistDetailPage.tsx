@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { Button, Card } from "flowbite-react";
+import { HiPencil, HiTrash } from "react-icons/hi";
 import { PageLayout } from "../components/layout/PageLayout";
 import { useToast } from "../contexts/ToastContext";
 import { LoadingSpinner } from "../components/common/LoadingSpinner";
@@ -50,6 +51,7 @@ export default function ArtistDetailPage() {
   );
   const [showManageArtistImages, setShowManageArtistImages] = useState(false);
   const [editingAlbum, setEditingAlbum] = useState<Album | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   useEffect(() => {
     artistDetailFacade.activate();
@@ -93,6 +95,23 @@ export default function ArtistDetailPage() {
 
   const handleSearchChange = (value: string) => {
     artistDetailFacade.setSearch(value);
+  };
+
+  const handleDeleteAlbum = async (album: Album) => {
+    const confirmed = window.confirm(
+      `Excluir o álbum "${album.titulo}"? Esta ação não pode ser desfeita.`,
+    );
+    if (!confirmed) return;
+
+    setDeletingId(album.id);
+    try {
+      await artistDetailFacade.deleteAlbum(album.id);
+      addToast("Álbum excluído com sucesso", "success");
+    } catch (err) {
+      addToast("Erro ao excluir álbum", "error");
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
@@ -214,7 +233,7 @@ export default function ArtistDetailPage() {
                   )}
                 >
                   <div className="flex h-full flex-col">
-                    <div className="flex-1">
+                    <div className="relative flex-1">
                       <h5
                         className="line-clamp-1 text-xl font-bold tracking-tight text-gray-900 dark:text-white"
                         title={alb.titulo}
@@ -224,13 +243,35 @@ export default function ArtistDetailPage() {
                         </span>
                         <span>{alb.titulo ?? "—"}</span>
                       </h5>
-                      <div className="mb-2">
-                        <p className="font-normal text-gray-700 dark:text-gray-400">
-                          <span className="mr-2 text-sm font-semibold text-gray-600 dark:text-gray-400">
-                            Ano:
-                          </span>
-                          <span>{alb.ano ?? "—"}</span>
-                        </p>
+                      <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                        <span className="mr-2 font-semibold">Ano:</span>
+                        <span>{alb.ano ?? "—"}</span>
+                      </p>
+
+                      <div className="absolute top-2 right-2 z-10 flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setEditingAlbum(alb)}
+                          className="rounded-full bg-black/60 p-1.5 text-white shadow-sm hover:bg-black/80 focus:outline-none focus:ring-2 focus:ring-white"
+                          title="Editar álbum"
+                          aria-label="Editar álbum"
+                        >
+                          <HiPencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteAlbum(alb)}
+                          className="rounded-full bg-red-600 p-1.5 text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-white disabled:cursor-not-allowed disabled:bg-red-400"
+                          disabled={deletingId === alb.id}
+                          title="Excluir álbum"
+                          aria-label="Excluir álbum"
+                        >
+                          {deletingId === alb.id ? (
+                            <span className="block h-4 w-4 animate-pulse">•</span>
+                          ) : (
+                            <HiTrash className="h-4 w-4" />
+                          )}
+                        </button>
                       </div>
                     </div>
 

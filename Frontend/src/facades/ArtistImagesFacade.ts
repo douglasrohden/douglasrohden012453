@@ -1,5 +1,5 @@
 import axios from "axios";
-import { BehaviorSubject, Observable } from "rxjs";
+import { BehaviorSubject } from "rxjs";
 import {
   ArtistImage,
   deleteArtistImage,

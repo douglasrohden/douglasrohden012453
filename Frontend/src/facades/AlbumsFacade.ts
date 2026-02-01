@@ -79,11 +79,6 @@ type ResolvedParams = {
     sortDir: AlbumParams["sortDir"];
 };
 
-type LoadResult =
-    | { ok: true; data: Page<Album>; fromCache: boolean }
-    | { ok: false; error: unknown }
-    | { skipped: true };
-
 export class AlbumsFacade {
     readonly data$ = new BehaviorSubject<Page<Album>>(INITIAL_PAGE);
     readonly loading$ = new BehaviorSubject<boolean>(false);

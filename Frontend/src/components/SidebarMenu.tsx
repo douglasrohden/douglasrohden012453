@@ -20,10 +20,11 @@ export function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
 
   const isActive = (path: string) =>
     pathname === path || pathname.startsWith(`${path}/`);
+  const isSameRoute = (path: string) => pathname === path;
   const activeClass = "bg-gray-300 dark:bg-gray-700 font-semibold";
 
   const handleNavigate = (path: string) => {
-    const alreadyHere = isActive(path);
+    const alreadyHere = isSameRoute(path);
     if (alreadyHere) {
       onClose();
       return;

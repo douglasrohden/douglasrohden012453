@@ -250,7 +250,6 @@ export default function ArtistDetailPage() {
             albumId={manageImagesAlbumId}
             onClose={() => {
               setManageImagesAlbumId(null);
-              artistDetailFacade.refresh();
             }}
           />
 

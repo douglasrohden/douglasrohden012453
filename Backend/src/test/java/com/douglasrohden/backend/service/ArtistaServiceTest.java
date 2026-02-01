@@ -112,8 +112,8 @@ class ArtistaServiceTest {
         Page<ArtistaDto> result = service.search("", null, PageRequest.of(0, 10));
 
         ArtistaDto dto = result.getContent().get(0);
-        assertEquals("Serj Tankian", dto.nome());
-        assertEquals(3L, dto.albumCount());
-        assertEquals("http://example", dto.imageUrl());
+        assertEquals("Serj Tankian", dto.getNome());
+        assertEquals(Long.valueOf(3L), dto.getAlbumCount());
+        assertEquals("http://example", dto.getImageUrl());
     }
 }

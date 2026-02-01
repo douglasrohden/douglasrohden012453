@@ -7,7 +7,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { CardGrid } from "../components/common/CardGrid";
 import { ListToolbar } from "../components/common/ListToolbar";
 import { useArtists } from "../hooks/useArtists";
-import { HiPencil } from "react-icons/hi";
+import { HiPencil, HiTrash } from "react-icons/hi";
 import { artistsFacade } from "../facades/ArtistsFacade";
 import { useToast } from "../contexts/ToastContext";
 import { getErrorMessage } from "../lib/http";
@@ -138,18 +138,37 @@ export default function HomePage() {
             className="h-full cursor-pointer transition-shadow hover:shadow-lg"
             renderImage={() => (
               <div className="group relative">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditingArtist(artist);
-                  }}
-                  className="absolute top-1 right-1 z-10 rounded-full bg-black/60 p-1.5 text-white hover:bg-black/80 focus:outline-none focus:ring-2 focus:ring-white"
-                  title="Editar artista"
-                  aria-label="Editar artista"
-                >
-                  <HiPencil className="h-4 w-4" />
-                </button>
+                <div className="absolute top-1 right-1 z-10 flex gap-1">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingArtist(artist);
+                    }}
+                    className="rounded-full bg-black/60 p-1.5 text-white shadow-sm hover:bg-black/80 focus:outline-none focus:ring-2 focus:ring-white"
+                    title="Editar artista"
+                    aria-label="Editar artista"
+                  >
+                    <HiPencil className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(artist.id, artist.nome);
+                    }}
+                    className="rounded-full bg-red-600 p-1.5 text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-white disabled:cursor-not-allowed disabled:bg-red-400"
+                    disabled={deletingId === artist.id}
+                    title="Excluir artista"
+                    aria-label="Excluir artista"
+                  >
+                    {deletingId === artist.id ? (
+                      <span className="block h-4 w-4 animate-pulse">•</span>
+                    ) : (
+                      <HiTrash className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
                 <img
                   src={
                     artist.imageUrl ||
@@ -158,19 +177,6 @@ export default function HomePage() {
                   alt={artist.nome}
                   className="h-48 w-full object-cover"
                 />
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete(artist.id, artist.nome);
-                  }}
-                  className="absolute bottom-2 right-2 z-10 rounded-md bg-red-600 px-3 py-1 text-xs font-semibold text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-white disabled:cursor-not-allowed disabled:bg-red-400"
-                  disabled={deletingId === artist.id}
-                  title="Excluir artista"
-                  aria-label="Excluir artista"
-                >
-                  {deletingId === artist.id ? "Excluindo..." : "Excluir"}
-                </button>
               </div>
             )}
             onClick={() => {

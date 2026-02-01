@@ -15,6 +15,8 @@ import { getErrorMessage } from "../lib/http";
 import { albumImagesFacade, type AlbumImagesState } from "../facades/AlbumImagesFacade";
 import { useBehaviorSubjectValue } from "../hooks/useBehaviorSubjectValue";
 import { BehaviorSubject } from "rxjs";
+import { albunsFacade } from "../facades/AlbumsFacade";
+import { artistDetailFacade } from "../facades/ArtistDetailFacade";
 
 const EMPTY_ALBUM_IMAGES_SUBJECT = new BehaviorSubject<AlbumImagesState>({ status: "idle" });
 
@@ -45,6 +47,22 @@ export default function ManageAlbumImagesModal({
   const images = state.status === "ready" ? state.data : [];
   const loading = state.status === "loading";
   const facadeError = state.status === "error" ? state.message : null;
+
+  const syncAlbumCover = (albumIdToSync: number, coverUrl?: string) => {
+    if (!coverUrl) return;
+
+    const albumList = albunsFacade.snapshot.data.content ?? [];
+    const albumInList = albumList.find((alb) => alb.id === albumIdToSync);
+    if (albumInList) {
+      albunsFacade.updateAlbumInState({ ...albumInList, capaUrl: coverUrl });
+    }
+
+    const artistAlbums = artistDetailFacade.snapshot.data.albums ?? [];
+    const artistAlbum = artistAlbums.find((alb) => alb.id === albumIdToSync);
+    if (artistAlbum) {
+      artistDetailFacade.patchAlbum({ ...artistAlbum, capaUrl: coverUrl });
+    }
+  };
 
   useEffect(() => {
     if (show && albumId) {
@@ -97,7 +115,8 @@ export default function ManageAlbumImagesModal({
       addToast("Imagens enviadas com sucesso!", "success");
       setFiles([]);
       setPreviews([]);
-      await albumImagesFacade.load(albumId);
+      const updatedImages = await albumImagesFacade.load(albumId);
+      syncAlbumCover(albumId, updatedImages[0]?.url);
     } catch (error) {
       addToast(getErrorMessage(error, "Erro ao enviar imagens"), "error");
     } finally {

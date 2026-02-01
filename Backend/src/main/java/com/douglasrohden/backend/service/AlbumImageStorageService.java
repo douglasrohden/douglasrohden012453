@@ -87,6 +87,28 @@ public class AlbumImageStorageService {
     }
 
     @Transactional
+    public void deleteAllCovers(Long albumId) {
+        List<AlbumImage> images = albumImageRepository.findByAlbumId(albumId);
+        if (images.isEmpty()) {
+            return;
+        }
+
+        ensureBucket();
+        for (AlbumImage image : images) {
+            try {
+                minioClient.removeObject(RemoveObjectArgs.builder()
+                        .bucket(properties.getBucket())
+                        .object(image.getObjectKey())
+                        .build());
+            } catch (Exception e) {
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Falha ao remover objeto no storage", e);
+            }
+        }
+
+        albumImageRepository.deleteAll(images);
+    }
+
+    @Transactional
     public void deleteCover(Long albumId, Long coverId) {
         AlbumImage image = albumImageRepository.findByIdAndAlbumId(coverId, albumId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Capa não encontrada"));

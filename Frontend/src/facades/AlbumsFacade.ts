@@ -16,6 +16,7 @@ import {
     type Album,
     type GetAlbunsFilters,
     updateAlbum as updateAlbumRequest,
+    deleteAlbum,
     uploadAlbumImages,
 } from "../services/albunsService";
 import { type Page } from "../types/Page";
@@ -263,6 +264,32 @@ export class AlbumsFacade {
                 throw err;
             }
             const message = getErrorMessage(err, "Erro ao atualizar album");
+            this.error$.next(message);
+            throw err;
+        } finally {
+            this.setLoading(false);
+        }
+    }
+
+    async deleteAlbum(albumId: number): Promise<void> {
+        this.setLoading(true);
+        this.error$.next(null);
+        try {
+            await deleteAlbum(albumId);
+            const current = this.data$.getValue();
+            if (current?.content?.length) {
+                const nextContent = current.content.filter((alb) => alb.id !== albumId);
+                this.data$.next({ ...current, content: nextContent });
+            }
+            this.invalidateCache();
+            this.refresh();
+        } catch (err) {
+            const status = getHttpStatus(err);
+            if (status === 429) {
+                this.handleRateLimit(err);
+                throw err;
+            }
+            const message = getErrorMessage(err, "Erro ao excluir album");
             this.error$.next(message);
             throw err;
         } finally {

@@ -7,6 +7,8 @@ import com.douglasrohden.backend.model.Album;
 import com.douglasrohden.backend.model.Artista;
 import com.douglasrohden.backend.repository.AlbumRepository;
 import com.douglasrohden.backend.repository.ArtistaRepository;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -25,6 +27,7 @@ public class AlbumService {
     private final AlbumRepository albumRepository;
     private final ArtistaRepository artistaRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final AlbumImageStorageService albumImageStorageService;
 
     @Transactional
     public Album create(Album album) {
@@ -121,5 +124,24 @@ public class AlbumService {
         }
 
         return Optional.of(albumRepository.save(existing));
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        Album album = albumRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Álbum não encontrado"));
+
+        albumImageStorageService.deleteAllCovers(album.getId());
+
+        if (album.getArtistas() != null) {
+            album.getArtistas().forEach(artista -> {
+                if (artista.getAlbuns() != null) {
+                    artista.getAlbuns().remove(album);
+                }
+            });
+            album.getArtistas().clear();
+        }
+
+        albumRepository.delete(album);
     }
 }

@@ -1,6 +1,6 @@
 import { Pagination, Card, Alert } from "flowbite-react";
 import { useState } from "react";
-import { HiSearch, HiClock, HiPencil } from "react-icons/hi";
+import { HiSearch, HiClock, HiPencil, HiTrash } from "react-icons/hi";
 import { CardGrid } from "./common/CardGrid";
 import { ListToolbar } from "./common/ListToolbar";
 import CreateAlbumForm from "./CreateAlbumForm";
@@ -9,6 +9,8 @@ import type { Album } from "../services/albunsService";
 import EditAlbumModal from "./EditAlbumModal";
 import { albunsFacade } from "../facades/AlbumsFacade";
 import { useBehaviorSubjectValue } from "../hooks/useBehaviorSubjectValue";
+import { useToast } from "../contexts/ToastContext";
+import { getErrorMessage } from "../lib/http";
 
 export default function AlbunsList() {
   const data = useBehaviorSubjectValue(albunsFacade.data$);
@@ -21,6 +23,26 @@ export default function AlbunsList() {
   const [manageImagesAlbumId, setManageImagesAlbumId] = useState<number | null>(
     null,
   );
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const { addToast } = useToast();
+
+  const handleDelete = async (album: Album) => {
+    const confirmed = window.confirm(
+      `Excluir o álbum "${album.titulo}"? Esta ação não pode ser desfeita.`,
+    );
+    if (!confirmed) return;
+
+    setDeletingId(album.id);
+    try {
+      await albunsFacade.deleteAlbum(album.id);
+      addToast("Álbum excluído com sucesso", "success");
+    } catch (err) {
+      const msg = getErrorMessage(err, "Erro ao excluir álbum");
+      addToast(msg, "error");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   if (error) {
     const lower = String(error).toLowerCase();
@@ -82,6 +104,8 @@ export default function AlbunsList() {
             album={album}
             onEdit={() => setEditingAlbum(album)}
             onManageImages={() => setManageImagesAlbumId(album.id)}
+            onDelete={() => handleDelete(album)}
+            deleting={deletingId === album.id}
           />
         ))}
       </CardGrid>
@@ -131,10 +155,14 @@ function AlbumCard({
   album,
   onEdit,
   onManageImages,
+  onDelete,
+  deleting,
 }: {
   album: Album;
   onEdit: () => void;
   onManageImages: () => void;
+  onDelete: () => void;
+  deleting: boolean;
 }) {
   const src = album?.capaUrl || undefined;
 
@@ -168,18 +196,37 @@ function AlbumCard({
             </div>
           )}
           <div className="group relative">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit();
-              }}
-              className="absolute top-1 right-1 z-10 rounded-full bg-black/60 p-1.5 text-white hover:bg-black/80 focus:outline-none focus:ring-2 focus:ring-white"
-              title="Editar informações"
-              aria-label="Editar informações"
-            >
-              <HiPencil className="h-4 w-4" />
-            </button>
+            <div className="absolute top-1 right-1 z-10 flex gap-1">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit();
+                }}
+                className="rounded-full bg-black/60 p-1.5 text-white shadow-sm hover:bg-black/80 focus:outline-none focus:ring-2 focus:ring-white"
+                title="Editar informações"
+                aria-label="Editar informações"
+              >
+                <HiPencil className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="rounded-full bg-red-600 p-1.5 text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-white disabled:cursor-not-allowed disabled:bg-red-400"
+                disabled={deleting}
+                title="Excluir álbum"
+                aria-label="Excluir álbum"
+              >
+                {deleting ? (
+                  <span className="block h-4 w-4 animate-pulse">•</span>
+                ) : (
+                  <HiTrash className="h-4 w-4" />
+                )}
+              </button>
+            </div>
             <img
               src={src || "https://flowbite.com/docs/images/blog/image-1.jpg"}
               alt={album.titulo}

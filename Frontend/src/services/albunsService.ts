@@ -77,6 +77,10 @@ export async function updateAlbum(
   return response.data;
 }
 
+export async function deleteAlbum(albumId: number): Promise<void> {
+  await http.delete(`/albuns/${albumId}`);
+}
+
 export async function searchAlbums(
   query: string,
   page = 0,

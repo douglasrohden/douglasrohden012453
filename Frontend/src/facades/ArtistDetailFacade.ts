@@ -15,7 +15,11 @@ import {
   type Artista,
   type Album,
 } from "../services/artistsService";
-import { uploadAlbumImages } from "../services/albunsService";
+import {
+  getAlbumImages,
+  uploadAlbumImages,
+  deleteAlbum as deleteAlbumRequest,
+} from "../services/albunsService";
 
 type ArtistDetailParams = {
   artistId: number | null;
@@ -239,6 +243,32 @@ export class ArtistDetailFacade {
     });
   }
 
+    async deleteAlbum(albumId: number): Promise<void> {
+      this.loading$.next(true);
+      this.error$.next(null);
+      try {
+        await deleteAlbumRequest(albumId);
+
+        const current = this.data$.getValue();
+        if (!current.artist) return;
+
+        const albums = (current.albums ?? []).filter((alb) => alb.id !== albumId);
+        this.data$.next({
+          artist: current.artist,
+          albums,
+          visibleAlbums: sortAlbums(albums, this.params$.getValue()),
+        });
+      } catch (err) {
+        const status = getHttpStatus(err);
+        if (status !== 429) {
+          this.error$.next(getErrorMessage(err, "Erro ao excluir álbum"));
+        }
+        throw err;
+      } finally {
+        this.loading$.next(false);
+      }
+    }
+
   patchArtist(updated: Partial<Artista>) {
     const current = this.data$.getValue();
     if (!current.artist) return;
@@ -276,7 +306,7 @@ export class ArtistDetailFacade {
 
     try {
       const artist = await artistsService.getById(params.artistId);
-      const albums = artist.albuns ?? [];
+      const albums = await this.enrichAlbumCovers(artist.albuns ?? []);
       this.data$.next({
         artist,
         albums,
@@ -314,6 +344,39 @@ export class ArtistDetailFacade {
     });
 
     return byPayload.length === 1 ? byPayload[0] : null;
+  }
+
+  private async enrichAlbumCovers(albums: Album[]): Promise<Album[]> {
+    if (!albums.length) return albums;
+
+    const placeholderUrl = "https://flowbite.com/docs/images/blog/image-1.jpg";
+    const toUpdate = albums.filter((album) => {
+      if (album.id == null) return false;
+      if (!album.capaUrl) return true;
+      return album.capaUrl.includes(placeholderUrl);
+    });
+
+    if (!toUpdate.length) return albums;
+
+    const coverEntries = await Promise.all(
+      toUpdate.map(async (album) => {
+        try {
+          const images = await getAlbumImages(album.id);
+          return { id: album.id, url: images?.[0]?.url };
+        } catch {
+          return { id: album.id, url: undefined };
+        }
+      }),
+    );
+
+    const coverMap = new Map<number, string | undefined>(
+      coverEntries.map((entry) => [entry.id, entry.url]),
+    );
+
+    return albums.map((album) => {
+      const coverUrl = coverMap.get(album.id);
+      return coverUrl ? { ...album, capaUrl: coverUrl } : album;
+    });
   }
 }
 

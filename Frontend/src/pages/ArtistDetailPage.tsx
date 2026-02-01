@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { Card } from "flowbite-react";
+import { Button, Card } from "flowbite-react";
 import { PageLayout } from "../components/layout/PageLayout";
 import { useToast } from "../contexts/ToastContext";
 import { LoadingSpinner } from "../components/common/LoadingSpinner";
@@ -9,6 +9,7 @@ import { CardGrid } from "../components/common/CardGrid";
 import CreateAlbumForm from "../components/CreateAlbumForm";
 import { ListToolbar } from "../components/common/ListToolbar";
 import ManageAlbumImagesModal from "../components/ManageAlbumImagesModal";
+import ManageArtistImagesModal from "../components/ManageArtistImagesModal";
 import EditAlbumModal from "../components/EditAlbumModal";
 import { artistDetailFacade } from "../facades/ArtistDetailFacade";
 import { useBehaviorSubjectValue } from "../hooks/useBehaviorSubjectValue";
@@ -47,6 +48,7 @@ export default function ArtistDetailPage() {
   const [manageImagesAlbumId, setManageImagesAlbumId] = useState<number | null>(
     null,
   );
+  const [showManageArtistImages, setShowManageArtistImages] = useState(false);
   const [editingAlbum, setEditingAlbum] = useState<Album | null>(null);
 
   useEffect(() => {
@@ -57,7 +59,6 @@ export default function ArtistDetailPage() {
   useEffect(() => {
     if (!id) return;
     artistDetailFacade.setArtistId(Number(id));
-    artistDetailFacade.refresh();
     return () => {
       if (retryTimeoutRef.current) {
         clearTimeout(retryTimeoutRef.current);
@@ -121,6 +122,12 @@ export default function ArtistDetailPage() {
                     : "—"}
                 </span>
               </p>
+            </div>
+
+            <div className="flex gap-2">
+              <Button onClick={() => setShowManageArtistImages(true)}>
+                Editar foto
+              </Button>
             </div>
 
           </div>
@@ -260,6 +267,12 @@ export default function ArtistDetailPage() {
             onSuccess={() => {
               artistDetailFacade.refresh();
             }}
+          />
+
+          <ManageArtistImagesModal
+            show={showManageArtistImages}
+            artistId={artist.id ?? null}
+            onClose={() => setShowManageArtistImages(false)}
           />
         </div>
       )}

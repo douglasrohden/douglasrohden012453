@@ -9,8 +9,10 @@ import com.douglasrohden.backend.model.Album;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.douglasrohden.backend.model.ArtistaTipo;
 import com.douglasrohden.backend.repository.ArtistImageRepository;
@@ -132,8 +134,23 @@ public class ArtistaService {
         return repository.save(existing);
     }
 
+    @Transactional
     public void delete(Long id) {
-        repository.deleteById(id);
+        Artista artista = repository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Artista não encontrado"));
+
+        imageStorageService.deleteAllImages(artista.getId());
+
+        if (artista.getAlbuns() != null) {
+            artista.getAlbuns().forEach(album -> {
+                if (album.getArtistas() != null) {
+                    album.getArtistas().remove(artista);
+                }
+            });
+            artista.getAlbuns().clear();
+        }
+
+        repository.delete(artista);
     }
 
     @Transactional

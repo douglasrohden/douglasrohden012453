@@ -81,6 +81,28 @@ public class ArtistImageStorageService {
         List<ArtistImage> images = artistImageRepository.findByArtistaId(artistaId);
         return images.stream().map(this::mapToResponse).toList();
     }
+    
+    @Transactional
+    public void deleteAllImages(Long artistaId) {
+        List<ArtistImage> images = artistImageRepository.findByArtistaId(artistaId);
+        if (images.isEmpty()) {
+            return;
+        }
+        
+        ensureBucket();
+        for (ArtistImage image : images) {
+            try {
+                minioClient.removeObject(RemoveObjectArgs.builder()
+                        .bucket(properties.getBucket())
+                        .object(image.getObjectKey())
+                        .build());
+            } catch (Exception e) {
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Falha ao remover objeto no storage", e);
+            }
+        }
+        
+        artistImageRepository.deleteAll(images);
+    }
 
     @Transactional
     public void deleteImage(Long artistaId, Long imageId) {

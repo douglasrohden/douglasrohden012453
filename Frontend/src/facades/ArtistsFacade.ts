@@ -219,6 +219,26 @@ export class ArtistsFacade {
         }
     }
 
+    async delete(id: number): Promise<void> {
+        this.loading$.next(true);
+        this.error$.next(null);
+        try {
+            await artistsService.delete(id);
+            const current = this.data$.getValue();
+            if (current?.content?.length) {
+                const nextContent = current.content.filter((item) => item.id !== id);
+                this.data$.next({ ...current, content: nextContent });
+            }
+            this.refresh();
+        } catch (err) {
+            const message = getErrorMessage(err, "Erro ao excluir artista");
+            this.error$.next(message);
+            throw err;
+        } finally {
+            this.loading$.next(false);
+        }
+    }
+
     patchArtist(updated: Artista) {
         const current = this.data$.getValue();
         if (!current?.content?.length) return;

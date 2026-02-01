@@ -9,6 +9,8 @@ import { ListToolbar } from "../components/common/ListToolbar";
 import { useArtists } from "../hooks/useArtists";
 import { HiPencil } from "react-icons/hi";
 import { artistsFacade } from "../facades/ArtistsFacade";
+import { useToast } from "../contexts/ToastContext";
+import { getErrorMessage } from "../lib/http";
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -20,6 +22,8 @@ export default function HomePage() {
     tipo?: string;
   } | null>(null);
   const [navLock, setNavLock] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const { addToast } = useToast();
 
   // Activate/deactivate facade
   useEffect(() => {
@@ -46,6 +50,22 @@ export default function HomePage() {
     setDir,
     refresh,
   } = useArtists();
+
+  const handleDelete = async (artistId: number, artistName: string) => {
+    const confirmed = window.confirm(`Excluir "${artistName}"? Esta ação não pode ser desfeita.`);
+    if (!confirmed) return;
+
+    setDeletingId(artistId);
+    try {
+      await artistsFacade.delete(artistId);
+      addToast("Artista excluído com sucesso", "success");
+    } catch (err) {
+      const msg = getErrorMessage(err, "Erro ao excluir artista");
+      addToast(msg, "error");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
     <PageLayout>
@@ -138,6 +158,19 @@ export default function HomePage() {
                   alt={artist.nome}
                   className="h-48 w-full object-cover"
                 />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(artist.id, artist.nome);
+                  }}
+                  className="absolute bottom-2 right-2 z-10 rounded-md bg-red-600 px-3 py-1 text-xs font-semibold text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-white disabled:cursor-not-allowed disabled:bg-red-400"
+                  disabled={deletingId === artist.id}
+                  title="Excluir artista"
+                  aria-label="Excluir artista"
+                >
+                  {deletingId === artist.id ? "Excluindo..." : "Excluir"}
+                </button>
               </div>
             )}
             onClick={() => {

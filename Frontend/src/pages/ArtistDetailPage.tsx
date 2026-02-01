@@ -220,59 +220,60 @@ export default function ArtistDetailPage() {
                           </p>
                         </div>
                       )}
-                      <img
-                        src={cover}
-                        alt={alb.titulo}
-                        className="h-auto w-full object-cover"
-                        loading="lazy"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = PLACEHOLDER_IMAGE;
-                        }}
-                      />
+                      <div className="relative">
+                        <div className="absolute top-1 right-1 z-10 flex gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setEditingAlbum(alb)}
+                            className="rounded-full bg-black/60 p-1.5 text-white shadow-sm hover:bg-black/80 focus:outline-none focus:ring-2 focus:ring-white"
+                            title="Editar álbum"
+                            aria-label="Editar álbum"
+                          >
+                            <HiPencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAlbum(alb)}
+                            className="rounded-full bg-red-600 p-1.5 text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-white disabled:cursor-not-allowed disabled:bg-red-400"
+                            disabled={deletingId === alb.id}
+                            title="Excluir álbum"
+                            aria-label="Excluir álbum"
+                          >
+                            {deletingId === alb.id ? (
+                              <span className="block h-4 w-4 animate-pulse">•</span>
+                            ) : (
+                              <HiTrash className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
+                        <img
+                          src={cover}
+                          alt={alb.titulo}
+                          className="h-auto w-full object-cover"
+                          loading="lazy"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = PLACEHOLDER_IMAGE;
+                          }}
+                        />
+                      </div>
                     </div>
                   )}
                 >
                   <div className="flex h-full flex-col">
-                    <div className="relative flex-1">
-                      <h5
-                        className="line-clamp-1 text-xl font-bold tracking-tight text-gray-900 dark:text-white"
+                    <div className="flex-1">
+                      <span
+                        className="line-clamp-3 text-xl font-bold tracking-tight text-gray-900 dark:text-white"
                         title={alb.titulo}
                       >
                         <span className="mr-2 text-sm font-semibold text-gray-600 dark:text-gray-400">
                           Título:
                         </span>
                         <span>{alb.titulo ?? "—"}</span>
-                      </h5>
+                      </span>
                       <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
                         <span className="mr-2 font-semibold">Ano:</span>
                         <span>{alb.ano ?? "—"}</span>
                       </p>
-
-                      <div className="absolute top-2 right-2 z-10 flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setEditingAlbum(alb)}
-                          className="rounded-full bg-black/60 p-1.5 text-white shadow-sm hover:bg-black/80 focus:outline-none focus:ring-2 focus:ring-white"
-                          title="Editar álbum"
-                          aria-label="Editar álbum"
-                        >
-                          <HiPencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteAlbum(alb)}
-                          className="rounded-full bg-red-600 p-1.5 text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-white disabled:cursor-not-allowed disabled:bg-red-400"
-                          disabled={deletingId === alb.id}
-                          title="Excluir álbum"
-                          aria-label="Excluir álbum"
-                        >
-                          {deletingId === alb.id ? (
-                            <span className="block h-4 w-4 animate-pulse">•</span>
-                          ) : (
-                            <HiTrash className="h-4 w-4" />
-                          )}
-                        </button>
-                      </div>
                     </div>
 
                     <button

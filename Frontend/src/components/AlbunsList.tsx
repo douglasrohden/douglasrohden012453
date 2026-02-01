@@ -238,15 +238,15 @@ function AlbumCard({
     >
       <div className="flex h-full flex-col justify-between">
         <div>
-          <h5
-            className="line-clamp-1 truncate text-xl font-bold tracking-tight text-gray-900 dark:text-white"
+          <span
+            className="line-clamp-3 text-xl font-bold tracking-tight text-gray-900 dark:text-white"
             title={album.titulo}
           >
             <span className="mr-2 text-sm font-semibold text-gray-600 dark:text-gray-400">
               Título:
             </span>
             <span>{album.titulo ?? "—"}</span>
-          </h5>
+          </span>
           <div className="mb-4">
             <p className="font-normal text-gray-700 dark:text-gray-400">
               <span className="mr-2 text-sm font-semibold text-gray-600 dark:text-gray-400">

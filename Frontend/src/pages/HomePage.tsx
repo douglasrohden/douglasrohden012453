@@ -185,15 +185,12 @@ export default function HomePage() {
               navigate(`/artista/${artist.id}`);
             }}
           >
-            <h5
-              className="line-clamp-1 text-2xl font-bold tracking-tight text-gray-900 dark:text-white"
+            <span
+              className="line-clamp-3 text-2xl font-bold tracking-tight text-gray-900 dark:text-white"
               title={artist.nome}
-            >
-              <span className="mr-2 text-sm font-semibold text-gray-600 dark:text-gray-400">
-                Nome:
-              </span>
+            > 
               <span className="normal-case">{artist.nome ?? "—"}</span>
-            </h5>
+            </span>
             <p className="line-clamp-1 h-6 font-normal text-gray-700 dark:text-gray-400">
               <span className="mr-2 text-sm font-semibold text-gray-600 dark:text-gray-400">
                 Cantor/Banda:

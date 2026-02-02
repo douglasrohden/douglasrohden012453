@@ -1,7 +1,11 @@
 ﻿# README — Sistema de Gerenciamento de Artistas e Álbuns (Full Stack)
 
-Este documento foi preparado por mim para a banca. Ele descreve a solução Full Stack (Backend Java + Frontend React), com autenticação JWT, rate limit (10 req/min por usuário), upload múltiplo de imagens via MinIO (S3), paginação, busca e ordenação, além de WebSocket para notificação de novos álbuns.
-  
+**Entrega técnica para o PROCESSO SELETIVO CONJUNTO Nº 001/2026/SEPLAG — Engenheiro da Computação (Sênior).**
+
+Resumo executivo: solução Full Stack (Java Spring Boot + React + TypeScript) implementando os requisitos do edital: autenticação JWT com refresh (5 min), rate limit (10 req/min por usuário), upload múltiplo para MinIO com presigned URLs (30 min), paginação, busca/ordenação, WebSocket para notificações, Flyway com seed (artistas e álbuns do enunciado), Swagger, health checks, e entrega via Docker Compose (API + Frontend + PostgreSQL + MinIO).
+
+Este README foi simplificado para avaliação técnica: comandos mínimos para executar, validar e revisar o código estão abaixo.
+
 ---
 
 ## Sumário
@@ -40,6 +44,16 @@ O sistema permite:
 - Integração externa de regionais (sincronização)
 
 Entrega obrigatória via Docker Compose com **API + Frontend + Banco + MinIO**.
+
+### ✅ Validação rápida (para a banca)
+
+1) Subir ambiente: `docker compose up -d --build` (duração ~1-2 min em máquina local).
+2) Acessar Swagger: `http://localhost:3001/swagger-ui/index.html` — testar `POST /v1/autenticacao/login` e endpoints `/v1/artistas` e `/v1/albuns`.
+3) Verificar upload: `POST /v1/albuns/{id}/capas` (multipart `files[]`) e abrir MinIO Console em `http://localhost:9001` para checar objetos.
+4) Testar rate limit: executar 11 requisições autenticadas ao mesmo endpoint dentro de 60s → API retorna `429` + `Retry-After`.
+5) Testar WebSocket: conectar ao `/ws`, inscrever em `/topic/albuns/created`, criar álbum e conferir notificação em tempo real.
+6) Executar testes: Backend — `cd Backend && mvn test`; Frontend — `cd Frontend && npm test`.
+7) Verificação final: revisar a seção "Checklist do edital (implementação)" neste README para confirmação de itens atendidos.
 
 ---
 
@@ -202,8 +216,6 @@ docker compose up -d --build frontend
 - Password: `admin`
 
 > ⚠️ **Importante**: Em produção, altere o `JWT_SECRET` no arquivo `.env`!
-
-Para mais detalhes sobre comandos Docker, consulte o arquivo [DOCKER_GUIDE.md](./DOCKER_GUIDE.md).
 
 ---
 

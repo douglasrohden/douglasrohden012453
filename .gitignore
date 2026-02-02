@@ -24,6 +24,9 @@ node_modules/
 npm-debug.log*
 dist/
 **/package-lock.json
+# Vitest
+.vitest/
+vitest/
 # Environment variables
 .env
 .env.local

@@ -352,39 +352,7 @@ Como a banca pode validar:
 - Após 10 requisições no mesmo minuto, a API retorna 429 + `Retry-After`.
 - O frontend evita duplicidade (StrictMode / double mount / múltiplos effects).
 
----
-
-## Checklist do edital (implementação)
-
-### Backend
-- [x] API REST (GET/POST/PUT)
-- [x] Endpoints versionados `/v1/**`
-- [x] JWT com expiração curta (5 min)
-- [x] Refresh token
-- [x] Rate limit 10 req/min por usuário autenticado
-- [x] Paginação, busca e ordenação
-- [x] Upload múltiplo de imagens
-- [x] MinIO (S3) para storage
-- [x] Presigned URL com expiração (30 min)
-- [x] Health check `/actuator/health`
-- [x] Flyway migrations + seed idempotente
-- [x] WebSocket (notificar novo álbum)
-- [x] Testes unitários/integração para regras críticas (autenticação e controllers básicos cobertos)
-
-### Frontend
-- [x] Login obrigatório (guards)
-- [x] Consumo de API REST
-- [x] Listagem de artistas com busca/ordenação
-- [x] Paginação
-- [x] Detalhe do artista
-- [x] CRUD artista/álbum
-- [x] Upload de imagens
-- [x] WebSocket (notificações)
-- [x] Tratamento de 401 (refresh automático)
-- [x] Tratamento de 429 (rate limit)
-- [x] Testes unitários de facades/hooks (ArtistsFacade e useArtists)
-
----
+--- 
 
 ## Organização e Clean Code
 
@@ -600,10 +568,8 @@ mvn test -Dtest=ArtistaServiceTest
 ## Dados do candidato
 
 Preencher conforme necessário:
-- Nome completo:
-- CPF:
-- E-mail:
-- Vaga/edital:
+- Nome completo: Douglas Rohden
+- E-mail: rohdendouglas@gmail.com
 
 ---
 

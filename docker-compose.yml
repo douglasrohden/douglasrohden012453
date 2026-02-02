@@ -1,3 +1,5 @@
+name: douglasrohden012453
+
 services:
   db:
     image: postgres:15
@@ -36,6 +38,7 @@ services:
   backend:
     build: ./Backend
     environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5433/${POSTGRES_DB:-dbmusicplayer}
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}

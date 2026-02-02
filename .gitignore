@@ -19,7 +19,6 @@ backend_old/
 *.war
 *.ear
 *.txt
-*.md
 # Node
 node_modules/
 npm-debug.log*

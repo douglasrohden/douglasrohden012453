@@ -35,8 +35,6 @@ public class SecurityConfig {
 
     private static final String[] PERMIT_ALL = {
             "/v1/autenticacao/**",
-            "/v1/dev/**",
-            "/api/db/**",
             "/ws/**",
             "/actuator/**",
             "/health/**",

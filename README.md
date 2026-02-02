@@ -2,9 +2,8 @@
 
 **Entrega técnica para o PROCESSO SELETIVO CONJUNTO Nº 001/2026/SEPLAG — Engenheiro da Computação (Sênior).**
 
-Resumo executivo: solução Full Stack (Java Spring Boot + React + TypeScript) implementando os requisitos do edital: autenticação JWT com refresh (5 min), rate limit (10 req/min por usuário), upload múltiplo para MinIO com presigned URLs (30 min), paginação, busca/ordenação, WebSocket para notificações, Flyway com seed (artistas e álbuns do enunciado), Swagger, health checks, e entrega via Docker Compose (API + Frontend + PostgreSQL + MinIO).
+Resumo : solução Full Stack (Java Spring Boot + React + TypeScript) implementando os requisitos do edital: autenticação JWT com refresh (5 min), rate limit (10 req/min por usuário), upload múltiplo para MinIO com presigned URLs (30 min), paginação, busca/ordenação, WebSocket para notificações, Flyway com seed (artistas e álbuns do enunciado), Swagger, health checks, e entrega via Docker Compose (API + Frontend + PostgreSQL + MinIO). 
 
-Este README foi simplificado para avaliação técnica: comandos mínimos para executar, validar e revisar o código estão abaixo.
 
 ---
 
@@ -45,7 +44,7 @@ O sistema permite:
 
 Entrega obrigatória via Docker Compose com **API + Frontend + Banco + MinIO**.
 
-### ✅ Validação rápida 
+### ✅ Resumo 
 
 1) Subir ambiente: `docker compose up -d --build` (duração ~1-2 min em máquina local).
 2) Acessar Swagger: `http://localhost:3001/swagger-ui/index.html` — testar `POST /v1/autenticacao/login` e endpoints `/v1/artistas` e `/v1/albuns`.
@@ -53,7 +52,7 @@ Entrega obrigatória via Docker Compose com **API + Frontend + Banco + MinIO**.
 4) Testar rate limit: executar 11 requisições autenticadas ao mesmo endpoint dentro de 60s → API retorna `429` + `Retry-After`.
 5) Testar WebSocket: conectar ao `/ws`, inscrever em `/topic/albuns/created`, criar álbum e conferir notificação em tempo real.
 6) Executar testes: Backend — `cd Backend && mvn test`; Frontend — `cd Frontend && npm test`.
-7) Verificação final: revisar a seção "Checklist do edital (implementação)" neste README para confirmação de itens atendidos.
+ 
 
 ---
 
@@ -141,10 +140,6 @@ VITE_API_URL=http://localhost:3001/v1
 VITE_WS_URL=http://localhost:3001/ws
 ```
 
-Regras importantes:
-- Nunca comitar `.env` real.
-- `.env.example` deve explicar o propósito de cada variável.
-- Em produção, preferir variáveis via CI/infra.
 
 ---
 

@@ -27,6 +27,7 @@ dist/
 # Vitest
 .vitest/
 vitest/
+.vite/vitest
 # Environment variables
 .env
 .env.local

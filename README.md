@@ -45,7 +45,7 @@ O sistema permite:
 
 Entrega obrigatória via Docker Compose com **API + Frontend + Banco + MinIO**.
 
-### ✅ Validação rápida (para a banca)
+### ✅ Validação rápida 
 
 1) Subir ambiente: `docker compose up -d --build` (duração ~1-2 min em máquina local).
 2) Acessar Swagger: `http://localhost:3001/swagger-ui/index.html` — testar `POST /v1/autenticacao/login` e endpoints `/v1/artistas` e `/v1/albuns`.
@@ -348,10 +348,6 @@ Payload (exemplo):
   - `X-Rate-Limit-Window-Seconds`
   - `Retry-After` (somente no 429)
 
-Como a banca pode validar:
-- Após 10 requisições no mesmo minuto, a API retorna 429 + `Retry-After`.
-- O frontend evita duplicidade (StrictMode / double mount / múltiplos effects).
-
 --- 
 
 ## Organização e Clean Code
@@ -539,22 +535,6 @@ mvn test -Dtest=ArtistaServiceTest
 
 
 ---
-
-## Análise geral do projeto (para banca)
-
-### Pontos fortes
-- Arquitetura em camadas bem definida (controller/service/repository) e frontend com Facade + BehaviorSubject.
-- Requisitos críticos do edital atendidos (JWT + refresh, rate limit, MinIO com presigned URL, WebSocket, sincronização de regionais).
-- Docker Compose com API + Frontend + Banco + MinIO pronto para execução local.
-
-### Pontos de atenção / gaps
-- Testes ainda parciais em algumas camadas (há testes reais em segurança/serviços, mas faltam integrações completas em controllers e componentes de UI).
-- Ajustes de ambiente para produção devem ser feitos via variáveis (ex.: JWT_SECRET e URLs).
-
-### Próximos passos que eu faria
-- Consolidar testes de controller com MockMvc e testes de UI com interações reais.
-- Revisar política de logs e exposição de detalhes em actuator para produção.
-- Automatizar CI com execução de testes e lint.
 
 ## Observações de produção
 

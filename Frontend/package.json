@@ -11,10 +11,10 @@
     "preview": "vite preview",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
-    "generate-tests": "node scripts/generate-tests.js",
-    "clean-generated-tests": "node scripts/clean-generated-tests.js",
     "test": "vitest",
-    "test:ui": "vitest --ui"
+    "test:ci": "vitest run",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@stomp/stompjs": "^7.2.0",
@@ -40,7 +40,8 @@
     "@types/react-dom": "^19.1.6",
     "@types/sockjs-client": "^1.5.4",
     "@vitejs/plugin-react": "^4.7.0",
-    "@vitest/ui": "^1.0.4",
+    "@vitest/coverage-v8": "^1.6.1",
+    "@vitest/ui": "^1.6.1",
     "eslint": "^9.31.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
@@ -52,6 +53,6 @@
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.38.0",
     "vite": "^7.0.5",
-    "vitest": "^1.0.4"
+    "vitest": "^1.6.1"
   }
 }

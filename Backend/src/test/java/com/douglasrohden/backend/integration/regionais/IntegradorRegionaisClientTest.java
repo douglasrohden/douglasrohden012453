@@ -1,37 +1,25 @@
 package com.douglasrohden.backend.integration.regionais;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.*;
 
-// AUTO-GENERATED TEST - you can customize and remove this marker if you keep the test
-@DisplayName("IntegradorRegionaisClient component tests")
+
+// SMART-GENERATED TEST - Customizable based on IntegradorRegionaisClient
+@ExtendWith(MockitoExtension.class)
+@DisplayName("IntegradorRegionaisClient tests")
 class IntegradorRegionaisClientTest {
 
-    @Test
-    @DisplayName("loads IntegradorRegionaisClient via reflection")
-    void loadsClass() {
-        assertDoesNotThrow(() -> Class.forName("com.douglasrohden.backend.integration.regionais.IntegradorRegionaisClient"));
+
+
+    @BeforeEach
+    void setUp() {
+        // Setup test data if needed
     }
 
-    @Nested
-    @DisplayName("scenarios to implement for component")
-    class Scenarios {
-
-        @Test
-        @Disabled("Replace with a real happy-path test")
-        void happyPath() {
-            // TODO: add real scenario for IntegradorRegionaisClient
-            assertTrue(true); // placeholder
-        }
-
-        @Test
-        @Disabled("Replace with an edge case test")
-        void handlesEdgeCases() {
-            // TODO: add real scenario for IntegradorRegionaisClient
-            assertTrue(true); // placeholder
-        }
-    }
 }

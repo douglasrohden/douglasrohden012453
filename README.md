@@ -148,7 +148,7 @@ GET /actuator/health/readiness
 
 ## Requisitos do edital (checklist)
 
-Backend — MUST
+Backend 
 
 - [x] API versionada /v1
 - [x] JWT (expira em 5 min) + refresh token
@@ -159,7 +159,7 @@ Backend — MUST
 - [x] Presigned URLs com expiração padrão de 30 min
 - [x] Docker compose (API + Front + DB + MinIO)
 
-Sênior — MUST
+Sênior 
 
 - [x] Health checks liveness/readiness
 - [x] WebSocket (notificar novo álbum)
@@ -167,7 +167,6 @@ Sênior — MUST
 - [x] Sincronização de “Regionais” (import/sync com ativo)
 
 Observação: o edital exige “várias imagens”. Este projeto implementa múltiplas capas por álbum via /capas.
-Se também houver imagens por artista, os endpoints correspondentes aparecem em “Endpoints”.
 
 ## Estrutura de dados (tabelas e decisões)
 

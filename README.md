@@ -246,6 +246,16 @@ Estrutura proposta das tabelas e principais decisões de modelagem adotadas.
 - Regionais: apenas uma regional ativa por `external_id` (índice único parcial).
 
 ## Como rodar
+
+### Clonar repositório
+
+Clone o repositório oficial e entre na pasta do projeto:
+
+```
+git clone https://github.com/douglasrohden/douglasrohden012453.git
+cd douglasrohden012453
+```
+
 ### Docker Compose (recomendado)
 
 ```
@@ -475,6 +485,55 @@ mvn test
 cd Frontend
 npm test
 ```
+
+## Qualidade e práticas
+
+- Testes básicos cobrem fluxos críticos (autenticação, CRUD, paginação e integração com MinIO/rate limit) com unit tests no back e no front.
+- Legibilidade e escalabilidade: separação por camadas (controller/service/repository) e componentes/facades no front.
+- Clean Code: responsabilidades únicas, nomes claros e validações explícitas nos fluxos principais.
+- Soluções simples e práticas priorizadas, evitando complexidade desnecessária. 
+
+## Deploy (orientação)
+
+Passo a passo sugerido (produção):
+
+1) Preparar variáveis e segredos
+- Criar um arquivo .env de produção (não versionar).
+- Definir variáveis seguras: JWT_SECRET, credenciais do banco, MinIO e CORS.
+
+2) Build e versionamento de imagens
+- Gerar imagens com tag de versão (ex.: 1.0.0) e, se possível, publicar em um registry.
+- Evitar usar latest em produção.
+
+3) Persistência de dados
+- Mapear volumes do PostgreSQL e MinIO para storage durável.
+- Fazer backup periódico dos volumes (especialmente o banco).
+
+4) HTTPS e proxy reverso
+- Usar Nginx (ou similar) para servir o front estático e rotear /v1 para a API.
+- Habilitar HTTPS (Let's Encrypt ou certificado corporativo).
+- Restringir CORS ao domínio do frontend.
+
+5) Limits e timeouts
+- Ajustar limites de upload (multipart) e timeouts conforme carga real.
+
+Exemplo básico de execução (build + subir stack):
+
+```
+docker compose up -d --build
+```
+
+Exemplo de práticas recomendadas:
+- Definir variáveis de ambiente seguras (JWT_SECRET, credenciais do banco e MinIO).
+- Habilitar HTTPS e configurar CORS apenas para o domínio do front.
+- Persistir volumes do PostgreSQL e MinIO em storage durável.
+- Ajustar limites de upload e timeouts conforme carga real.
+- Usar proxy reverso (ex.: Nginx) para servir o front estático e rotear /v1 para a API.
+
+## O que foi e o que não foi feito
+
+- Foi feito: itens do checklist do edital, incluindo JWT/refresh, CRUD, paginação, upload em MinIO, presigned, rate limit, WebSocket, regionais, Swagger, Flyway, health checks e docker-compose.
+- Não foi feito: nenhuma pendência relevante identificada no momento. Se algo faltar na avaliação, a seção pode ser atualizada com a justificativa correspondente.
 
 ## Troubleshooting
 1) Imagens não carregam no frontend

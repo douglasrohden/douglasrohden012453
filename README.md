@@ -18,13 +18,136 @@ Aplicação Full Stack (Java Spring Boot + React + TypeScript) em conformidade c
 - Health checks (liveness/readiness)
 - Entrega via Docker Compose: API + Frontend + PostgreSQL + MinIO + pgAdmin (removível)
 
-## Roteiro de validação 
-1) Subir a stack completa
+## Sumário
+
+- Arquitetura
+- Requisitos do edital
+- Estrutura de dados
+- Como rodar
+- Variáveis de ambiente
+- MinIO e presigned URLs
+- Rate limit
+- WebSocket
+- Banco e Flyway
+- Endpoints
+- Testes
+- Troubleshooting
+- Dados do candidato
+
+## Como rodar
+
+### Clonar repositório
+
+Clone o repositório oficial e entre na pasta do projeto:
+
+```
+git clone https://github.com/douglasrohden/douglasrohden012453.git
+cd douglasrohden012453
+```
+
+### Docker Compose (recomendado)
 
 ```
 docker compose up -d --build
 docker compose ps
 ```
+
+URLs:
+
+- Frontend: http://localhost:5173
+- Swagger: http://localhost:3001/swagger-ui/index.html
+- MinIO Console: http://localhost:9001
+- MinIO S3: http://localhost:9000
+
+Credenciais:
+
+- App: admin/admin
+- MinIO: conforme `.env` (não versionado) e/ou [.env.example](.env.example) + [docker-compose.yml](docker-compose.yml)
+
+### Desenvolvimento local
+
+Backend:
+
+```
+cd Backend
+mvn spring-boot:run
+```
+
+Frontend:
+
+```
+cd Frontend
+npm install
+npm run dev
+```
+
+## Variáveis de ambiente
+
+Crie [.env](.env) (ou use as do compose). Mantenha [.env.example](.env.example).
+
+Exemplo base:
+
+```dotenv
+# Backend
+SPRING_PROFILES_ACTIVE=dev
+SERVER_PORT=3001
+SERVER_ADDRESS=0.0.0.0
+
+# Logging
+LOGGING_LEVEL_ROOT=INFO
+
+# DB
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=dbmusicplayer
+POSTGRES_PORT=5433
+SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5433/dbmusicplayer
+
+# CORS (origens permitidas)
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3001
+
+# JWT
+JWT_SECRET=change-me
+JWT_EXPIRATION=300000
+JWT_REFRESH_EXPIRATION=604800000
+REFRESH_TOKEN_PEPPER=change-me
+
+# Rate limit (edital)
+RATE_LIMIT_REQUESTS_PER_WINDOW=10
+RATE_LIMIT_WINDOW_SECONDS=60
+RATE_LIMIT_BUCKET_EXPIRE_AFTER_SECONDS=120
+
+# ---------- MinIO ----------
+MINIO_ENDPOINT=http://localhost:9000
+MINIO_EXTERNAL_ENDPOINT=http://localhost:9000
+# Credenciais do servidor MinIO (compose)
+MINIO_ROOT_USER=minioadmin
+MINIO_ROOT_PASSWORD=minioadmin123
+# Credenciais usadas pelo backend
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin123
+MINIO_BUCKET=album-covers
+MINIO_REGION=us-east-1
+MINIO_PRESIGN_EXPIRATION_MINUTES=30
+MINIO_MAX_FILE_SIZE_BYTES=5242880
+MINIO_MAX_REQUEST_SIZE_BYTES=26214400
+
+# Integração externa - Regionais
+INTEGRADOR_REGIONAIS_URL=https://integrador-argus-api.geia.vip
+INTEGRADOR_REGIONAIS_TIMEOUT_CONNECT=3s
+INTEGRADOR_REGIONAIS_TIMEOUT_READ=5s
+
+# Frontend
+VITE_API_URL=http://localhost:3001/v1
+
+```
+
+Obs.: o WebSocket é derivado de VITE_API_URL (ex.: http://localhost:3001/ws).
+
+## Roteiro de validação 
+1) Stack em execução
+
+Se ainda não subiu a stack, siga **Como rodar → Docker Compose (recomendado)**.
 
 2) Swagger + login (JWT)
 
@@ -37,7 +160,6 @@ curl -s -X POST "http://localhost:3001/v1/autenticacao/login" \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"admin"}'
 ```
-
 
 Copie o accessToken e use como:
 
@@ -59,7 +181,6 @@ curl -s -X POST "http://localhost:3001/v1/albuns/1/capas" \
   -F "files=@./exemplos/capa2.jpg"
 ```
 
-
 Listagem (retorna presigned + expiresAt):
 
 ```
@@ -67,14 +188,13 @@ curl -s "http://localhost:3001/v1/albuns/1/capas" \
   -H "Authorization: Bearer <TOKEN>"
 ```
 
-
 MinIO Console (ver objetos):
 
-http://localhost:9001 (credenciais no [.env](.env))
+http://localhost:9001 (credenciais em [.env.example](.env.example); em execução local, use seu `.env`)
 
 4) Testar expiração do presigned em 60s (teste rápido)
 
-Suba o backend com:
+Defina a variável no `.env` (ou no ambiente) e reinicie o serviço `backend`:
 
 ```
 MINIO_PRESIGN_EXPIRATION_MINUTES=1
@@ -94,7 +214,6 @@ for i in $(seq 1 11); do
 done
 ```
 
-
 Esperado: após exceder, retorna 429 com Retry-After.
 
 6) WebSocket (novo álbum)
@@ -110,22 +229,6 @@ Crie um álbum e verifique notificação.
 GET /actuator/health/liveness
 GET /actuator/health/readiness
 ```
-
-## Sumário
-
-- Arquitetura
-- Requisitos do edital
-- Estrutura de dados
-- Como rodar
-- Variáveis de ambiente
-- MinIO e presigned URLs
-- Rate limit
-- WebSocket
-- Banco e Flyway
-- Endpoints
-- Testes
-- Troubleshooting
-- Dados do candidato
 
 ## Arquitetura
 
@@ -244,107 +347,6 @@ Estrutura proposta das tabelas e principais decisões de modelagem adotadas.
 - URLs presigned não são persistidas; o banco guarda apenas `object_key` e metadados.
 - Refresh tokens são armazenados em hash e suportam rotação/invalidação.
 - Regionais: apenas uma regional ativa por `external_id` (índice único parcial).
-
-## Como rodar
-
-### Clonar repositório
-
-Clone o repositório oficial e entre na pasta do projeto:
-
-```
-git clone https://github.com/douglasrohden/douglasrohden012453.git
-cd douglasrohden012453
-```
-
-### Docker Compose (recomendado)
-
-```
-docker compose up -d --build
-```
-
-
-URLs:
-
-- Frontend: http://localhost:5173
-- Swagger: http://localhost:3001/swagger-ui/index.html
-- MinIO Console: http://localhost:9001
-- MinIO S3: http://localhost:9000
-
-Credenciais:
-
-- App: admin/admin
-- MinIO: conforme [.env](.env) e [docker-compose.yml](docker-compose.yml)
-
-### Desenvolvimento local
-
-Backend:
-
-```
-cd Backend
-mvn spring-boot:run
-```
-
-
-Frontend:
-
-```
-cd Frontend
-npm install
-npm run dev
-```
-
-## Variáveis de ambiente
-
-Crie [.env](.env) (ou use as do compose). Mantenha [.env.example](.env.example).
-
-Exemplo base:
-
-```dotenv
-# Backend
-SPRING_PROFILES_ACTIVE=dev
-SERVER_PORT=3001
-
-# DB
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres
-POSTGRES_DB=dbmusicplayer
-POSTGRES_PORT=5433
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5433/dbmusicplayer
-
-# CORS (origens permitidas)
-CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3001
-
-# JWT
-JWT_SECRET=change-me
-JWT_EXPIRATION=300000
-JWT_REFRESH_EXPIRATION=604800000
-REFRESH_TOKEN_PEPPER=change-me
-
-# Rate limit (edital)
-RATE_LIMIT_REQUESTS_PER_WINDOW=10
-RATE_LIMIT_WINDOW_SECONDS=60
-RATE_LIMIT_BUCKET_EXPIRE_AFTER_SECONDS=120
-
-# ---------- MinIO ----------
-MINIO_ENDPOINT=http://localhost:9000
-# Credenciais do servidor MinIO (compose)
-MINIO_ROOT_USER=minioadmin
-MINIO_ROOT_PASSWORD=minioadmin123
-# Credenciais usadas pelo backend
-MINIO_ACCESS_KEY=minioadmin
-MINIO_SECRET_KEY=minioadmin123
-MINIO_BUCKET=album-covers
-MINIO_REGION=us-east-1
-MINIO_PRESIGN_EXPIRATION_MINUTES=30
-MINIO_MAX_FILE_SIZE_BYTES=5242880
-MINIO_MAX_REQUEST_SIZE_BYTES=26214400
-
-# Frontend
-VITE_API_URL=http://localhost:3001/v1
-
-```
-
-Obs.: o WebSocket é derivado de VITE_API_URL (ex.: http://localhost:3001/ws).
 
 ## MinIO e presigned URLs
 Regras de implementação 
@@ -519,9 +521,7 @@ Passo a passo sugerido (produção):
 
 Exemplo básico de execução (build + subir stack):
 
-```
-docker compose up -d --build
-```
+Use o comando da seção **Docker Compose (recomendado)**.
 
 Exemplo de práticas recomendadas:
 - Definir variáveis de ambiente seguras (JWT_SECRET, credenciais do banco e MinIO).

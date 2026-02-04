@@ -30,6 +30,11 @@ export default function EditAlbumModal({
 }: EditAlbumModalProps) {
   const { addToast } = useToast();
 
+  const handleYearChange = (value: string) => {
+    const digitsOnly = value.replace(/\D/g, "").slice(0, 4);
+    setAno(digitsOnly);
+  };
+
   const loading = useBehaviorSubjectValue(albumsFacade.loading$);
   const facadeError = useBehaviorSubjectValue(albumsFacade.error$);
 
@@ -60,6 +65,10 @@ export default function EditAlbumModal({
     }
 
     const anoValue = ano.trim() ? Number(ano) : undefined;
+    if (ano.trim() && ano.trim().length > 4) {
+      addToast("Ano deve ter no máximo 4 dígitos", "warning");
+      return;
+    }
     if (ano.trim() && Number.isNaN(anoValue)) {
       addToast("Ano inválido", "warning");
       return;
@@ -110,10 +119,12 @@ export default function EditAlbumModal({
               </div>
               <TextInput
                 id="edit-album-ano"
-                type="number"
+                type="text"
+                inputMode="numeric"
+                maxLength={4}
                 placeholder="Ex: 2000"
                 value={ano}
-                onChange={(e) => setAno(e.target.value)}
+                onChange={(e) => handleYearChange(e.target.value)}
                 disabled={loading}
               />
             </div>

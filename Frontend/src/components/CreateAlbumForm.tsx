@@ -129,7 +129,8 @@ export default function CreateAlbumForm({
   };
 
   const handleYearChange = (value: string) => {
-    setAno(value);
+    const digitsOnly = value.replace(/\D/g, "").slice(0, 4);
+    setAno(digitsOnly);
   };
 
   const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5MB por arquivo
@@ -190,6 +191,10 @@ export default function CreateAlbumForm({
     }
 
     const anoValue = ano.trim() ? Number(ano) : undefined;
+    if (ano.trim() && ano.trim().length > 4) {
+      addToast("Ano deve ter no máximo 4 dígitos", "warning");
+      return;
+    }
     if (ano.trim() && Number.isNaN(anoValue)) {
       addToast("Ano inválido", "warning");
       return;
@@ -294,7 +299,9 @@ export default function CreateAlbumForm({
               </div>
               <TextInput
                 id="ano"
-                type="number"
+                type="text"
+                inputMode="numeric"
+                maxLength={4}
                 placeholder="Ex: 2000"
                 value={ano}
                 onChange={(e) => handleYearChange(e.target.value)}

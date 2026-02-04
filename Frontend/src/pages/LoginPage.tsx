@@ -161,6 +161,11 @@ export default function LoginPage() {
               : "Entrar"}
           </Button>
         </form>
+
+        <div className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
+          <p>Utilize as credenciais abaixo para testar:</p>
+          <p className="font-semibold">Usuário: admin | Senha: admin</p>
+        </div>
       </Card>
     </div>
   );

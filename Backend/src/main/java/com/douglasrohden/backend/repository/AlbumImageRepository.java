@@ -16,7 +16,7 @@ public interface AlbumImageRepository extends JpaRepository<AlbumImage, Long> {
     @Query("""
             select ai from AlbumImage ai
             where ai.id in (
-                select min(ai2.id) from AlbumImage ai2
+                select max(ai2.id) from AlbumImage ai2
                 where ai2.album.id in :albumIds
                 group by ai2.album.id
             )

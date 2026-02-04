@@ -16,7 +16,7 @@ public interface ArtistImageRepository extends JpaRepository<ArtistImage, Long> 
     @Query("""
             select ai from ArtistImage ai
             where ai.id in (
-                select min(ai2.id) from ArtistImage ai2
+                select max(ai2.id) from ArtistImage ai2
                 where ai2.artista.id in :artistaIds
                 group by ai2.artista.id
             )

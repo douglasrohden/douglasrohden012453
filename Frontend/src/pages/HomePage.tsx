@@ -25,12 +25,6 @@ export default function HomePage() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const { addToast } = useToast();
 
-  // Activate/deactivate facade
-  useEffect(() => {
-    artistsFacade.activate();
-    return () => artistsFacade.deactivate();
-  }, []);
-
   // Release navigation lock when route changes.
   useEffect(() => {
     setNavLock(false);
@@ -192,9 +186,7 @@ export default function HomePage() {
               <span className="normal-case">{artist.nome ?? "—"}</span>
             </span>
             <p className="line-clamp-1 h-6 font-normal text-gray-700 dark:text-gray-400">
-              <span className="mr-2 text-sm font-semibold text-gray-600 dark:text-gray-400">
-                Cantor/Banda:
-              </span>
+         
               <span>
                 {artist.tipo
                   ? artist.tipo === "BANDA"

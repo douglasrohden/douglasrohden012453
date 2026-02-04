@@ -132,7 +132,6 @@ export default function ArtistDetailPage() {
                 {artist.nome}
               </h2>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                <span className="mr-2 font-semibold">Cantor/Banda:</span>
                 <span>
                   {artist.tipo
                     ? artist.tipo === "BANDA"
@@ -207,9 +206,7 @@ export default function ArtistDetailPage() {
                             <span className="normal-case">{artist.nome}</span>
                           </p>
                           <p className="text-sm text-gray-600 dark:text-gray-400">
-                            <span className="mr-2 font-semibold">
-                              Cantor/Banda:
-                            </span>
+                         
                             <span>
                               {artist.tipo
                                 ? artist.tipo === "BANDA"

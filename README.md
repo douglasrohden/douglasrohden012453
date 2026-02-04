@@ -13,7 +13,7 @@ Aplicação Full Stack (Java Spring Boot + React + TypeScript) em conformidade c
 - Links pré‑assinados com expiração padrão de 30 min
 - Paginação, busca e ordenação
 - WebSocket para notificação de novo álbum
-- Flyway com migrations + seed idempotente
+- Flyway com migrations + seed que pode rodar mais de uma vez sem duplicar dados
 - Swagger/OpenAPI
 - Health checks (liveness/readiness)
 - Entrega via Docker Compose: API + Frontend + PostgreSQL + MinIO + pgAdmin (removível)
@@ -238,7 +238,7 @@ GET /actuator/health/readiness
 - Security: JWT + refresh token
 - Rate limit com retorno 429 + Retry-After e headers informativos
 - Upload múltiplo em MinIO (S3), com presigned GET de 30 min
-- Flyway: migrations + seed idempotente
+- Flyway: migrations + seed que pode rodar mais de uma vez sem duplicar dados
 - WebSocket STOMP: evento “álbum criado”
 - Actuator: readiness/liveness
 
@@ -339,7 +339,7 @@ Estrutura proposta das tabelas e principais decisões de modelagem adotadas.
 
 - Índices por foreign keys e `object_key` para desempenho em consultas de imagens.
 - Para regionais: índice por `external_id` e unicidade por `external_id` ativo (apenas uma regional ativa por `external_id`).
-- Seed idempotente conforme edital (artistas, álbuns e associações).
+- Seed conforme edital (artistas, álbuns e associações), pode rodar mais de uma vez sem duplicar dados.
 
 #### Decisões de modelagem
 
@@ -393,7 +393,7 @@ Topic: /topic/albuns/created
 
 Migrations em [Backend/src/main/resources/db/migration](Backend/src/main/resources/db/migration)
 
-Seed do enunciado é idempotente
+Seed do enunciado pode rodar mais de uma vez sem duplicar dados
 
 Para rodar manualmente:
 

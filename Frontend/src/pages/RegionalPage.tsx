@@ -9,7 +9,7 @@ import {
     TableHeadCell,
     TableRow,
 } from "flowbite-react";
-import { useEffect } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { HiClock } from "react-icons/hi";
 import { regionalFacade } from "../facades/RegionalFacade";
 import { LoadingSpinner } from "../components/common/LoadingSpinner";
@@ -22,6 +22,18 @@ export default function RegionalPage() {
     const loading = useBehaviorSubjectValue(regionalFacade.loading$);
     const error = useBehaviorSubjectValue(regionalFacade.error$);
     const { addToast } = useToast();
+    const tempIdRef = useRef(-1);
+    const sortedData = useMemo(
+        () =>
+            data
+                .map((item, index) => ({ item, index }))
+                .sort(
+                    (a, b) =>
+                        a.item.externalId - b.item.externalId || a.index - b.index,
+                )
+                .map(({ item }) => item),
+        [data],
+    );
 
     useEffect(() => {
         regionalFacade.activate();
@@ -35,6 +47,68 @@ export default function RegionalPage() {
         } catch {
             addToast("Erro ao sincronizar regionais", "error");
         }
+    };
+
+    const nextTempId = () => {
+        const next = tempIdRef.current;
+        tempIdRef.current -= 1;
+        return next;
+    };
+
+    const handleSimulateNew = () => {
+        const current = regionalFacade.snapshot.data;
+        const nextExternalId =
+            current.reduce((maxId, regional) => Math.max(maxId, regional.externalId), 0) + 1;
+        regionalFacade.data$.next([
+            ...current,
+            {
+                id: nextTempId(),
+                externalId: nextExternalId,
+                nome: `Regional Simulada ${nextExternalId}`,
+                ativo: true,
+            },
+        ]);
+        addToast("Simulação: novo regional inserido.", "success");
+    };
+
+    const handleSimulateUnavailable = () => {
+        const current = regionalFacade.snapshot.data;
+        const targetIndex = current.findIndex((regional) => regional.ativo);
+        if (targetIndex < 0) {
+            addToast("Simulação: nenhuma regional ativa para inativar.", "warning");
+            return;
+        }
+
+        const target = current[targetIndex];
+        const next = current.map((regional, index) =>
+            index === targetIndex ? { ...regional, ativo: false } : regional,
+        );
+        regionalFacade.data$.next(next);
+        addToast(`Simulação: regional ${target.externalId} inativada.`, "success");
+    };
+
+    const handleSimulateChange = () => {
+        const current = regionalFacade.snapshot.data;
+        const targetIndex = current.findIndex((regional) => regional.ativo);
+        if (targetIndex < 0) {
+            addToast("Simulação: nenhuma regional ativa para alterar.", "warning");
+            return;
+        }
+
+        const target = current[targetIndex];
+        const next = current.map((regional, index) =>
+            index === targetIndex ? { ...regional, ativo: false } : regional,
+        );
+        regionalFacade.data$.next([
+            ...next,
+            {
+                id: nextTempId(),
+                externalId: target.externalId,
+                nome: `${target.nome} (Atualizada)`,
+                ativo: true,
+            },
+        ]);
+        addToast(`Simulação: regional ${target.externalId} alterada.`, "success");
     };
 
     const isRateLimit = Boolean(
@@ -60,9 +134,30 @@ export default function RegionalPage() {
                 <h1 className="text-2xl font-bold dark:text-white">
                     Tabela Regional
                 </h1>
-                <Button onClick={handleSync} disabled={loading}>
-                    {loading ? "Sincronizando..." : "Sincronizar"}
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                    <Button onClick={handleSync} disabled={loading}>
+                        {loading ? "Sincronizando..." : "Sincronizar"}
+                    </Button>
+                    <Button color="light" size="sm" onClick={handleSimulateNew} disabled={loading}>
+                        Simular Novo
+                    </Button>
+                    <Button
+                        color="light"
+                        size="sm"
+                        onClick={handleSimulateUnavailable}
+                        disabled={loading}
+                    >
+                        Simular Indisponível
+                    </Button>
+                    <Button
+                        color="light"
+                        size="sm"
+                        onClick={handleSimulateChange}
+                        disabled={loading}
+                    >
+                        Simular Alteração
+                    </Button>
+                </div>
             </div>
             {loading && data.length === 0 ? (
                 <div className="flex justify-center p-10">
@@ -79,7 +174,7 @@ export default function RegionalPage() {
                         </TableRow>
                     </TableHead>
                     <TableBody className="divide-y">
-                        {data.map((regional) => (
+                        {sortedData.map((regional) => (
                             <TableRow
                                 key={regional.id}
                                 className="bg-white dark:border-gray-700 dark:bg-gray-800"

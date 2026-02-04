@@ -11,8 +11,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.server.ResponseStatusException;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 @Slf4j
 @Service
@@ -36,150 +39,90 @@ public class RegionalSyncService {
      */
     @Transactional
     public SyncResult sync() {
-        // 1. Buscar dados do sistema externo (endpoint da Polícia Civil)
-        List<IntegradorRegionalDto> dadosRemotos = buscarDadosDoSistemaExterno();
-
-        // 2. Filtrar e organizar dados remotos válidos
-        Map<Integer, String> mapaRegionaisRemotas = criarMapaDeRegionaisRemotas(dadosRemotos);
-
-        // 3. Carregar regionais ativas do banco local
-        Map<Integer, Regional> mapaRegionaisLocaisAtivas = carregarRegionaisLocaisAtivas();
-
-        // 4. Preparar contadores e lista de alterações
-        ContadoresSincronizacao contadores = new ContadoresSincronizacao();
-        List<Regional> registrosParaSalvar = new ArrayList<>();
-
-        // 5. Processar regionais remotas (regras 1 e 3)
-        processarRegionaisRemotas(mapaRegionaisRemotas, mapaRegionaisLocaisAtivas, contadores, registrosParaSalvar);
-
-        // 6. Processar regionais locais ausentes no remoto (regra 2)
-        processarRegionaisLocaisAusentes(mapaRegionaisRemotas, mapaRegionaisLocaisAtivas, contadores, registrosParaSalvar);
-
-        // 7. Salvar todas as alterações no banco
-        salvarAlteracoesNoBanco(registrosParaSalvar);
-
-        // 8. Log e retorno do resultado
-        return registrarResultado(contadores);
-    }
-
-    /**
-     * Busca os dados das regionais do sistema externo.
-     * Se falhar, lança erro 503 (serviço indisponível) - comportamento fail-safe.
-     */
-    private List<IntegradorRegionalDto> buscarDadosDoSistemaExterno() {
+        // 1) Buscar do endpoint externo
+        final List<IntegradorRegionalDto> remotas;
         try {
-            return integradorRegionaisClient.fetchRegionais();
+            remotas = integradorRegionaisClient.fetchRegionais();
         } catch (RestClientException erro) {
-            log.error("Erro ao conectar com sistema de regionais da Polícia Civil", erro);
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                "Sistema de regionais da Polícia Civil indisponível", erro);
+            log.error("Erro ao conectar com sistema de regionais", erro);
+            throw new ResponseStatusException(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "Sistema de regionais indisponível",
+                erro
+            );
         }
-    }
 
-    /**
-     * Cria um mapa das regionais remotas válidas.
-     * Filtra apenas regionais ativas com ID e nome válidos.
-     */
-    private Map<Integer, String> criarMapaDeRegionaisRemotas(List<IntegradorRegionalDto> dadosRemotos) {
-        return dadosRemotos.stream()
-            .filter(regional -> !Boolean.FALSE.equals(regional.ativo())) // Apenas ativas
-            .filter(regional -> regional.resolvedId() != null)          // Com ID válido
-            .filter(regional -> norm(regional.nome()) != null)          // Com nome válido
-            .collect(Collectors.toMap(
-                IntegradorRegionalDto::resolvedId,    // Chave: ID externo
-                regional -> norm(regional.nome()),    // Valor: nome normalizado
-                (nome1, nome2) -> nome1               // Em caso de duplicata, mantém primeiro
-            ));
-    }
+        // 2) Montar um mapa (externalId -> nome) com dados remotos válidos
+        //    Observação: se o payload tiver "ativo=false", tratamos como indisponível (não entra no mapa).
+        final Map<Integer, String> remotasMap = new HashMap<>();
+        for (IntegradorRegionalDto dto : remotas) {
+            if (Boolean.FALSE.equals(dto.ativo())) {
+                continue;
+            }
+            Integer externalId = dto.resolvedId();
+            String nome = norm(dto.nome());
+            if (externalId == null || nome == null) {
+                continue;
+            }
+            remotasMap.putIfAbsent(externalId, nome);
+        }
 
-    /**
-     * Carrega todas as regionais ativas do banco local em um mapa.
-     */
-    private Map<Integer, Regional> carregarRegionaisLocaisAtivas() {
-        return regionalRepository.findAllByAtivoTrue().stream()
-            .collect(Collectors.toMap(
-                Regional::getExternalId,  // Chave: ID externo
-                regional -> regional,     // Valor: objeto Regional
-                (r1, r2) -> r1            // Em caso de duplicata, mantém primeiro
-            ));
-    }
-
-    /**
-     * Processa cada regional remota aplicando as regras 1 e 3.
-     */
-    private void processarRegionaisRemotas(
-            Map<Integer, String> remotas,
-            Map<Integer, Regional> locaisAtivas,
-            ContadoresSincronizacao contadores,
-            List<Regional> paraSalvar) {
-
-        for (var entrada : remotas.entrySet()) {
-            Integer idExterno = entrada.getKey();
-            String nomeRemoto = entrada.getValue();
-            Regional regionalLocal = locaisAtivas.get(idExterno);
-
-            if (regionalLocal == null) {
-                // Regra 1: Novo no endpoint → inserir
-                Regional novaRegional = new Regional(null, idExterno, nomeRemoto, true);
-                paraSalvar.add(novaRegional);
-                contadores.inseridos++;
-            } else if (!Objects.equals(regionalLocal.getNome(), nomeRemoto)) {
-                // Regra 3: Nome mudou → inativar antigo + criar novo
-                regionalLocal.setAtivo(false);
-                paraSalvar.add(regionalLocal);
-
-                Regional novaVersao = new Regional(null, idExterno, nomeRemoto, true);
-                paraSalvar.add(novaVersao);
-                contadores.alterados++;
+        // 3) Carregar as regionais ativas locais (externalId -> Regional)
+        final List<Regional> locaisAtivas = regionalRepository.findAllByAtivoTrue();
+        final Map<Integer, Regional> locaisAtivasMap = new HashMap<>();
+        for (Regional r : locaisAtivas) {
+            if (r.getExternalId() != null) {
+                locaisAtivasMap.putIfAbsent(r.getExternalId(), r);
             }
         }
-    }
 
-    /**
-     * Processa regionais locais ativas que não existem mais no remoto (regra 2).
-     */
-    private void processarRegionaisLocaisAusentes(
-            Map<Integer, String> remotas,
-            Map<Integer, Regional> locaisAtivas,
-            ContadoresSincronizacao contadores,
-            List<Regional> paraSalvar) {
+        // 4) Aplicar regras do edital com O(n+m)
+        int inserted = 0;
+        int inactivated = 0;
+        int changed = 0;
+        final List<Regional> toSave = new ArrayList<>();
 
-        for (Regional regionalLocal : locaisAtivas.values()) {
-            if (!remotas.containsKey(regionalLocal.getExternalId())) {
-                // Regra 2: Não disponível no endpoint → inativar
-                regionalLocal.setAtivo(false);
-                paraSalvar.add(regionalLocal);
-                contadores.inativados++;
+        // Regra 1 e 3: processar itens do remoto
+        for (var entry : remotasMap.entrySet()) {
+            Integer externalId = entry.getKey();
+            String nomeRemoto = entry.getValue();
+            Regional local = locaisAtivasMap.get(externalId);
+
+            if (local == null) {
+                toSave.add(new Regional(null, externalId, nomeRemoto, true));
+                inserted++;
+                continue;
+            }
+
+            if (!Objects.equals(local.getNome(), nomeRemoto)) {
+                local.setAtivo(false);
+                toSave.add(local);
+                toSave.add(new Regional(null, externalId, nomeRemoto, true));
+                changed++;
             }
         }
-    }
 
-    /**
-     * Salva todas as alterações no banco de dados em uma única operação.
-     */
-    private void salvarAlteracoesNoBanco(List<Regional> registrosParaSalvar) {
-        if (!registrosParaSalvar.isEmpty()) {
-            regionalRepository.saveAll(registrosParaSalvar);
+        // Regra 2: se está ativo localmente mas não existe no remoto, inativar
+        for (Regional local : locaisAtivas) {
+            Integer externalId = local.getExternalId();
+            if (externalId != null && !remotasMap.containsKey(externalId)) {
+                local.setAtivo(false);
+                toSave.add(local);
+                inactivated++;
+            }
         }
-    }
 
-    /**
-     * Registra o resultado da sincronização no log e retorna o objeto de resultado.
-     */
-    private SyncResult registrarResultado(ContadoresSincronizacao contadores) {
-        log.info("Sincronização de regionais concluída: inseridos={}, inativados={}, alterados={}",
-            contadores.inseridos, contadores.inativados, contadores.alterados);
+        if (!toSave.isEmpty()) {
+            regionalRepository.saveAll(toSave);
+        }
 
-        return new SyncResult(contadores.inseridos, contadores.inativados, contadores.alterados);
-    }
-
-    /**
-     * Classe auxiliar para organizar os contadores da sincronização.
-     */
-    private static class ContadoresSincronizacao {
-        int inseridos = 0;
-        int inativados = 0;
-        int alterados = 0;
+        log.info(
+            "Sincronização de regionais concluída: inseridos={}, inativados={}, alterados={}",
+            inserted,
+            inactivated,
+            changed
+        );
+        return new SyncResult(inserted, inactivated, changed);
     }
 
     /**

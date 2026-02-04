@@ -337,7 +337,7 @@ VITE_API_URL=http://localhost:3001/v1
 Obs.: o WebSocket é derivado de VITE_API_URL (ex.: http://localhost:3001/ws).
 
 ## MinIO e presigned URLs
-Regras de implementação (para aderência e evitar erro de banca)
+Regras de implementação 
 
 ✅ Banco armazena `object_key` + metadados (`content_type`, `size_bytes`, `created_at`).
 
@@ -429,7 +429,7 @@ mvn -DskipTests flyway:migrate
 - GET /v1/regionais
 - POST /v1/regionais/sync
 
-Exemplo (banca) — sincronização
+Exemplo  — sincronização
 
 Request (sem payload):
 

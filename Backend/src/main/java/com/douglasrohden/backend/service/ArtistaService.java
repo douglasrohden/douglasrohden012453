@@ -1,25 +1,25 @@
 package com.douglasrohden.backend.service;
 
+import com.douglasrohden.backend.dto.AlbumRequest;
+import com.douglasrohden.backend.dto.ArtistaDto;
+import com.douglasrohden.backend.model.Album;
 import com.douglasrohden.backend.model.Artista;
+import com.douglasrohden.backend.model.ArtistaTipo;
+import com.douglasrohden.backend.model.ArtistImage;
+import com.douglasrohden.backend.repository.ArtistImageRepository;
 import com.douglasrohden.backend.repository.ArtistaRepository;
 import com.douglasrohden.backend.repository.ArtistaRepository.ArtistaComAlbumCount;
-import com.douglasrohden.backend.dto.ArtistaDto;
-import com.douglasrohden.backend.dto.CreateAlbumRequest;
-import com.douglasrohden.backend.model.Album;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.douglasrohden.backend.model.ArtistaTipo;
-import com.douglasrohden.backend.repository.ArtistImageRepository;
-import com.douglasrohden.backend.model.ArtistImage;
-import java.util.List;
-import java.util.Map;
-import java.util.Collections;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -32,135 +32,82 @@ public class ArtistaService {
     private final ArtistImageStorageService imageStorageService;
 
     private static ArtistaTipo parseTipo(String tipo) {
-        if (tipo == null || tipo.isBlank())
-            return null;
+        if (tipo == null || tipo.isBlank()) return null;
         try {
             return ArtistaTipo.valueOf(tipo.toUpperCase());
-        } catch (IllegalArgumentException ignored) {
+        } catch (IllegalArgumentException e) {
             return null;
         }
     }
 
     @Transactional(readOnly = true)
-    public Page<Artista> findAll(Pageable pageable) {
-        return repository.findAll(pageable);
-    }
-
-    @Transactional(readOnly = true)
-    public Page<Artista> searchByName(String nome, Pageable pageable) {
-        return repository.findByNomeContainingIgnoreCase(nome, pageable);
-    }
-
-    @Transactional(readOnly = true)
-    public Page<ArtistaDto> search(String q, String tipo, Pageable pageable) {
-        String query = (q == null) ? "" : q.trim();
-        ArtistaTipo artistaTipo = parseTipo(tipo);
-
-        Page<ArtistaComAlbumCount> resultados = repository.searchWithAlbumCount(query, artistaTipo, pageable);
-
-        List<Long> ids = resultados.getContent().stream().map(ArtistaComAlbumCount::getId).toList();
-        Map<Long, String> imageMap;
-        if (ids.isEmpty()) {
-            imageMap = Collections.emptyMap();
-        } else {
-            List<ArtistImage> images = artistImageRepository.findFirstImagesByArtistaIds(ids);
-            imageMap = images.stream().collect(Collectors.toMap(
-                    img -> img.getArtista().getId(),
-                    img -> imageStorageService.generatePresignedUrl(img.getObjectKey()),
-                    (existing, replacement) -> existing));
+    public Page<ArtistaDto> search(String q, String tipo, String sort, String dir, Pageable pageable) {
+        if (sort != null && dir != null) {
+            Sort s = Sort.by("asc".equalsIgnoreCase(dir) ? Sort.Direction.ASC : Sort.Direction.DESC, sort);
+            pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), s);
         }
 
-        return resultados.map(res -> converterParaDto(res, imageMap.get(res.getId())));
-    }
+        String query = q == null ? "" : q.trim();
+        Page<ArtistaComAlbumCount> page = repository.searchWithAlbumCount(query, parseTipo(tipo), pageable);
 
-    /**
-     * Converte um resultado de projeção em um DTO de artista.
-     * Este método facilita a leitura ao dar um nome claro para a conversão.
-     */
-    private ArtistaDto converterParaDto(ArtistaComAlbumCount resultado, String imageUrl) {
-        return new ArtistaDto(
-                resultado.getId(),
-                resultado.getNome(),
-                resultado.getAlbumCount(),
-                resultado.getTipo() != null ? resultado.getTipo().name() : null,
-                imageUrl);
+        List<Long> ids = page.getContent().stream().map(ArtistaComAlbumCount::getId).toList();
+        Map<Long, String> imageMap = ids.isEmpty() ? Map.of() :
+                artistImageRepository.findFirstImagesByArtistaIds(ids).stream()
+                        .collect(Collectors.toMap(
+                                img -> img.getArtista().getId(),
+                                img -> imageStorageService.generatePresignedUrl(img.getObjectKey()),
+                                (a, b) -> a));
+
+        return page.map(r -> new ArtistaDto(r.getId(), r.getNome(), r.getAlbumCount(),
+                r.getTipo() != null ? r.getTipo().name() : null, imageMap.get(r.getId())));
     }
 
     @Transactional(readOnly = true)
     public Artista findById(Long id) {
-        return repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Artista não encontrado"));
-    }
-
-    public Artista create(Artista artista) {
-        return createWithAlbums(artista, null);
+        return repository.findById(id).orElseThrow(() -> new RuntimeException("Artista não encontrado"));
     }
 
     @Transactional
     public Artista createWithAlbums(Artista artista, List<Long> albumIds) {
-        if (artista.getTipo() == null) {
-            artista.setTipo(ArtistaTipo.CANTOR);
-        }
-
+        if (artista.getTipo() == null) artista.setTipo(ArtistaTipo.CANTOR);
         Artista saved = repository.save(artista);
 
         if (albumIds != null && !albumIds.isEmpty()) {
-            List<Album> albums = albumService.findByIds(albumIds);
-            java.util.Set<Album> albumsSet = new java.util.HashSet<>(albums);
-
-            for (Album album : albumsSet) {
-                if (album.getArtistas() == null) {
-                    album.setArtistas(new java.util.HashSet<>());
-                }
-                album.getArtistas().add(saved);
-            }
-
-            if (saved.getAlbuns() == null) {
-                saved.setAlbuns(new java.util.HashSet<>());
-            }
-            saved.getAlbuns().addAll(albumsSet);
+            Set<Album> albums = new HashSet<>(albumService.findByIds(albumIds));
+            albums.forEach(a -> {
+                if (a.getArtistas() == null) a.setArtistas(new HashSet<>());
+                a.getArtistas().add(saved);
+            });
+            if (saved.getAlbuns() == null) saved.setAlbuns(new HashSet<>());
+            saved.getAlbuns().addAll(albums);
         }
-
         return saved;
     }
 
+    @Transactional
     public Artista update(Long id, Artista artista) {
         Artista existing = findById(id);
         existing.setNome(artista.getNome());
-        // imageUrl removed
-        if (artista.getTipo() != null) {
-            existing.setTipo(artista.getTipo());
-        }
+        if (artista.getTipo() != null) existing.setTipo(artista.getTipo());
         return repository.save(existing);
     }
 
     @Transactional
     public void delete(Long id) {
         Artista artista = repository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Artista não encontrado"));
-
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Artista não encontrado"));
         imageStorageService.deleteAllImages(artista.getId());
-
         if (artista.getAlbuns() != null) {
-            artista.getAlbuns().forEach(album -> {
-                if (album.getArtistas() != null) {
-                    album.getArtistas().remove(artista);
-                }
-            });
+            artista.getAlbuns().forEach(a -> { if (a.getArtistas() != null) a.getArtistas().remove(artista); });
             artista.getAlbuns().clear();
         }
-
         repository.delete(artista);
     }
 
     @Transactional
-    public Artista addAlbum(Long id, CreateAlbumRequest request) {
+    public Artista addAlbum(Long id, AlbumRequest request) {
         Artista artista = findById(id);
-        Album album = new Album();
-        album.setTitulo(request.titulo());
-        album.setAno(request.ano());
-
-        album = albumService.create(album);
+        Album album = albumService.create(request);
         artista.getAlbuns().add(album);
         return repository.save(artista);
     }

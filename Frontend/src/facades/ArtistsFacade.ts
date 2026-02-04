@@ -1,23 +1,11 @@
-import {
-    BehaviorSubject,
-    Subject,
-    Subscription,
-    merge,
-    debounceTime,
-    distinctUntilChanged,
-    from,
-    switchMap,
-    map,
-} from "rxjs";
+import { BehaviorSubject } from "rxjs";
 import { getErrorMessage, getHttpStatus } from "../lib/http";
-import {
-    artistsService,
-    type Artista,
-    uploadArtistImages,
-} from "../services/artistsService";
+import { artistsService, type Artista } from "../services/artistsService";
+import { artistImagesFacade } from "./ArtistImagesFacade";
+import { artistDetailFacade } from "./ArtistDetailFacade";
 import { type Page } from "../types/Page";
 
-type ArtistsParams = {
+type Params = {
     page: number;
     size: number;
     search: string;
@@ -26,7 +14,7 @@ type ArtistsParams = {
     tipo: string;
 };
 
-const INITIAL_PAGE: Page<Artista> = {
+const EMPTY_PAGE: Page<Artista> = {
     content: [],
     totalPages: 0,
     totalElements: 0,
@@ -39,7 +27,7 @@ const INITIAL_PAGE: Page<Artista> = {
     empty: true,
 };
 
-const INITIAL_PARAMS: ArtistsParams = {
+const DEFAULT_PARAMS: Params = {
     page: 0,
     size: 10,
     search: "",
@@ -48,71 +36,22 @@ const INITIAL_PARAMS: ArtistsParams = {
     tipo: "TODOS",
 };
 
-function isSameParams(a: ArtistsParams, b: ArtistsParams): boolean {
-    return (
-        a.page === b.page &&
-        a.size === b.size &&
-        a.search === b.search &&
-        a.sort === b.sort &&
-        a.dir === b.dir &&
-        a.tipo === b.tipo
-    );
-}
-
 export class ArtistsFacade {
-    readonly data$ = new BehaviorSubject<Page<Artista>>(INITIAL_PAGE);
-    readonly loading$ = new BehaviorSubject<boolean>(false);
+    readonly data$ = new BehaviorSubject<Page<Artista>>(EMPTY_PAGE);
+    readonly loading$ = new BehaviorSubject(false);
     readonly error$ = new BehaviorSubject<string | null>(null);
-    readonly params$ = new BehaviorSubject<ArtistsParams>(INITIAL_PARAMS);
+    readonly params$ = new BehaviorSubject<Params>(DEFAULT_PARAMS);
 
-    private readonly refresh$ = new Subject<void>();
-    private sub: Subscription | null = null;
-    private lastLoadKey: string | null = null;
-    private lastLoadAtMs = 0;
-    private activeCount = 0;
-    private inFlightKey: string | null = null;
-    private pendingKey: string | null = null;
+    private active = false;
 
-    activate(): void {
-        if (this.activeCount > 0) return; // idempotente
-        this.activeCount = 1;
-        if (this.sub) return; // seguranca extra
-
-        const paramsChanged$ = this.params$.pipe(
-            distinctUntilChanged(isSameParams),
-            map(() => undefined),
-        );
-
-        this.sub = merge(paramsChanged$, this.refresh$)
-            .pipe(
-                debounceTime(250),
-                switchMap(() => from(this.loadRequest(this.params$.getValue()))),
-            )
-            .subscribe((result) => {
-                if ("skipped" in result) return;
-                this.loading$.next(false);
-
-                if (result.ok) {
-                    this.data$.next(result.data);
-                    return;
-                }
-
-                const status = getHttpStatus(result.error);
-                if (status !== 429) {
-                    this.error$.next(getErrorMessage(result.error, "Erro ao carregar artistas"));
-                }
-            });
-
-        // 1 load inicial
-        this.load(true);
+    activate() {
+        if (this.active) return;
+        this.active = true;
+        this.load();
     }
 
-    deactivate(): void {
-        if (this.activeCount === 0) return;
-        this.activeCount = 0;
-        this.sub?.unsubscribe();
-        this.sub = null;
-        this.pendingKey = null;
+    deactivate() {
+        this.active = false;
     }
 
     get snapshot() {
@@ -125,114 +64,100 @@ export class ArtistsFacade {
     }
 
     setQuery(search: string) {
-        const trimmed = search.trim();
-        this.updateParams({ search: trimmed, page: 0 });
+        this.setParams({ search: search.trim(), page: 0 });
     }
 
     setPage(page: number) {
-        this.updateParams({ page });
+        this.setParams({ page });
     }
 
     setPageSize(size: number) {
-        this.updateParams({ size, page: 0 });
+        this.setParams({ size, page: 0 });
     }
 
     setSortDir(dir: "asc" | "desc") {
-        this.updateParams({ dir });
+        this.setParams({ dir });
     }
 
     setTipo(tipo: string) {
-        this.updateParams({ tipo, page: 0 });
+        this.setParams({ tipo, page: 0 });
     }
 
-    load(force = false): void {
-        if (!force && this.loading$.getValue()) return;
-
-        const now = Date.now();
-        const key = JSON.stringify(this.params$.getValue());
-
-        // evita "dobro" dentro de ~500ms (StrictMode DEV / double click / remount)
-        if (!force && this.lastLoadKey === key && now - this.lastLoadAtMs < 500) {
-            return;
-        }
-        this.lastLoadKey = key;
-        this.lastLoadAtMs = now;
-
-        this.refresh$.next();
+    private setParams(partial: Partial<Params>) {
+        this.params$.next({ ...this.params$.getValue(), ...partial });
+        this.load();
     }
 
-    refresh() {
-        this.load(true);
-    }
-
-    async create(
-        payload: { nome: string; tipo?: string; albumIds?: number[] },
-        files?: File[],
-    ): Promise<Artista> {
+    async load() {
+        const p = this.params$.getValue();
         this.loading$.next(true);
         this.error$.next(null);
+        try {
+            const data = await artistsService.getAll(p.page, p.size, p.search, p.sort, p.dir, p.tipo);
+            this.data$.next(data);
+        } catch (err) {
+            if (getHttpStatus(err) !== 429) {
+                this.error$.next(getErrorMessage(err, "Erro ao carregar artistas"));
+            }
+        } finally {
+            this.loading$.next(false);
+        }
+    }
+
+    async create(payload: { nome: string; tipo?: string; albumIds?: number[] }, files?: File[]) {
+        this.loading$.next(true);
         try {
             const artista = await artistsService.create(payload);
-            if (files?.length) {
-                await uploadArtistImages(artista.id, files);
-            }
-            this.refresh();
+            if (files?.length) await uploadArtistImages(artista.id, files);
+            this.load();
             return artista;
         } catch (err) {
-            const message = getErrorMessage(err, "Erro ao criar artista");
-            this.error$.next(message);
+            this.error$.next(getErrorMessage(err, "Erro ao criar artista"));
             throw err;
         } finally {
             this.loading$.next(false);
         }
     }
 
-    async update(
-        id: number,
-        payload: { nome: string; tipo?: string },
-        files?: File[],
-    ): Promise<Artista> {
+    async update(id: number, payload: { nome: string; tipo?: string }, files?: File[]) {
         this.loading$.next(true);
-        this.error$.next(null);
         try {
             const updated = await artistsService.update(id, payload);
+
+            // Se houver upload de imagens, reutiliza facade para limpar cache e obter URLs atualizadas.
+            let firstImageUrl: string | undefined;
             if (files?.length) {
-                await uploadArtistImages(id, files);
+                const images = await artistImagesFacade.upload(id, files);
+                firstImageUrl = images[0]?.url;
             }
-            this.patchArtist(updated);
-            // If images were uploaded, we might want to refresh to ensure any image count/list is updated if we tracked that.
-            // But patchArtist only updates local state of the text fields.
-            // Let's safe-guard by just returning the updated object.
-            // Actually, if we want to reflect "new images available", we might need to refresh just like create does.
-            // create calls this.refresh().
-            // Let's call refresh here too if files were uploaded, or maybe always to be safe?
-            if (files?.length) {
-                this.refresh();
-            }
-            return updated;
+
+            const current = this.data$.getValue();
+            const content = current.content.map((a) =>
+                a.id === id ? { ...a, ...updated, imageUrl: firstImageUrl ?? a.imageUrl } : a,
+            );
+            this.data$.next({ ...current, content });
+
+            // Atualiza detalhe do artista se a tela estiver aberta.
+            artistDetailFacade.patchArtist({ ...updated, imageUrl: firstImageUrl });
+
+            return { ...updated, imageUrl: firstImageUrl ?? updated.imageUrl };
         } catch (err) {
-            const message = getErrorMessage(err, "Erro ao atualizar artista");
-            this.error$.next(message);
+            this.error$.next(getErrorMessage(err, "Erro ao atualizar artista"));
             throw err;
         } finally {
             this.loading$.next(false);
         }
     }
 
-    async delete(id: number): Promise<void> {
+    async delete(id: number) {
         this.loading$.next(true);
-        this.error$.next(null);
         try {
             await artistsService.delete(id);
             const current = this.data$.getValue();
-            if (current?.content?.length) {
-                const nextContent = current.content.filter((item) => item.id !== id);
-                this.data$.next({ ...current, content: nextContent });
-            }
-            this.refresh();
+            this.data$.next({ ...current, content: current.content.filter((a) => a.id !== id) });
+            this.load();
         } catch (err) {
-            const message = getErrorMessage(err, "Erro ao excluir artista");
-            this.error$.next(message);
+            this.error$.next(getErrorMessage(err, "Erro ao excluir artista"));
             throw err;
         } finally {
             this.loading$.next(false);
@@ -241,53 +166,12 @@ export class ArtistsFacade {
 
     patchArtist(updated: Artista) {
         const current = this.data$.getValue();
-        if (!current?.content?.length) return;
-
-        const nextContent = current.content.map((item) =>
-            item.id === updated.id ? { ...item, ...updated } : item,
-        );
-
-        this.data$.next({ ...current, content: nextContent });
+        const content = current.content.map((a) => (a.id === updated.id ? { ...a, ...updated } : a));
+        this.data$.next({ ...current, content });
     }
 
-    private updateParams(partial: Partial<ArtistsParams>) {
-        const current = this.params$.getValue();
-        const next = { ...current, ...partial };
-        if (!isSameParams(current, next)) {
-            this.params$.next(next);
-        }
-    }
-
-    private async loadRequest(params: ArtistsParams) {
-        const key = JSON.stringify(params);
-        if (this.inFlightKey) {
-            this.pendingKey = key;
-            return { skipped: true } as const;
-        }
-
-        this.inFlightKey = key;
-        this.loading$.next(true);
-        this.error$.next(null);
-        try {
-            const data = await artistsService.getAll(
-                params.page,
-                params.size,
-                params.search,
-                params.sort,
-                params.dir,
-                params.tipo,
-            );
-            return { ok: true, data } as const;
-        } catch (error) {
-            return { ok: false, error } as const;
-        } finally {
-            this.inFlightKey = null;
-            const pendingKey = this.pendingKey;
-            this.pendingKey = null;
-            if (pendingKey && pendingKey !== key) {
-                this.load(true);
-            }
-        }
+    refresh() {
+        this.load();
     }
 }
 

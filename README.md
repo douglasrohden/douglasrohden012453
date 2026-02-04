@@ -18,7 +18,7 @@ Aplicação Full Stack (Java Spring Boot + React + TypeScript) em conformidade c
 - Health checks (liveness/readiness)
 - Entrega via Docker Compose: API + Frontend + PostgreSQL + MinIO + pgAdmin (removível)
 
-## Roteiro de validação em 5 minutos (banca)
+## Roteiro de validação 
 1) Subir a stack completa
 
 ```

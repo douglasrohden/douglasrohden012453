@@ -1,7 +1,7 @@
 import { BehaviorSubject } from "rxjs";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
-import { albunsFacade } from "./AlbumsFacade";
+import { albumsFacade } from "./AlbumsFacade";
 import { artistsFacade } from "./ArtistsFacade";
 
 export type AlbumCreatedMessage = {
@@ -69,7 +69,7 @@ class NotificationsFacade {
             this.unreadCount$.next(updated.filter((n) => !n.read).length);
 
             // refletir na UI automaticamente
-            albunsFacade.refresh();
+            albumsFacade.refresh();
             artistsFacade.refresh();
           } catch {
             // ignore invalid payload

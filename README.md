@@ -1,124 +1,315 @@
-﻿# README — Sistema de Gerenciamento de Artistas e Álbuns (Full Stack)
+﻿# Sistema de Gerenciamento de Artistas e Álbuns (Full Stack)
 
-**Entrega técnica para o PROCESSO SELETIVO CONJUNTO Nº 001/2026/SEPLAG — Engenheiro da Computação (Sênior).**
-
-Resumo : solução Full Stack (Java Spring Boot + React + TypeScript) implementando os requisitos do edital: autenticação JWT com refresh (5 min), rate limit (10 req/min por usuário), upload múltiplo para MinIO com presigned URLs (30 min), paginação, busca/ordenação, WebSocket para notificações, Flyway com seed (artistas e álbuns do enunciado), Swagger, health checks, e entrega via Docker Compose (API + Frontend + PostgreSQL + MinIO). 
-
-
----
-
-## Sumário
-
-- [Visão geral](#visao-geral)
-- [Requisitos de ambiente](#requisitos-de-ambiente)
-- [Instalação](#instalacao)
-- [Configuração (variáveis de ambiente)](#configuracao-variaveis-de-ambiente)
-- [Deploy com Docker (RECOMENDADO)](#deploy-com-docker-recomendado)
-- [MinIO (S3) — setup e acesso](#minio-s3--setup-e-acesso)
-- [Banco e migrações (Flyway)](#banco-e-migracoes-flyway)
-- [Execução](#execucao)
-- [Documentação da API](#documentacao-da-api)
-- [Endpoints (resumo)](#endpoints-resumo)
-- [WebSocket](#websocket)
-- [Rate limit](#rate-limit)
-- [Checklist do edital (implementação)](#checklist-do-edital-implementacao)
-- [Organização e Clean Code](#organizacao-e-clean-code)
-- [Testes](#testes)
-- [Observações de produção](#observacoes-de-producao)
-- [Dados do candidato](#dados-do-candidato)
-
----
+Entrega técnica — PROCESSO SELETIVO CONJUNTO Nº 001/2026/SEPLAG/MT (Engenheiro da Computação Sênior).
 
 ## Visão geral
 
-O sistema permite:
-- Autenticação JWT + refresh
-- CRUD de artistas e álbuns
-- Relacionamento N:N (artista ? álbum)
-- Upload múltiplo de capas (MinIO)
-- Presigned URL com expiração (30 min)
+Aplicação Full Stack (Java Spring Boot + React + TypeScript) em conformidade com o edital:
+
+- Autenticação JWT + refresh (expiração do access token em 5 min)
+- Renovação automática no front (fluxo de expiração/refresh)
+- Rate limit: 10 req/min por usuário autenticado (API)
+- Upload múltiplo de imagens no MinIO (S3)
+- Links pré‑assinados com expiração padrão de 30 min
 - Paginação, busca e ordenação
-- WebSocket para notificar novos álbuns
-- Rate limit de 10 req/min por usuário autenticado
-- Integração externa de regionais (sincronização)
+- WebSocket para notificação de novo álbum
+- Flyway com migrations + seed idempotente
+- Swagger/OpenAPI
+- Health checks (liveness/readiness)
+- Entrega via Docker Compose: API + Frontend + PostgreSQL + MinIO + pgAdmin (removível)
 
-Entrega obrigatória via Docker Compose com **API + Frontend + Banco + MinIO**.
+## Roteiro de validação em 5 minutos (banca)
+1) Subir a stack completa
 
-### ✅ Resumo 
-
-1) Subir ambiente: `docker compose up -d --build` (duração ~1-2 min em máquina local).
-2) Acessar Swagger: `http://localhost:3001/swagger-ui/index.html` — testar `POST /v1/autenticacao/login` e endpoints `/v1/artistas` e `/v1/albuns`.
-3) Verificar upload: `POST /v1/albuns/{id}/capas` (multipart `files[]`) e abrir MinIO Console em `http://localhost:9001` para checar objetos.
-4) Testar rate limit: executar 11 requisições autenticadas ao mesmo endpoint dentro de 60s → API retorna `429` + `Retry-After`.
-5) Testar WebSocket: conectar ao `/ws`, inscrever em `/topic/albuns/created`, criar álbum e conferir notificação em tempo real.
-6) Executar testes: Backend — `cd Backend && mvn test`; Frontend — `cd Frontend && npm test`.
- 
-
----
-
-## Requisitos de ambiente
-
-### Backend
-- Java: 17+
-- Maven: 3.9+
-- PostgreSQL: 14+ (via Docker recomendado)
-
-### Frontend
-- Node.js: 20 LTS (recomendado)
-- npm: 10+ (ou pnpm/yarn se preferir)
-
-### Dependências externas
-- Docker + Docker Compose (recomendado para Postgres + MinIO)
-- MinIO (S3) via Docker
-
-**Windows:** use WSL2 para melhor compatibilidade com Docker.
-
----
-
-## Instalação
-
-```bash
-git clone https://github.com/douglasrohden/douglasrohden012453.git
-cd douglasrohden012453
+```
+docker compose up -d --build
+docker compose ps
 ```
 
-### Instalar dependências
+2) Swagger + login (JWT)
 
-Frontend:
+Swagger: http://localhost:3001/swagger-ui/index.html
 
-```bash
-cd Frontend
-npm install
+Login:
+
 ```
+curl -s -X POST "http://localhost:3001/v1/autenticacao/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin"}'
+```
+
+
+Copie o accessToken e use como:
+
+```
+Authorization: Bearer <TOKEN>
+```
+
+3) Upload múltiplo de capas (MinIO + presigned)
+
+Importante: o banco não guarda URL presigned. Salva apenas object_key + metadados.
+A URL é gerada sob demanda em GET /v1/albuns/{id}/capas.
+
+Upload:
+
+```
+curl -s -X POST "http://localhost:3001/v1/albuns/1/capas" \
+  -H "Authorization: Bearer <TOKEN>" \
+  -F "files=@./exemplos/capa1.jpg" \
+  -F "files=@./exemplos/capa2.jpg"
+```
+
+
+Listagem (retorna presigned + expiresAt):
+
+```
+curl -s "http://localhost:3001/v1/albuns/1/capas" \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+
+MinIO Console (ver objetos):
+
+http://localhost:9001 (credenciais no [.env](.env))
+
+4) Testar expiração do presigned em 60s (teste rápido)
+
+Suba o backend com:
+
+```
+MINIO_PRESIGN_EXPIRATION_MINUTES=1
+```
+
+Gere um presigned e tente abrir após ~60s (esperado: falhar).
+
+5) Rate limit (10/min)
+
+Faça 11 chamadas ao mesmo endpoint dentro de 60s:
+
+```
+for i in $(seq 1 11); do
+  curl -s -o /dev/null -w "%{http_code}\n" \
+    "http://localhost:3001/v1/artistas?page=0&size=1" \
+    -H "Authorization: Bearer <TOKEN>";
+done
+```
+
+
+Esperado: após exceder, retorna 429 com Retry-After.
+
+6) WebSocket (novo álbum)
+
+Endpoint: http://localhost:3001/ws (SockJS/STOMP)
+
+Topic: /topic/albuns/created
+Crie um álbum e verifique notificação.
+
+7) Health checks
+
+```
+GET /actuator/health/liveness
+GET /actuator/health/readiness
+```
+
+## Sumário
+
+- Arquitetura
+- Requisitos do edital
+- Estrutura de dados
+- Como rodar
+- Variáveis de ambiente
+- MinIO e presigned URLs
+- Rate limit
+- WebSocket
+- Banco e Flyway
+- Endpoints
+- Testes
+- Troubleshooting
+- Dados do candidato
+
+## Arquitetura
+
+### Backend (Spring Boot)
+
+- REST versionado em /v1
+- Security: JWT + refresh token
+- Rate limit com retorno 429 + Retry-After e headers informativos
+- Upload múltiplo em MinIO (S3), com presigned GET de 30 min
+- Flyway: migrations + seed idempotente
+- WebSocket STOMP: evento “álbum criado”
+- Actuator: readiness/liveness
+
+### Frontend (React + TypeScript)
+
+- Login obrigatório para acesso ao front
+- Rotas protegidas
+- Facade pattern + estado via RxJS (`BehaviorSubject`)
+- Tratamento de 401/refresh e 429 (rate limit)
+
+## Requisitos do edital (checklist)
+
+Backend — MUST
+
+- [x] API versionada /v1
+- [x] JWT (expira em 5 min) + refresh token
+- [x] Swagger/OpenAPI
+- [x] Flyway (schema + seed enunciado)
+- [x] Paginação / busca / ordenação (artistas/álbuns)
+- [x] Upload múltiplo de imagens (álbum) via MinIO
+- [x] Presigned URLs com expiração padrão de 30 min
+- [x] Docker compose (API + Front + DB + MinIO)
+
+Sênior — MUST
+
+- [x] Health checks liveness/readiness
+- [x] WebSocket (notificar novo álbum)
+- [x] Rate limit 10 req/min por usuário autenticado
+- [x] Sincronização de “Regionais” (import/sync com ativo)
+
+Observação: o edital exige “várias imagens”. Este projeto implementa múltiplas capas por álbum via /capas.
+Se também houver imagens por artista, os endpoints correspondentes aparecem em “Endpoints”.
+
+## Estrutura de dados (tabelas e decisões)
+
+Estrutura proposta das tabelas e principais decisões de modelagem adotadas.
+
+### Tabela `usuarios`
+
+- `id` (BIGSERIAL, PK)
+- `username` (VARCHAR(50), único, obrigatório)
+- `password_hash` (VARCHAR(255), obrigatório)
+- `created_at`, `updated_at` (TIMESTAMP)
+
+### Tabela `refresh_tokens`
+
+- `id` (BIGSERIAL, PK)
+- `user_id` (FK → `usuarios.id`, ON DELETE CASCADE)
+- `token_hash` (VARCHAR(64), único)
+- `expires_at` (TIMESTAMPTZ)
+- `created_at` (TIMESTAMPTZ)
+- `revoked_at` (TIMESTAMPTZ, opcional)
+- `replaced_by_token_hash` (VARCHAR(64), opcional)
+
+### Tabela `artista`
+
+- `id` (BIGSERIAL, PK)
+- `nome` (VARCHAR(255), único, obrigatório)
+- `tipo` (VARCHAR(20), obrigatório, default `CANTOR`)
+
+### Tabela `album`
+
+- `id` (BIGSERIAL, PK)
+- `titulo` (VARCHAR(255), obrigatório)
+- `ano` (INTEGER, opcional)
+
+### Tabela `artista_album` (associação N:N)
+
+- `artista_id` (FK → `artista.id`)
+- `album_id` (FK → `album.id`)
+- PK composta (`artista_id`, `album_id`)
+
+### Tabela `album_imagem`
+
+- `id` (BIGSERIAL, PK)
+- `album_id` (FK → `album.id`, ON DELETE CASCADE)
+- `object_key` (VARCHAR(1024), obrigatório)
+- `content_type` (VARCHAR(255))
+- `size_bytes` (BIGINT)
+- `created_at` (TIMESTAMP)
+
+### Tabela `artista_imagem`
+
+- `id` (BIGSERIAL, PK)
+- `artista_id` (FK → `artista.id`, ON DELETE CASCADE)
+- `object_key` (VARCHAR(1024), obrigatório)
+- `content_type` (VARCHAR(255))
+- `size_bytes` (BIGINT)
+- `created_at` (TIMESTAMP)
+
+### Tabela `regional`
+
+- `id` (BIGSERIAL/IDENTITY, PK)
+- `external_id` (INTEGER, obrigatório)
+- `nome` (VARCHAR(200), obrigatório)
+- `ativo` (BOOLEAN, default TRUE)
+
+#### Regras e índices relevantes
+
+- Índices por foreign keys e `object_key` para desempenho em consultas de imagens.
+- Para regionais: índice por `external_id` e unicidade por `external_id` ativo (apenas uma regional ativa por `external_id`).
+- Seed idempotente conforme edital (artistas, álbuns e associações).
+
+#### Decisões de modelagem
+
+- Relação N:N entre artistas e álbuns via tabela de junção `artista_album`.
+- URLs presigned não são persistidas; o banco guarda apenas `object_key` e metadados.
+- Refresh tokens são armazenados em hash e suportam rotação/invalidação.
+- Regionais: apenas uma regional ativa por `external_id` (índice único parcial).
+
+## Como rodar
+### Docker Compose (recomendado)
+
+```
+docker compose up -d --build
+```
+
+
+URLs:
+
+- Frontend: http://localhost:5173
+- Swagger: http://localhost:3001/swagger-ui/index.html
+- MinIO Console: http://localhost:9001
+- MinIO S3: http://localhost:9000
+
+Credenciais:
+
+- App: admin/admin
+- MinIO: conforme [.env](.env) e [docker-compose.yml](docker-compose.yml)
+
+### Desenvolvimento local
 
 Backend:
 
-```bash
-cd ..\Backend
-mvn -DskipTests clean install
+```
+cd Backend
+mvn spring-boot:run
 ```
 
----
 
-## Configuração (variáveis de ambiente)
+Frontend:
 
-Crie um arquivo `.env` (ou use o Docker Compose com variáveis). Mantenha um `.env.example` versionado.
+```
+cd Frontend
+npm install
+npm run dev
+```
 
-Exemplo de `.env.example` (modelo):
+## Variáveis de ambiente
+
+Crie [.env](.env) (ou use as do compose). Mantenha [.env.example](.env.example).
+
+Exemplo base:
 
 ```dotenv
-# ---------- Backend ----------
+# Backend
 SPRING_PROFILES_ACTIVE=dev
 SERVER_PORT=3001
 
+# DB
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
 POSTGRES_DB=dbmusicplayer
 POSTGRES_PORT=5433
 SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5433/dbmusicplayer
 
+# CORS (origens permitidas)
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3001
+
+# JWT
 JWT_SECRET=change-me
-JWT_EXPIRATION_MS=300000
+JWT_EXPIRATION=300000
+JWT_REFRESH_EXPIRATION=604800000
+REFRESH_TOKEN_PEPPER=change-me
 
 # Rate limit (edital)
 RATE_LIMIT_REQUESTS_PER_WINDOW=10
@@ -127,6 +318,10 @@ RATE_LIMIT_BUCKET_EXPIRE_AFTER_SECONDS=120
 
 # ---------- MinIO ----------
 MINIO_ENDPOINT=http://localhost:9000
+# Credenciais do servidor MinIO (compose)
+MINIO_ROOT_USER=minioadmin
+MINIO_ROOT_PASSWORD=minioadmin123
+# Credenciais usadas pelo backend
 MINIO_ACCESS_KEY=minioadmin
 MINIO_SECRET_KEY=minioadmin123
 MINIO_BUCKET=album-covers
@@ -135,419 +330,184 @@ MINIO_PRESIGN_EXPIRATION_MINUTES=30
 MINIO_MAX_FILE_SIZE_BYTES=5242880
 MINIO_MAX_REQUEST_SIZE_BYTES=26214400
 
-# ---------- Frontend ----------
+# Frontend
 VITE_API_URL=http://localhost:3001/v1
-VITE_WS_URL=http://localhost:3001/ws
+
 ```
 
+Obs.: o WebSocket é derivado de VITE_API_URL (ex.: http://localhost:3001/ws).
 
----
+## MinIO e presigned URLs
+Regras de implementação (para aderência e evitar erro de banca)
 
-## Deploy com Docker (RECOMENDADO)
+✅ Banco armazena `object_key` + metadados (`content_type`, `size_bytes`, `created_at`).
 
-### 🚀 Subir ambiente
+❌ Não armazenar URL presigned em `album.image_url` (URL expira).
 
-Eu deixei o deploy com um único compose. Para subir o ambiente completo:
+✅ GET /v1/albuns/{id}/capas gera presigned na hora, com expiração padrão de 30 min.
 
-```bash
-docker compose up -d --build
+Bucket
+
+Bucket padrão: `album-covers`
+
+O bucket é criado/validado no startup (se habilitado no backend).
+
+## Rate limit
+
+Política do edital:
+
+10 requisições por minuto por usuário autenticado
+
+Comportamento esperado:
+
+Ao exceder: HTTP 429
+
+Headers:
+
+`X-Rate-Limit-Limit`
+
+`X-Rate-Limit-Remaining`
+
+`X-Rate-Limit-Window-Seconds`
+
+`Retry-After` (somente no 429)
+
+## WebSocket
+
+Endpoint SockJS/STOMP: http://localhost:3001/ws
+
+Topic: /topic/albuns/created
+
+## Banco e Flyway
+
+Migrations em [Backend/src/main/resources/db/migration](Backend/src/main/resources/db/migration)
+
+Seed do enunciado é idempotente
+
+Para rodar manualmente:
+
 ```
-
-### 🔍 Verificar Status
-
-```bash
-docker compose ps
-```
-
-### 🌐 URLs de Acesso
-
-Após o deploy, a aplicação estará disponível em:
-
-- **Frontend**: http://localhost:5173
-- **Backend API**: http://localhost:3001/swagger-ui
-- **MinIO Console**: http://localhost:9001 (User: `minioadmin`, Pass: `minioadmin123`)
-- **pgAdmin**: http://localhost:5050 (User: `admin@example.com`, Pass: `admin`)
-
-### 📝 Comandos Úteis do Docker
-
-**Ver logs:**
-```bash
-# Todos os serviços
-docker compose logs -f
-
-# Apenas backend
-docker compose logs backend -f
-```
-
-**Reiniciar serviço:**
-```bash
-docker compose restart backend
-```
-
-**Parar aplicação:**
-```bash
-docker compose down
-```
-
-**Reset completo (limpa volumes):**
-```bash
-docker compose down -v
-```
-
-### ⚙️ Quando Fazer Rebuild
-
-- **Alterações no Frontend/Backend**: rebuild do container afetado
-- **Alterações nas variáveis `.env`**: restart do serviço afetado
-
-**Exemplo - Rebuild do frontend:**
-```bash
-docker compose up -d --build frontend
-```
-
-### 🔐 Credenciais Padrão
-
-**Usuário de teste:**
-- Username: `admin`
-- Password: `admin`
-
-> ⚠️ **Importante**: Em produção, altere o `JWT_SECRET` no arquivo `.env`!
-
----
-
-## MinIO (S3) — setup e acesso
-
-### URL e credenciais padrão
-- Console MinIO: `http://localhost:9001`
-- API S3: `http://localhost:9000`
-- Usuário: `minioadmin`
-- Senha: `minioadmin123`
-
-### Bucket esperado
-- Bucket padrão: `album-covers` (configurado em `MINIO_BUCKET`)
-
-Se o projeto não criar bucket automaticamente, crie via console e mantenha privado; o acesso deve ser via **presigned URL**.
-
----
-
-## Banco e migrações (Flyway)
-
-Caso não rode automaticamente no startup:
-
-```bash
 cd Backend
 mvn -DskipTests flyway:migrate
 ```
 
-O seed do edital deve ser idempotente.
-
----
-
-## Execução
-
-### Desenvolvimento
-
-Backend:
-
-```bash
-cd Backend
-mvn spring-boot:run
-```
-
-Frontend:
-
-```bash
-cd Frontend
-npm run dev
-```
-
-Acessos:
-- Frontend: `http://localhost:5173`
-- Backend: `http://localhost:3001`
-- Swagger: `http://localhost:3001/swagger-ui/index.html`
-
-### Build / Produção
-
-Frontend:
-
-```bash
-cd Frontend
-npm run build
-npm run preview
-```
-
-Backend:
-
-```bash
-cd Backend
-mvn -DskipTests package
-java -jar target/*.jar
-```
-
----
-
-## Documentação da API
-
-Swagger UI:
-- `http://localhost:3001/swagger-ui/index.html`
-
-Fluxo recomendado:
-1) `POST /v1/autenticacao/login`
-2) Copiar `accessToken`
-3) Authorize: `Bearer <token>`
-
----
-
-## Endpoints (resumo)
+## Endpoints
 
 ### Autenticação
-- `POST /v1/autenticacao/login`
-- `POST /v1/autenticacao/refresh`
+
+- POST /v1/autenticacao/login
+- POST /v1/autenticacao/refresh
 
 ### Artistas
-- `GET /v1/artistas` (paginação + busca + ordenação)
-  - params: `page`, `size`, `q`, `tipo`, `sort`, `dir`
-- `GET /v1/artistas/{id}`
-- `POST /v1/artistas`
-- `PUT /v1/artistas/{id}`
-- `DELETE /v1/artistas/{id}`
+
+- GET /v1/artistas (paginação + busca + ordenação)
+- GET /v1/artistas/{id}
+- POST /v1/artistas
+- PUT /v1/artistas/{id}
+- DELETE /v1/artistas/{id}
 
 ### Álbuns
-- `GET /v1/albuns?page=0&size=10&sort=titulo,asc`
-- `POST /v1/albuns`
-- `PUT /v1/albuns/{id}`
-- `POST /v1/albuns/{id}/capas` (multipart `files[]`)
-- `GET /v1/albuns/{id}/capas`
-- `DELETE /v1/albuns/{albumId}/capas/{coverId}`
 
----
+- GET /v1/albuns
+- POST /v1/albuns
+- PUT /v1/albuns/{id}
+- DELETE /v1/albuns/{id} (se aplicável)
 
-## WebSocket
+### Capas do Álbum (múltiplas)
 
-- Endpoint SockJS/STOMP: `http://localhost:3001/ws`
-- Tópico: `/topic/albuns/created`
+- POST /v1/albuns/{id}/capas (multipart files[])
+- GET /v1/albuns/{id}/capas (retorna presigned + expiresAt)
+- DELETE /v1/albuns/{albumId}/capas/{coverId}
 
-Payload (exemplo):
+### Imagens do Artista
 
-```json
-{"id":1,"titulo":"Harakiri","ano":2012}
-```
+- POST /v1/artistas/{artistaId}/imagens (multipart files[])
+- GET /v1/artistas/{artistaId}/imagens (retorna presigned + expiresAt)
+- DELETE /v1/artistas/{artistaId}/imagens/{imageId}
 
----
+### Regionais (Sênior)
 
-## Rate limit
+- GET /v1/regionais
+- POST /v1/regionais/sync
 
-- Limite: **10 requisições por minuto por usuário autenticado**
-- Headers retornados:
-  - `X-Rate-Limit-Limit`
-  - `X-Rate-Limit-Remaining`
-  - `X-Rate-Limit-Window-Seconds`
-  - `Retry-After` (somente no 429)
+Exemplo (banca) — sincronização
 
---- 
-
-## Organização e Clean Code
-
-### Estrutura de pastas (frontend)
+Request (sem payload):
 
 ```
-Frontend/
-  src/
-    api/                 # event bus, ws, contratos
-    lib/                 # http client, helpers, parsing
-    services/            # chamadas API (sem estado)
-    facades/             # orquestração (estado RxJS, regras)
-    hooks/               # adaptadores React (useX)
-    components/          # UI
-    pages/               # telas
-    types/               # tipos compartilhados
+curl -s -X POST "http://localhost:3001/v1/regionais/sync" \
+  -H "Authorization: Bearer <TOKEN>"
 ```
 
-### Estrutura de pastas (backend)
+Resposta esperada (exemplo):
 
 ```
-Backend/
-  src/main/java/.../
-    config/              # security, cors, filters
-    controller/          # endpoints REST
-    service/             # regras de negócio
-    repository/          # acesso ao banco
-    dto/                 # contratos
-    model/               # entidades
-    events/              # websocket/event listeners
-  src/main/resources/
-    db/migration/        # flyway
+{"inserted":2,"inactivated":1,"changed":3}
 ```
 
-Boas práticas aplicadas:
-- Nomes descritivos
-- Funções pequenas
-- Evitar duplicação (DRY)
-- Configuração centralizada
+SQL de validação (PostgreSQL):
 
----
+```
+-- total e status de regionais
+SELECT
+  COUNT(*) AS total,
+  SUM(CASE WHEN ativo THEN 1 ELSE 0 END) AS ativas,
+  SUM(CASE WHEN NOT ativo THEN 1 ELSE 0 END) AS inativas
+FROM regionais;
+
+-- conferir registros por external_id
+SELECT external_id, nome, ativo, updated_at
+FROM regionais
+ORDER BY external_id;
+```
 
 ## Testes
 
-### 🧪 Frontend
+### Backend
 
-#### Executar testes
-```bash
-cd Frontend
-npm test
 ```
-
-#### Executar testes com UI interativa
-```bash
-npm run test:ui
-```
-
-#### Gerar arquivos de testes automaticamente
-
-O projeto possui um script que gera automaticamente arquivos de teste para todos os componentes:
-
-```bash
-cd Frontend
-npm run generate-tests
-```
-
-**O que o script faz:**
-- Varre todos os componentes em `src/components/`
-- Gera arquivos `__tests__/ComponentName.test.tsx` para cada componente
-- Cria testes básicos (render, interações, props)
-- Não sobrescreve testes customizados (apenas auto-gerados)
-
-**Estrutura dos testes gerados:**
-```typescript
-// Exemplo: src/components/Button/__tests__/Button.test.tsx
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { vi, describe, it, expect, beforeEach } from 'vitest';
-import Button from '../Button';
-
-describe('Button', () => {
-  it('renders default structure', () => {
-    const { container } = render(<Button />);
-    expect(container.firstChild).toBeTruthy();
-  });
-
-  it.skip('handles a basic user interaction', async () => {
-    const user = userEvent.setup();
-    render(<Button />);
-    // TODO: customize this test
-  });
-});
-```
-
-**Limpar testes auto-gerados:**
-```bash
-npm run clean-generated-tests
-```
-
-#### Tecnologias de teste
-- **Vitest**: Framework de testes
-- **React Testing Library**: Renderização e queries
-- **user-event**: Simulação de interações do usuário
-
----
-
-### ☕ Backend
-
-#### Executar todos os testes
-```bash
 cd Backend
 mvn test
 ```
 
-#### Executar testes com cobertura
-```bash
-mvn test jacoco:report
+### Frontend
+
+```
+cd Frontend
+npm test
 ```
 
-O relatório de cobertura estará em: `target/site/jacoco/index.html`
+## Troubleshooting
+1) Imagens não carregam no frontend
 
-#### Criar novos testes
+Possíveis causas e correções:
 
-**Testes unitários** (service/repository):
-```java
-// Localização: src/test/java/com/example/service/
-@ExtendWith(MockitoExtension.class)
-class ArtistaServiceTest {
-    @Mock
-    private ArtistaRepository repository;
-    
-    @InjectMocks
-    private ArtistaService service;
-    
-    @Test
-    void deveCriarArtista() {
-        // Given
-        ArtistaDTO dto = new ArtistaDTO("Serj Tankian", "Cantor");
-        
-        // When
-        Artista result = service.criar(dto);
-        
-        // Then
-        assertNotNull(result);
-        assertEquals("Serj Tankian", result.getNome());
-    }
-}
-```
+- URL presigned armazenada no banco e expirada.
+  ✅ Solução: não persistir presigned; gere sob demanda via GET /v1/albuns/{id}/capas (expiração padrão de 30 min, conforme edital).
 
-**Testes de integração** (API endpoints):
-```java
-// Localização: src/test/java/com/example/controller/
-@SpringBootTest
-@AutoConfigureMockMvc
-class ArtistaControllerIntegrationTest {
-    @Autowired
-    private MockMvc mockMvc;
-    
-    @Test
-    void deveListarArtistas() throws Exception {
-        mockMvc.perform(get("/v1/artistas")
-                .header("Authorization", "Bearer " + token))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.content").isArray());
-    }
-}
-```
+- CORS bloqueando acesso ao MinIO.
+  ✅ Solução: configurar CORS do backend e permitir que o navegador acesse o presigned diretamente no MinIO.
 
-#### Convenções de nomenclatura
-- Testes unitários: `*Test.java`
-- Testes de integração: `*IntegrationTest.java`
-- Localização: `src/test/java/` (espelha `src/main/java/`)
+2) Presigned inválido por horário incorreto do container
 
-#### Executar apenas um teste específico
-```bash
-mvn test -Dtest=ArtistaServiceTest
-```
+Links presigned dependem de X-Amz-Date. Desvios grandes de horário invalidam o link.
+✅ Solução: garantir horário correto no host/containers (ambiente Docker padrão costuma ser suficiente).
 
-#### Tecnologias de teste
-- **JUnit 5**: Framework de testes
-- **Mockito**: Mocks e stubs
-- **Spring Boot Test**: Testes de integração
-- **JaCoCo**: Cobertura de código
+3) HTTP 429 (rate limit)
 
+O edital exige 10 req/min por usuário autenticado. Ao exceder, a API retorna 429 + Retry-After.
+✅ Solução: tratar 429 como estado de UI (toast/banner) e evitar “fan-out” (chamadas múltiplas por item).
 
----
+4) Upload multipart falha
 
-## Observações de produção
+Limites:
+- max-file-size: limite por arquivo
+- max-request-size: limite total da requisição
 
-- Configurar CORS restritivo com origens explícitas.
-- Confiar em `X-Forwarded-For` apenas atrás de proxy confiável.
-- MinIO em produção: credenciais seguras, TLS, bucket policy adequada.
-- Deploy recomendado: Docker images + docker-compose (ou Kubernetes) com variáveis via CI/infra.
-
----
+✅ Solução: ajustar os limites (ex.: 25MB) e validar no backend.
 
 ## Dados do candidato
 
-Preencher conforme necessário:
-- Nome completo: Douglas Rohden
-- E-mail: rohdendouglas@gmail.com
+Nome: Douglas Rohden
 
----
-
-## Licença
-
-Uso educacional para o edital SEPLAG/MT.
+E-mail: rohdendouglas@gmail.com

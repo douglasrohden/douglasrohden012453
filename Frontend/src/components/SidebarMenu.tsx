@@ -5,7 +5,7 @@ import {
   SidebarItemGroup,
   Button,
 } from "flowbite-react";
-import { HiCollection, HiMusicNote, HiUser } from "react-icons/hi";
+import { HiCollection, HiUser } from "react-icons/hi";
 import { useLocation, useNavigate } from "react-router-dom";
 
 interface SidebarMenuProps {
@@ -104,7 +104,6 @@ export function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
               </SidebarItem>
               <SidebarItem
                 href="/regionais"
-                icon={HiMusicNote}
                 active={isActive("/regionais")}
                 onClick={(e) => {
                   if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
@@ -113,7 +112,7 @@ export function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
                 }}
                 className={`hover:bg-gray-200 dark:hover:bg-gray-600 ${isActive("/regionais") ? activeClass : ""}`}
               >
-                Tbl Regional
+                Sincronização Regionais
               </SidebarItem>
             </SidebarItemGroup>
           </SidebarItems>

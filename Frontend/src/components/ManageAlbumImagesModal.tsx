@@ -15,7 +15,7 @@ import { getErrorMessage } from "../lib/http";
 import { albumImagesFacade, type AlbumImagesState } from "../facades/AlbumImagesFacade";
 import { useBehaviorSubjectValue } from "../hooks/useBehaviorSubjectValue";
 import { BehaviorSubject } from "rxjs";
-import { albunsFacade } from "../facades/AlbumsFacade";
+import { albumsFacade } from "../facades/AlbumsFacade";
 import { artistDetailFacade } from "../facades/ArtistDetailFacade";
 
 const EMPTY_ALBUM_IMAGES_SUBJECT = new BehaviorSubject<AlbumImagesState>({ status: "idle" });
@@ -51,10 +51,10 @@ export default function ManageAlbumImagesModal({
   const syncAlbumCover = (albumIdToSync: number, coverUrl?: string) => {
     if (!coverUrl) return;
 
-    const albumList = albunsFacade.snapshot.data.content ?? [];
+    const albumList = albumsFacade.snapshot.data.content ?? [];
     const albumInList = albumList.find((alb) => alb.id === albumIdToSync);
     if (albumInList) {
-      albunsFacade.updateAlbumInState({ ...albumInList, capaUrl: coverUrl });
+      albumsFacade.updateAlbumInState({ ...albumInList, capaUrl: coverUrl });
     }
 
     const artistAlbums = artistDetailFacade.snapshot.data.albums ?? [];

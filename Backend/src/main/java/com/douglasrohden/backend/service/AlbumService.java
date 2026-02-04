@@ -1,24 +1,29 @@
 package com.douglasrohden.backend.service;
 
-import com.douglasrohden.backend.dto.CreateAlbumRequest;
-import com.douglasrohden.backend.dto.UpdateAlbumRequest;
+import com.douglasrohden.backend.dto.AlbumRequest;
+import com.douglasrohden.backend.dto.AlbumWithArtistDTO;
 import com.douglasrohden.backend.events.AlbumCreatedEvent;
 import com.douglasrohden.backend.model.Album;
 import com.douglasrohden.backend.model.Artista;
+import com.douglasrohden.backend.model.ArtistaTipo;
+import com.douglasrohden.backend.repository.AlbumImageRepository;
 import com.douglasrohden.backend.repository.AlbumRepository;
 import com.douglasrohden.backend.repository.ArtistaRepository;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -28,120 +33,144 @@ public class AlbumService {
     private final ArtistaRepository artistaRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final AlbumImageStorageService albumImageStorageService;
+    private final AlbumImageRepository albumImageRepository;
 
-    @Transactional
-    public Album create(Album album) {
-        return createWithArtistas(album, null);
+    @Transactional(readOnly = true)
+    public Page<AlbumWithArtistDTO> search(String titulo, Integer ano, String artistaNome,
+                                           ArtistaTipo artistaTipo, ArtistaTipo apenasArtistaTipo, Pageable pageable) {
+        Specification<Album> spec = Specification.where(null);
+
+        if (titulo != null && !titulo.isBlank()) {
+            spec = spec.and((root, q, cb) -> cb.like(cb.lower(root.get("titulo")), "%" + titulo.toLowerCase() + "%"));
+        }
+        if (ano != null) {
+            spec = spec.and((root, q, cb) -> cb.equal(root.get("ano"), ano));
+        }
+        if (artistaNome != null && !artistaNome.isBlank()) {
+            spec = spec.and((root, q, cb) -> {
+                Join<Album, Artista> join = root.join("artistas");
+                return cb.like(cb.lower(join.get("nome")), "%" + artistaNome.toLowerCase() + "%");
+            });
+        }
+        if (artistaTipo != null) {
+            spec = spec.and((root, q, cb) -> {
+                Join<Album, Artista> join = root.join("artistas");
+                return cb.equal(join.get("tipo"), artistaTipo);
+            });
+        }
+        if (apenasArtistaTipo != null) {
+            spec = spec.and((root, query, cb) -> {
+                Subquery<Long> sub = query.subquery(Long.class);
+                Root<Artista> a = sub.from(Artista.class);
+                Join<Artista, Album> ja = a.join("albuns");
+                sub.select(cb.count(a)).where(cb.and(cb.equal(ja.get("id"), root.get("id")), cb.notEqual(a.get("tipo"), apenasArtistaTipo)));
+
+                Subquery<Long> sub2 = query.subquery(Long.class);
+                Root<Artista> a2 = sub2.from(Artista.class);
+                Join<Artista, Album> ja2 = a2.join("albuns");
+                sub2.select(cb.count(a2)).where(cb.equal(ja2.get("id"), root.get("id")));
+
+                return cb.and(cb.equal(sub, 0L), cb.greaterThan(sub2, 0L));
+            });
+        }
+
+        Page<Album> page = albumRepository.findAll(spec, pageable);
+        return new PageImpl<>(toDTOs(page.getContent()), pageable, page.getTotalElements());
+    }
+
+    private List<AlbumWithArtistDTO> toDTOs(List<Album> albums) {
+        if (albums.isEmpty()) return List.of();
+
+        List<Long> ids = albums.stream().map(Album::getId).toList();
+        Map<Long, String> capaMap = new HashMap<>();
+        albumImageRepository.findFirstCoversByAlbumIds(ids).forEach(img -> {
+            Long aid = img.getAlbum() != null ? img.getAlbum().getId() : null;
+            if (aid != null && img.getObjectKey() != null) {
+                capaMap.put(aid, albumImageStorageService.generatePresignedUrl(img.getObjectKey()));
+            }
+        });
+
+        return albums.stream().map(a -> AlbumWithArtistDTO.fromAlbum(a, capaMap.get(a.getId()))).toList();
     }
 
     @Transactional
-    public Album createWithArtistas(Album album, List<Long> artistaIds) {
+    public Album create(AlbumRequest req) {
+        Album album = new Album();
+        album.setTitulo(req.titulo());
+        album.setAno(req.ano());
+        return saveWithArtistas(album, req.artistaIds());
+    }
+
+    @Transactional
+    public List<Album> createBatch(AlbumRequest req) {
+        if (req.artistaIds() == null) return List.of();
+        return req.artistaIds().stream().map(artistaId -> {
+            Album album = new Album();
+            album.setTitulo(req.titulo());
+            album.setAno(req.ano());
+            return saveWithArtistas(album, List.of(artistaId));
+        }).toList();
+    }
+
+    private Album saveWithArtistas(Album album, List<Long> artistaIds) {
         Album saved = albumRepository.save(album);
-
         if (artistaIds != null && !artistaIds.isEmpty()) {
-            List<Artista> artistas = artistaRepository.findAllById(artistaIds);
-            Set<Artista> artistasSet = new HashSet<>(artistas);
-
-            for (Artista artista : artistasSet) {
-                if (artista.getAlbuns() == null) {
-                    artista.setAlbuns(new HashSet<>());
-                }
-                artista.getAlbuns().add(saved);
-            }
-            artistaRepository.saveAll(artistasSet);
-            saved.setArtistas(artistasSet);
+            Set<Artista> artistas = new HashSet<>(artistaRepository.findAllById(artistaIds));
+            artistas.forEach(a -> {
+                if (a.getAlbuns() == null) a.setAlbuns(new HashSet<>());
+                a.getAlbuns().add(saved);
+            });
+            artistaRepository.saveAll(artistas);
+            saved.setArtistas(artistas);
         }
-
-        eventPublisher.publishEvent(new AlbumCreatedEvent(
-                saved.getId(),
-                saved.getTitulo(),
-                saved.getAno()));
+        eventPublisher.publishEvent(new AlbumCreatedEvent(saved.getId(), saved.getTitulo(), saved.getAno()));
         return saved;
     }
 
-    @Transactional
-    public List<Album> createBatchIndividual(CreateAlbumRequest request) {
-        List<Album> createdAlbums = new ArrayList<>();
-        if (request.artistaIds() != null) {
-            // Itera sobre cada artista para criar um álbum individual
-            for (Long artistaId : request.artistaIds()) {
-                Album album = new Album();
-                album.setTitulo(request.titulo());
-                album.setAno(request.ano());
-                // Reutiliza o método createWithArtistas para cada um
-                createdAlbums.add(createWithArtistas(album, List.of(artistaId)));
-            }
-        }
-        return createdAlbums;
-    }
-
     @Transactional(readOnly = true)
-    public List<Album> findByIds(List<Long> albumIds) {
-        if (albumIds == null || albumIds.isEmpty()) {
-            return List.of();
-        }
-        return albumRepository.findAllById(albumIds);
+    public List<Album> findByIds(List<Long> ids) {
+        return ids == null || ids.isEmpty() ? List.of() : albumRepository.findAllById(ids);
     }
 
     @Transactional
-    public Optional<Album> update(Long id, UpdateAlbumRequest request) {
-        Optional<Album> maybeAlbum = albumRepository.findById(id);
-        if (maybeAlbum.isEmpty()) {
-            return Optional.empty();
-        }
-
-        Album existing = maybeAlbum.get();
-        existing.setTitulo(request.titulo());
-        existing.setAno(request.ano());
-
-        if (request.artistaIds() != null) {
-            Set<Artista> newArtistas = new HashSet<>(artistaRepository.findAllById(request.artistaIds()));
-            Set<Artista> oldArtistas = existing.getArtistas() == null ? Set.of() : new HashSet<>(existing.getArtistas());
-
-            // Remove associations that are no longer present
-            for (Artista oldArtista : oldArtistas) {
-                if (!newArtistas.contains(oldArtista) && oldArtista.getAlbuns() != null) {
-                    oldArtista.getAlbuns().remove(existing);
-                }
+    public Optional<Album> update(Long id, AlbumRequest req) {
+        return albumRepository.findById(id).map(album -> {
+            album.setTitulo(req.titulo());
+            album.setAno(req.ano());
+            if (req.artistaIds() != null) {
+                syncArtistas(album, req.artistaIds());
             }
+            return albumRepository.save(album);
+        });
+    }
 
-            // Add associations for the new set (Artista is the owning side)
-            for (Artista newArtista : newArtistas) {
-                if (newArtista.getAlbuns() == null) {
-                    newArtista.setAlbuns(new HashSet<>());
-                }
-                newArtista.getAlbuns().add(existing);
-            }
+    private void syncArtistas(Album album, List<Long> newIds) {
+        Set<Artista> newSet = new HashSet<>(artistaRepository.findAllById(newIds));
+        Set<Artista> oldSet = album.getArtistas() != null ? new HashSet<>(album.getArtistas()) : Set.of();
 
-            Set<Artista> toSave = new HashSet<>();
-            toSave.addAll(oldArtistas);
-            toSave.addAll(newArtistas);
-            if (!toSave.isEmpty()) {
-                artistaRepository.saveAll(toSave);
-            }
+        oldSet.stream().filter(a -> !newSet.contains(a) && a.getAlbuns() != null)
+              .forEach(a -> a.getAlbuns().remove(album));
+        newSet.forEach(a -> {
+            if (a.getAlbuns() == null) a.setAlbuns(new HashSet<>());
+            a.getAlbuns().add(album);
+        });
 
-            existing.setArtistas(newArtistas);
-        }
-
-        return Optional.of(albumRepository.save(existing));
+        Set<Artista> toSave = new HashSet<>();
+        toSave.addAll(oldSet);
+        toSave.addAll(newSet);
+        if (!toSave.isEmpty()) artistaRepository.saveAll(toSave);
+        album.setArtistas(newSet);
     }
 
     @Transactional
     public void delete(Long id) {
         Album album = albumRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Álbum não encontrado"));
-
         albumImageStorageService.deleteAllCovers(album.getId());
-
         if (album.getArtistas() != null) {
-            album.getArtistas().forEach(artista -> {
-                if (artista.getAlbuns() != null) {
-                    artista.getAlbuns().remove(album);
-                }
-            });
+            album.getArtistas().forEach(a -> { if (a.getAlbuns() != null) a.getAlbuns().remove(album); });
             album.getArtistas().clear();
         }
-
         albumRepository.delete(album);
     }
 }

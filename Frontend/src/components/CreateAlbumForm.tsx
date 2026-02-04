@@ -15,7 +15,7 @@ import type { Artista } from "../services/artistsService";
 import { getErrorMessage } from "../lib/http";
 import { useArtists } from "../hooks/useArtists";
 import ArtistSearchInput from "./common/ArtistSearchInput";
-import { albunsFacade } from "../facades/AlbumsFacade";
+import { albumsFacade } from "../facades/AlbumsFacade";
 import { artistDetailFacade } from "../facades/ArtistDetailFacade";
 import { useBehaviorSubjectValue } from "../hooks/useBehaviorSubjectValue";
 
@@ -87,7 +87,7 @@ export default function CreateAlbumForm({
   const [artistSearch, setArtistSearch] = useState("");
 
   const loading = useBehaviorSubjectValue(
-    artistId ? artistDetailFacade.loading$ : albunsFacade.loading$,
+    artistId ? artistDetailFacade.loading$ : albumsFacade.loading$,
   );
 
   // Reset form when modal opens/closes
@@ -203,7 +203,7 @@ export default function CreateAlbumForm({
         );
         addToast("Álbum adicionado com sucesso!", "success");
       } else {
-        const created = await albunsFacade.createAlbum(
+        const created = await albumsFacade.createAlbum(
           {
             titulo: trimmedTitulo,
             ano: anoValue,

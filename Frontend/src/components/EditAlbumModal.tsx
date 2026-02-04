@@ -12,7 +12,7 @@ import {
 import { getErrorMessage } from "../lib/http";
 import { useToast } from "../contexts/ToastContext";
 import { type Album } from "../services/albunsService";
-import { albunsFacade } from "../facades/AlbumsFacade";
+import { albumsFacade } from "../facades/AlbumsFacade";
 import { useBehaviorSubjectValue } from "../hooks/useBehaviorSubjectValue";
 
 interface EditAlbumModalProps {
@@ -30,8 +30,8 @@ export default function EditAlbumModal({
 }: EditAlbumModalProps) {
   const { addToast } = useToast();
 
-  const loading = useBehaviorSubjectValue(albunsFacade.loading$);
-  const facadeError = useBehaviorSubjectValue(albunsFacade.error$);
+  const loading = useBehaviorSubjectValue(albumsFacade.loading$);
+  const facadeError = useBehaviorSubjectValue(albumsFacade.error$);
 
   const [titulo, setTitulo] = useState("");
   const [ano, setAno] = useState("");
@@ -66,7 +66,7 @@ export default function EditAlbumModal({
     }
 
     try {
-      const updated = await albunsFacade.updateAlbum(album.id, {
+      const updated = await albumsFacade.updateAlbum(album.id, {
         titulo: trimmedTitulo,
         ano: anoValue,
       });

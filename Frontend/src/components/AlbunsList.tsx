@@ -7,16 +7,14 @@ import CreateAlbumForm from "./CreateAlbumForm";
 import ManageAlbumImagesModal from "./ManageAlbumImagesModal";
 import type { Album } from "../services/albunsService";
 import EditAlbumModal from "./EditAlbumModal";
-import { albunsFacade } from "../facades/AlbumsFacade";
-import { useBehaviorSubjectValue } from "../hooks/useBehaviorSubjectValue";
+import { albumsFacade } from "../facades/AlbumsFacade";
+import { useAlbuns } from "../hooks/useAlbuns";
 import { useToast } from "../contexts/ToastContext";
 import { getErrorMessage } from "../lib/http";
 
 export default function AlbunsList() {
-  const data = useBehaviorSubjectValue(albunsFacade.data$);
-  const params = useBehaviorSubjectValue(albunsFacade.params$);
-  const loading = useBehaviorSubjectValue(albunsFacade.loading$);
-  const error = useBehaviorSubjectValue(albunsFacade.error$);
+  const { data, params, loading, error, setQuery, setSortField, setSortDir, setPage, refresh } =
+    useAlbuns();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingAlbum, setEditingAlbum] = useState<Album | null>(null);
@@ -34,7 +32,7 @@ export default function AlbunsList() {
 
     setDeletingId(album.id);
     try {
-      await albunsFacade.deleteAlbum(album.id);
+      await albumsFacade.deleteAlbum(album.id);
       addToast("Álbum excluído com sucesso", "success");
     } catch (err) {
       const msg = getErrorMessage(err, "Erro ao excluir álbum");
@@ -71,14 +69,12 @@ export default function AlbunsList() {
 
       <ListToolbar
         query={params.search}
-        onQueryChange={(q) => albunsFacade.setQuery(q)}
+        onQueryChange={setQuery}
         queryPlaceholder="Buscar álbum..."
         queryId="search-albuns"
         searchIcon={HiSearch}
         sortField={params.sortField}
-        onSortFieldChange={(v) =>
-          albunsFacade.setSortField(v as "titulo" | "ano")
-        }
+        onSortFieldChange={(v) => setSortField(v as "titulo" | "ano")}
         sortFieldId="sort-albuns"
         sortFieldLabel="Ordenar por"
         sortFieldOptions={[
@@ -86,7 +82,7 @@ export default function AlbunsList() {
           { value: "ano", label: "Ano" },
         ]}
         sortDir={params.sortDir}
-        onSortDirChange={(d) => albunsFacade.setSortDir(d)}
+        onSortDirChange={setSortDir}
         sortDirId="sort-dir-albuns"
         sortDirLabel="Ordem"
         addLabel="Adicionar"
@@ -115,7 +111,7 @@ export default function AlbunsList() {
           <Pagination
             currentPage={(params.page ?? 0) + 1}
             totalPages={data?.totalPages ?? 0}
-            onPageChange={(p) => albunsFacade.setPage(p - 1)}
+            onPageChange={(p) => setPage(p - 1)}
             showIcons
             previousLabel="Anterior"
             nextLabel="Próxima"
@@ -126,7 +122,7 @@ export default function AlbunsList() {
       <CreateAlbumForm
         show={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        onSuccess={() => albunsFacade.refresh()}
+        onSuccess={refresh}
       />
 
       <EditAlbumModal
@@ -134,8 +130,8 @@ export default function AlbunsList() {
         album={editingAlbum}
         onClose={() => setEditingAlbum(null)}
         onSuccess={(updated) => {
-          albunsFacade.updateAlbumInState(updated);
-          albunsFacade.refresh();
+          albumsFacade.updateAlbumInState(updated);
+          refresh();
         }}
       />
 
@@ -144,7 +140,7 @@ export default function AlbunsList() {
         albumId={manageImagesAlbumId}
         onClose={() => {
           setManageImagesAlbumId(null);
-          albunsFacade.refresh();
+          refresh();
         }}
       />
     </div>
@@ -178,7 +174,6 @@ function AlbumCard({
                 <span className="normal-case">{album.artistaNome}</span>
               </p>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                <span className="mr-2 font-semibold">Cantor/Banda:</span>
                 <span>
                   {album.apenasBandas
                     ? "Banda"

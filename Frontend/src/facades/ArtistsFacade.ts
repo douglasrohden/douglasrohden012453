@@ -1,6 +1,6 @@
 import { BehaviorSubject } from "rxjs";
 import { getErrorMessage, getHttpStatus } from "../lib/http";
-import { artistsService, type Artista } from "../services/artistsService";
+import { artistsService, type Artista, uploadArtistImages } from "../services/artistsService";
 import { artistImagesFacade } from "./ArtistImagesFacade";
 import { artistDetailFacade } from "./ArtistDetailFacade";
 import { type Page } from "../types/Page";

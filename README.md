@@ -26,6 +26,7 @@ Aplicação Full Stack (Java Spring Boot + React + TypeScript) em conformidade c
 - Como rodar
 - Variáveis de ambiente
 - MinIO e presigned URLs
+- Estratégia segura de tokens
 - Rate limit
 - WebSocket
 - Banco e Flyway
@@ -52,17 +53,31 @@ docker compose up -d --build
 docker compose ps
 ```
 
-URLs:
+### URLs de Acesso
 
-- Frontend: http://localhost:5173
-- Swagger: http://localhost:3001/swagger-ui/index.html
-- MinIO Console: http://localhost:9001
-- MinIO S3: http://localhost:9000
+| Serviço | URL | Descrição |
+|---------|-----|-----------|
+| **Frontend** | http://localhost:5173 | Interface React da aplicação |
+| **Backend API** | http://localhost:3001/v1 | API REST versionada |
+| **Swagger UI** | http://localhost:3001/swagger-ui/index.html | Documentação interativa da API |
+| **MinIO Console** | http://localhost:9001 | Interface administrativa do MinIO |
+| **MinIO S3 API** | http://localhost:9000 | Endpoint S3 para upload/download |
+| **pgAdmin** | http://localhost:5050 | Interface de gerenciamento PostgreSQL |
+| **PostgreSQL** | localhost:5433 | Banco de dados (conexão direta) |
 
-Credenciais:
+### Credenciais de Acesso
 
-- App: admin/admin
-- MinIO: conforme `.env` (não versionado) e/ou [.env.example](.env.example) + [docker-compose.yml](docker-compose.yml)
+| Serviço | Usuário/Email | Senha | Observações |
+|---------|---------------|-------|-------------|
+| **Aplicação (Login)** | `admin` | `admin` | Usuário padrão criado pelo seed |
+| **MinIO Console** | `minioadmin` | `minioadmin123` | Acesse em http://localhost:9001 |
+| **MinIO S3 (Backend)** | `minioadmin` | `minioadmin123` | Credenciais usadas pela API |
+| **pgAdmin** | `admin@example.com` | `admin` | Acesse em http://localhost:5050 |
+| **PostgreSQL** | `postgres` | `postgres` | Banco: `dbmusicplayer` na porta 5433 |
+
+> [!TIP]
+> As credenciais podem ser personalizadas através do arquivo `.env`. Veja [.env.example](.env.example) para referência.
+> Para subir a stack, defina `JWT_SECRET` no ambiente (ex.: `.env`).
 
 ### Desenvolvimento local
 
@@ -106,11 +121,14 @@ SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5433/dbmusicplayer
 # CORS (origens permitidas)
 CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3001
 
-# JWT
+# JWT (obrigatório em produção)
 JWT_SECRET=change-me
 JWT_EXPIRATION=300000
 JWT_REFRESH_EXPIRATION=604800000
 REFRESH_TOKEN_PEPPER=change-me
+REFRESH_COOKIE_NAME=refreshToken
+REFRESH_COOKIE_SECURE=false
+REFRESH_COOKIE_SAMESITE=Lax
 
 # Rate limit (edital)
 RATE_LIMIT_REQUESTS_PER_WINDOW=10
@@ -158,13 +176,21 @@ Login:
 ```
 curl -s -X POST "http://localhost:3001/v1/autenticacao/login" \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin"}'
+  -d '{"username":"admin","password":"admin"}' \
+  -c cookies.txt
 ```
 
-Copie o accessToken e use como:
+Copie o `accessToken` e use como:
 
 ```
 Authorization: Bearer <TOKEN>
+```
+
+Refresh (usa cookie httpOnly enviado no login):
+
+```
+curl -s -X POST "http://localhost:3001/v1/autenticacao/refresh" \
+  -b cookies.txt
 ```
 
 3) Upload múltiplo de capas (MinIO + presigned)
@@ -363,6 +389,33 @@ Bucket padrão: `album-covers`
 
 O bucket é criado/validado no startup (se habilitado no backend).
 
+## Estratégia segura de tokens
+
+Para garantir a segurança dos tokens de autenticação (JWT) e mitigar riscos como XSS (Cross-Site Scripting) e CSRF (Cross-Site Request Forgery), o sistema adota as seguintes práticas:
+
+### 1. Armazenamento e Ciclo de Vida
+- **Access Token**: Armazenado apenas em memória (via `BehaviorSubject` no Frontend) para reduzir superfície de ataque XSS.
+- **Refresh Token**: Armazenado em cookie `HttpOnly` + `SameSite`, com escopo apenas do endpoint de refresh (`/v1/autenticacao/refresh`).
+
+### 2. Renovação Automática (Refresh Flow)
+- O Frontend monitora a expiração do **Access Token**.
+- Aproximadamente 1 minuto antes de expirar, ou ao receber um erro `401 Unauthorized`, o sistema dispara automaticamente uma requisição para `/v1/autenticacao/refresh`.
+- Se o **Refresh Token** for válido, novos tokens são emitidos e a sessão é estendida de forma transparente para o usuário.
+- Se a renovação falhar, o usuário é desconectado imediatamente por segurança.
+
+### 3. Proteção no Backend
+- **Revogação**: O backend mantém um registro de tokens (hashes) que podem ser invalidados (blacklist ou rotação de tokens).
+- **Hashing**: Refresh tokens não são armazenados em texto plano no banco de dados; utiliza-se hashing (SHA-256) para proteção em caso de vazamento de dados.
+- **Rotação**: A cada uso do Refresh Token, um novo par de tokens é gerado, invalidando o anterior (Refresh Token Rotation).
+
+### 4. Segurança em Trânsito
+- Todas as comunicações devem ocorrer obrigatoriamente via **HTTPS** (em produção) para evitar interceptação (Man-in-the-Middle).
+- O backend está configurado com **CORS** restritivo, permitindo apenas origens confiáveis (o domínio do frontend).
+- Cookies de refresh respeitam `SameSite` e podem ser marcados como `Secure` em produção.
+
+---
+
+
 ## Rate limit
 
 Política do edital:
@@ -411,7 +464,7 @@ mvn -DskipTests flyway:migrate
 
 ### Artistas
 
-- GET /v1/artistas (paginação + busca + ordenação)
+- GET /v1/artistas (paginação + busca + ordenação, size máx 50)
 - GET /v1/artistas/{id}
 - POST /v1/artistas
 - PUT /v1/artistas/{id}
@@ -419,7 +472,7 @@ mvn -DskipTests flyway:migrate
 
 ### Álbuns
 
-- GET /v1/albuns
+- GET /v1/albuns (paginação + filtros, size máx 50)
 - POST /v1/albuns
 - PUT /v1/albuns/{id}
 - DELETE /v1/albuns/{id} (se aplicável)

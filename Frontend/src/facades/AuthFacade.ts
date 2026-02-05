@@ -11,10 +11,7 @@ type AuthUser = {
 };
 
 const STORAGE_KEYS = {
-  accessToken: "accessToken",
-  refreshToken: "refreshToken",
   user: "user",
-  expiresAt: "accessTokenExpiresAt",
 } as const;
 
 const REFRESH_MARGIN_MS = 60_000; // refresh 1 min before expiry
@@ -22,7 +19,6 @@ const DEFAULT_EXPIRES_SECONDS = 5 * 60;
 
 class AuthFacade {
   readonly accessToken$ = new BehaviorSubject<string | null>(null);
-  readonly refreshToken$ = new BehaviorSubject<string | null>(null);
   readonly user$ = new BehaviorSubject<AuthUser | null>(null);
   readonly isAuthenticated$ = new BehaviorSubject<boolean>(false);
   readonly loading$ = new BehaviorSubject<boolean>(false);
@@ -35,7 +31,7 @@ class AuthFacade {
   constructor() {
     attachAuthAdapter({
       getAccessToken: () => this.accessToken$.getValue(),
-      getRefreshToken: () => this.refreshToken$.getValue(),
+      getRefreshToken: () => null,
       refreshTokens: () => this.refreshTokens(),
       onAuthFailure: () => this.logout(),
     });
@@ -46,26 +42,13 @@ class AuthFacade {
     this.loading$.next(true);
     this.error$.next(null);
 
-    const stored = this.readStoredSession();
-
-    if (stored.accessToken && stored.user) {
-      this.applySession(
-        stored.accessToken,
-        stored.refreshToken ?? null,
-        stored.user,
-        stored.expiresAtMs,
-        { silentLoading: true },
-      );
-      if (
-        stored.refreshToken &&
-        stored.expiresAtMs &&
-        stored.expiresAtMs - Date.now() <= REFRESH_MARGIN_MS
-      ) {
-        await this.refreshTokens();
-      }
-    } else if (stored.refreshToken && stored.user) {
-      await this.refreshTokens();
+    const storedUser = this.readStoredUser();
+    if (storedUser) {
+      this.user$.next(storedUser);
     }
+
+    // Attempt refresh using httpOnly cookie (if present)
+    await this.refreshTokens(true);
 
     this.loading$.next(false);
     this.initialized$.next(true);
@@ -77,7 +60,7 @@ class AuthFacade {
 
     try {
       const data: LoginResponse = await authService.login(username, password);
-      this.applySession(data.accessToken, data.refreshToken, { username }, null, {
+      this.applySession(data.accessToken, { username }, null, {
         expiresInSeconds: data.expiresIn,
       });
       this.initialized$.next(true);
@@ -100,15 +83,11 @@ class AuthFacade {
   private clearSession() {
     this.clearRefreshTimer();
     this.accessToken$.next(null);
-    this.refreshToken$.next(null);
     this.user$.next(null);
     this.isAuthenticated$.next(false);
     this.error$.next(null);
 
-    localStorage.removeItem(STORAGE_KEYS.accessToken);
-    localStorage.removeItem(STORAGE_KEYS.refreshToken);
     localStorage.removeItem(STORAGE_KEYS.user);
-    localStorage.removeItem(STORAGE_KEYS.expiresAt);
   }
 
   private readStoredUser(): AuthUser | null {
@@ -117,29 +96,8 @@ class AuthFacade {
     return { username: user };
   }
 
-  private readStoredSession(): {
-    accessToken: string | null;
-    refreshToken: string | null;
-    user: AuthUser | null;
-    expiresAtMs: number | null;
-  } {
-    const accessToken = localStorage.getItem(STORAGE_KEYS.accessToken);
-    const refreshToken = localStorage.getItem(STORAGE_KEYS.refreshToken);
-    const user = this.readStoredUser();
-    const expiresAtRaw = localStorage.getItem(STORAGE_KEYS.expiresAt);
-    const expiresAtMs = expiresAtRaw ? Number(expiresAtRaw) : null;
-
-    return {
-      accessToken,
-      refreshToken,
-      user,
-      expiresAtMs: Number.isFinite(expiresAtMs) ? (expiresAtMs as number) : null,
-    };
-  }
-
   private applySession(
     accessToken: string,
-    refreshToken: string | null,
     user: AuthUser,
     expiresAtMs?: number | null,
     opts?: { expiresInSeconds?: number; silentLoading?: boolean },
@@ -155,11 +113,10 @@ class AuthFacade {
         : Date.now() + DEFAULT_EXPIRES_SECONDS * 1000);
 
     this.accessToken$.next(accessToken);
-    this.refreshToken$.next(refreshToken ?? null);
     this.user$.next(user);
     this.isAuthenticated$.next(true);
 
-    this.persistSession(accessToken, refreshToken, user.username, nextExpiresAtMs);
+    this.persistSession(user.username);
     this.scheduleRefresh(nextExpiresAtMs);
   }
 
@@ -183,48 +140,39 @@ class AuthFacade {
     }
   }
 
-  private persistSession(
-    accessToken: string,
-    refreshToken: string | null,
-    username: string,
-    expiresAtMs: number,
-  ) {
-    localStorage.setItem(STORAGE_KEYS.accessToken, accessToken);
-    if (refreshToken) {
-      localStorage.setItem(STORAGE_KEYS.refreshToken, refreshToken);
-    } else {
-      localStorage.removeItem(STORAGE_KEYS.refreshToken);
-    }
+  private persistSession(username: string) {
     localStorage.setItem(STORAGE_KEYS.user, username);
-    localStorage.setItem(STORAGE_KEYS.expiresAt, String(expiresAtMs));
   }
 
-  private async refreshTokens(): Promise<AuthTokens | null> {
+  private async refreshTokens(silent = false): Promise<AuthTokens | null> {
     if (this.refreshPromise) return this.refreshPromise;
-
-    const refreshToken =
-      this.refreshToken$.getValue() ??
-      localStorage.getItem(STORAGE_KEYS.refreshToken);
-    const user = this.user$.getValue() ?? this.readStoredUser();
-
-    if (!refreshToken || !user) return null;
 
     this.refreshPromise = (async () => {
       try {
-        const data = await authService.refresh(refreshToken);
+        const data = await authService.refresh();
+        const user =
+          this.user$.getValue() ??
+          this.readStoredUser() ??
+          this.decodeUserFromToken(data.accessToken);
+
+        if (!user) {
+          this.clearSession();
+          return null;
+        }
+
         this.applySession(
           data.accessToken,
-          data.refreshToken,
           user,
           null,
           { expiresInSeconds: data.expiresIn, silentLoading: true },
         );
         return {
           accessToken: data.accessToken,
-          refreshToken: data.refreshToken,
         };
       } catch (err) {
-        this.error$.next(getErrorMessage(err, "Sessão expirada"));
+        if (!silent) {
+          this.error$.next(getErrorMessage(err, "Sessão expirada"));
+        }
         this.clearSession();
         return null;
       } finally {
@@ -233,6 +181,25 @@ class AuthFacade {
     })();
 
     return this.refreshPromise;
+  }
+
+  private decodeUserFromToken(accessToken: string): AuthUser | null {
+    try {
+      const [, payload] = accessToken.split(".");
+      if (!payload) return null;
+      const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+      const json = decodeURIComponent(
+        atob(base64)
+          .split("")
+          .map((c) => `%${c.charCodeAt(0).toString(16).padStart(2, "0")}`)
+          .join(""),
+      );
+      const data = JSON.parse(json) as { sub?: string };
+      if (data?.sub) return { username: data.sub };
+      return null;
+    } catch {
+      return null;
+    }
   }
 }
 

@@ -14,11 +14,13 @@ const BASE_URL = API_HOST.endsWith("/v1") ? API_HOST : `${API_HOST}/v1`;
 export const rawHttp: AxiosInstance = axios.create({
   baseURL: BASE_URL,
   headers: { "Content-Type": "application/json" },
+  withCredentials: true,
 });
 
 const http: AxiosInstance = axios.create({
   baseURL: BASE_URL,
   headers: { "Content-Type": "application/json" },
+  withCredentials: true,
 });
 
 type QueueTask<T> = {
@@ -141,7 +143,7 @@ async function tryRefreshTokens(): Promise<AuthTokens | null> {
   refreshPromise = (async () => {
     try {
       const tokens = await authAdapter.refreshTokens();
-      if (tokens?.accessToken && tokens.refreshToken) {
+      if (tokens?.accessToken) {
         authAdapter.onTokensUpdated?.(tokens);
         return tokens;
       }

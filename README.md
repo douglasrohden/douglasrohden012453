@@ -20,19 +20,19 @@ Aplicação Full Stack (Java Spring Boot + React + TypeScript) em conformidade c
 
 ## Sumário
 
-- Arquitetura
-- Requisitos do edital
-- Estrutura de dados
-- Como rodar
-- MinIO e presigned URLs
-- Estratégia segura de tokens
-- Rate limit
-- WebSocket
-- Banco e Flyway
-- Endpoints
-- Testes
-- Troubleshooting
-- Dados do candidato
+- [Arquitetura](#arquitetura)
+- [Requisitos do edital](#requisitos-do-edital-checklist)
+- [Estrutura de dados](#estrutura-de-dados-tabelas-e-decisões)
+- [Como rodar](#como-rodar)
+- [MinIO e presigned URLs](#minio-e-presigned-urls)
+- [Estratégia segura de tokens](#estratégia-segura-de-tokens)
+- [Rate limit](#rate-limit)
+- [WebSocket](#websocket)
+- [Banco e Flyway](#banco-e-flyway)
+- [Endpoints](#endpoints)
+- [Testes](#testes)
+- [Troubleshooting](#troubleshooting)
+- [Dados do candidato](#dados-do-candidato)
 
 ## Como rodar
 
@@ -68,6 +68,8 @@ docker compose ps
 | **Frontend** | http://localhost:5173 | Interface React da aplicação |
 | **Backend API** | http://localhost:3001/v1 | API REST versionada |
 | **Swagger UI** | http://localhost:3001/swagger-ui/index.html | Documentação interativa da API |
+| **Health (Liveness)** | http://localhost:3001/actuator/health/liveness | Health check de liveness (Spring Actuator) |
+| **Health (Readiness)** | http://localhost:3001/actuator/health/readiness | Health check de readiness (Spring Actuator) |
 | **MinIO Console** | http://localhost:9001 | Interface administrativa do MinIO |
 | **MinIO S3 API** | http://localhost:9000 | Endpoint S3 para upload/download |
 | **pgAdmin** | http://localhost:5050 | Interface de gerenciamento PostgreSQL |
@@ -106,97 +108,55 @@ npm run dev
 
 ## Roteiro de validação
 
-1) Stack em execução
+Checklist curto:
 
-Se ainda não subiu a stack, siga **Como rodar → Docker Compose (recomendado)**.
+1. Subir a stack
 
-2) Swagger + login (JWT)
-
-Swagger: http://localhost:3001/swagger-ui/index.html
-
-Login:
-
-```
-curl -s -X POST "http://localhost:3001/v1/autenticacao/login" \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin"}' \
-  -c cookies.txt
+```bash
+docker compose up -d --build
+docker compose ps
 ```
 
-Copie o `accessToken` e use como:
+1. Swagger
 
-```
-Authorization: Bearer <TOKEN>
-```
+<http://localhost:3001/swagger-ui/index.html>
 
-Refresh (usa cookie httpOnly enviado no login):
+1. Login + testar token (PowerShell)
 
-```
-curl -s -X POST "http://localhost:3001/v1/autenticacao/refresh" \
-  -b cookies.txt
-```
-
-3) Upload múltiplo de capas (MinIO + presigned)
-
-Importante: o banco não guarda URL presigned. Salva apenas object_key + metadados.
-A URL é gerada sob demanda em GET /v1/albuns/{id}/capas.
-
-Upload:
-
-```
-curl -s -X POST "http://localhost:3001/v1/albuns/1/capas" \
-  -H "Authorization: Bearer <TOKEN>" \
-  -F "files=@./exemplos/capa1.jpg" \
-  -F "files=@./exemplos/capa2.jpg"
+```powershell
+$resp = curl.exe -s -X POST "http://localhost:3001/v1/autenticacao/login" -H "Content-Type: application/json" -d "{\"username\":\"admin\",\"password\":\"admin\"}" -c cookies.txt | ConvertFrom-Json
+$TOKEN = $resp.accessToken
+curl.exe -s "http://localhost:3001/v1/artistas?page=0&size=1" -H "Authorization: Bearer $TOKEN"
 ```
 
-Listagem (retorna presigned + expiresAt):
+1. Refresh
 
-```
-curl -s "http://localhost:3001/v1/albuns/1/capas" \
-  -H "Authorization: Bearer <TOKEN>"
-```
-
-MinIO Console (ver objetos):
-
-http://localhost:9001 (credenciais em [.env.example](.env.example); em execução local, use seu `.env`)
-
-4) Testar expiração do presigned em 60s (teste rápido)
-
-Defina a variável no `.env` (ou no ambiente) e reinicie o serviço `backend`:
-
-```
-MINIO_PRESIGN_EXPIRATION_MINUTES=1
+```powershell
+curl.exe -s -X POST "http://localhost:3001/v1/autenticacao/refresh" -b cookies.txt
 ```
 
-Gere um presigned e tente abrir após ~60s (esperado: falhar).
+1. Upload 2 capas + listar presigned (troque os caminhos)
 
-5) Rate limit (10/min)
-
-Faça 11 chamadas ao mesmo endpoint dentro de 60s:
-
-```
-for i in $(seq 1 11); do
-  curl -s -o /dev/null -w "%{http_code}\n" \
-    "http://localhost:3001/v1/artistas?page=0&size=1" \
-    -H "Authorization: Bearer <TOKEN>";
-done
+```powershell
+curl.exe -s -X POST "http://localhost:3001/v1/albuns/1/capas" -H "Authorization: Bearer $TOKEN" -F "files=@C:\\caminho\\capa1.jpg" -F "files=@C:\\caminho\\capa2.jpg"
+curl.exe -s "http://localhost:3001/v1/albuns/1/capas" -H "Authorization: Bearer $TOKEN"
 ```
 
-Esperado: após exceder, retorna 429 com Retry-After.
+MinIO Console: <http://localhost:9001>
 
-6) WebSocket (novo álbum)
+1. Rate limit (esperado: 429)
 
-Endpoint: http://localhost:3001/ws (SockJS/STOMP)
-
-Topic: /topic/albuns/created
-Crie um álbum e verifique notificação.
-
-7) Health checks
-
+```powershell
+1..11 | ForEach-Object { curl.exe -s -o NUL -w "%{http_code}\n" "http://localhost:3001/v1/artistas?page=0&size=1" -H "Authorization: Bearer $TOKEN" }
 ```
-GET /actuator/health/liveness
-GET /actuator/health/readiness
+
+1. WebSocket (manual): <http://localhost:3001/ws> (topic `/topic/albuns/created`) — crie um álbum no Swagger (`POST /v1/albuns`) e veja a notificação no Frontend.
+
+1. Health
+
+```powershell
+curl.exe -s "http://localhost:3001/actuator/health/liveness"
+curl.exe -s "http://localhost:3001/actuator/health/readiness"
 ```
 
 ## Arquitetura

@@ -82,7 +82,13 @@ class ArtistaControllerTest {
         ArtistaDto dto = new ArtistaDto(1L, "Artista Teste", 5L, "CANTOR", null);
         Page<ArtistaDto> page = new PageImpl<>(List.of(dto), PageRequest.of(0, 10), 1);
 
-        when(artistaService.search(anyString(), anyString(), anyString(), anyString(), any(Pageable.class))).thenReturn(page);
+        when(artistaService.search(
+                nullable(String.class),
+                nullable(String.class),
+                nullable(String.class),
+                nullable(String.class),
+                any(Pageable.class)))
+            .thenReturn(page);
 
         mockMvc.perform(get("/v1/artistas"))
             .andExpect(status().isOk())

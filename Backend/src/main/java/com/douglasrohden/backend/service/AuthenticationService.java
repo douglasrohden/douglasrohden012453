@@ -2,7 +2,6 @@ package com.douglasrohden.backend.service;
 
 import com.douglasrohden.backend.dto.LoginRequest;
 import com.douglasrohden.backend.dto.LoginResponse;
-import com.douglasrohden.backend.dto.RefreshTokenRequest;
 import com.douglasrohden.backend.model.RefreshToken;
 import com.douglasrohden.backend.model.Usuario;
 import com.douglasrohden.backend.repository.RefreshTokenRepository;
@@ -65,8 +64,7 @@ public class AuthenticationService {
     }
 
     @Transactional
-    public LoginResponse refresh(RefreshTokenRequest request) {
-        String rawRefreshToken = request.getRefreshToken();
+    public LoginResponse refresh(String rawRefreshToken) {
         if (rawRefreshToken == null || rawRefreshToken.isBlank()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token inválido");
         }

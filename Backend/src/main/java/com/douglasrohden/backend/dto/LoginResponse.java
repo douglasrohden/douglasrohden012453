@@ -1,9 +1,11 @@
 package com.douglasrohden.backend.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(name = "LoginResponse", description = "Resposta de autenticação com access e refresh tokens")
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class LoginResponse {
 
     @Schema(name = "accessToken", description = "JWT de acesso", example = "eyJhbGci...")

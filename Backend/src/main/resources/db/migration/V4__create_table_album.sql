@@ -5,7 +5,9 @@ CREATE TABLE album (
 );
 
 -- Seed dos álbuns conforme edital
-INSERT INTO album (titulo, ano) VALUES
+INSERT INTO album (titulo, ano)
+SELECT v.titulo, v.ano
+FROM (VALUES
 ('Harakiri', 2012),
 ('Black Blooms', 2019),
 ('The Rough Dog', 2021),
@@ -18,4 +20,9 @@ INSERT INTO album (titulo, ano) VALUES
 ('Bem Sertanejo - (1ª Temporada) - EP', 2014),
 ('Use Your Illusion I', 1991),
 ('Use Your Illusion II', 1991),
-('Greatest Hits', 2004);
+('Greatest Hits', 2004)
+) AS v(titulo, ano)
+WHERE NOT EXISTS (
+    SELECT 1 FROM album a
+    WHERE a.titulo = v.titulo AND a.ano IS NOT DISTINCT FROM v.ano
+);

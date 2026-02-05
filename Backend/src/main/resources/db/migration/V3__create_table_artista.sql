@@ -8,4 +8,6 @@ INSERT INTO artista (nome, tipo) VALUES
 ('Serj Tankian', 'CANTOR'),
 ('Mike Shinoda', 'CANTOR'),
 ('Michel Teló', 'CANTOR'),
-('Guns N’ Roses', 'BANDA');
+('Guns N’ Roses', 'BANDA')
+ON CONFLICT (nome) DO UPDATE
+SET tipo = EXCLUDED.tipo;

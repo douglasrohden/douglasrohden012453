@@ -19,4 +19,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- Username: admin
 -- Password: admin (hash BCrypt gerado para 'admin')
 INSERT INTO usuarios (username, password_hash, created_at, updated_at) 
-VALUES ('admin', '$2a$10$LIqJxdaXGYfvIOIGxNLUe.rGKBUxjUQtUtgY0gLAG.s9/E2KCMsdC', NOW(), NOW());
+VALUES ('admin', '$2a$10$LIqJxdaXGYfvIOIGxNLUe.rGKBUxjUQtUtgY0gLAG.s9/E2KCMsdC', NOW(), NOW())
+ON CONFLICT (username) DO UPDATE
+SET password_hash = EXCLUDED.password_hash,
+    updated_at = NOW();

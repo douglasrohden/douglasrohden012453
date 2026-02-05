@@ -1,8 +1,7 @@
-import { initThemeMode } from "flowbite-react";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { ThemeInit } from "../.flowbite-react/init.tsx";
 import App from "./App.tsx";
+import { ThemeInit } from "./ThemeInit";
 import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
@@ -11,5 +10,3 @@ createRoot(document.getElementById("root")!).render(
     <App />
   </StrictMode>,
 );
-
-initThemeMode();

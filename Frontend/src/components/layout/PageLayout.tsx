@@ -20,12 +20,14 @@ export function PageLayout({ children }: PageLayoutProps) {
       />
 
       <div className="flex flex-1 flex-col">
-        <PageHeader
-          title={`Bem-vindo, ${user?.username ?? "usuário"}!`}
-          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-        />
+        <div className="mx-auto w-full max-w-7xl">
+          <PageHeader
+            title={`Bem-vindo, ${user?.username ?? "usuário"}!`}
+            onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+          />
+        </div>
 
-        <div className="h-[calc(100vh-73px)] overflow-y-auto p-4 md:p-6">
+        <div className="mx-auto w-full max-w-7xl flex-1 overflow-y-auto p-4 md:p-6">
           {children}
         </div>
       </div>

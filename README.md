@@ -24,7 +24,6 @@ Aplicação Full Stack (Java Spring Boot + React + TypeScript) em conformidade c
 - Requisitos do edital
 - Estrutura de dados
 - Como rodar
-- Variáveis de ambiente
 - MinIO e presigned URLs
 - Estratégia segura de tokens
 - Rate limit
@@ -48,7 +47,16 @@ cd douglasrohden012453
 
 ### Docker Compose (recomendado)
 
+### Pré-requisito: configurar variáveis de ambiente
+
+```bash
+cp .env.example .env
+# edite .env e defina JWT_SECRET (obrigatório)
 ```
+
+### Subir a stack
+
+```bash
 docker compose up -d --build
 docker compose ps
 ```
@@ -96,125 +104,8 @@ npm install
 npm run dev
 ```
 
-## Variáveis de ambiente
+## Roteiro de validação
 
-Para executar localmente, crie arquivos .env a partir dos exemplos e ajuste os valores.
-
-1) Criar os .env a partir dos exemplos
-
-Linux / macOS:
-
-```bash
-cp .env.example .env
-cp Backend/.env.example Backend/.env
-cp Frontend/.env.example Frontend/.env
-```
-
-Windows (PowerShell):
-
-```powershell
-Copy-Item .env.example .env
-Copy-Item Backend\.env.example Backend\.env
-Copy-Item Frontend\.env.example Frontend\.env
-```
-
-2) Configurar variáveis obrigatórias
-
-Edite os arquivos .env criados e ajuste os valores. Obrigatório: defina um JWT_SECRET forte (não use valor padrão).
-
-Exemplo (editar no Linux/macOS):
-
-```bash
-nano .env
-```
-
-Exemplo (editar no Windows):
-
-```powershell
-notepad .env
-```
-
-Observação: as variáveis podem ser lidas pelo docker-compose.yml (raiz) e/ou pelos serviços (Backend/.env e Frontend/.env), conforme definido na configuração do projeto.
-
-3) Subir a stack (padrão)
-
-Na raiz do repositório:
-
-```bash
-docker compose up -d --build
-```
-
-4) (Opcional) Usar um arquivo de ambiente alternativo
-
-Se quiser usar outro arquivo (ex.: .env.local):
-
-```bash
-docker compose --env-file .env.local up -d --build
-```
-
-Exemplo base:
-
-```dotenv
-# Backend
-SPRING_PROFILES_ACTIVE=dev
-SERVER_PORT=3001
-SERVER_ADDRESS=0.0.0.0
-
-# Logging
-LOGGING_LEVEL_ROOT=INFO
-
-# DB
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres
-POSTGRES_DB=dbmusicplayer
-POSTGRES_PORT=5433
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5433/dbmusicplayer
-
-# CORS (origens permitidas)
-CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3001
-
-# JWT (obrigatório) — gere um segredo forte e único
-JWT_SECRET=REPLACE_WITH_A_STRONG_SECRET
-JWT_EXPIRATION=300000
-JWT_REFRESH_EXPIRATION=604800000
-REFRESH_TOKEN_PEPPER=REPLACE_WITH_A_STRONG_SECRET
-REFRESH_COOKIE_NAME=refreshToken
-REFRESH_COOKIE_SECURE=false
-REFRESH_COOKIE_SAMESITE=Lax
-
-# Rate limit (edital)
-RATE_LIMIT_REQUESTS_PER_WINDOW=10
-RATE_LIMIT_WINDOW_SECONDS=60
-RATE_LIMIT_BUCKET_EXPIRE_AFTER_SECONDS=120
-
-# ---------- MinIO ----------
-MINIO_ENDPOINT=http://localhost:9000
-MINIO_EXTERNAL_ENDPOINT=http://localhost:9000
-# Credenciais do servidor MinIO (compose)
-MINIO_ROOT_USER=minioadmin
-MINIO_ROOT_PASSWORD=minioadmin123
-# Credenciais usadas pelo backend
-MINIO_ACCESS_KEY=minioadmin
-MINIO_SECRET_KEY=minioadmin123
-MINIO_BUCKET=album-covers
-MINIO_REGION=us-east-1
-MINIO_PRESIGN_EXPIRATION_MINUTES=30
-MINIO_MAX_FILE_SIZE_BYTES=5242880
-MINIO_MAX_REQUEST_SIZE_BYTES=26214400
-
-# Integração externa - Regionais
-INTEGRADOR_REGIONAIS_URL=https://integrador-argus-api.geia.vip
-INTEGRADOR_REGIONAIS_TIMEOUT_CONNECT=3s
-INTEGRADOR_REGIONAIS_TIMEOUT_READ=5s
-
-# Frontend
-VITE_API_URL=http://localhost:3001/v1
-
-```
-
-Obs.: o WebSocket é derivado de VITE_API_URL (ex.: http://localhost:3001/ws).
-
-## Roteiro de validação 
 1) Stack em execução
 
 Se ainda não subiu a stack, siga **Como rodar → Docker Compose (recomendado)**.

@@ -180,25 +180,105 @@ curl.exe -s "http://localhost:3001/actuator/health/readiness"
 
 ## Requisitos do edital (checklist)
 
-Backend 
+### ✅ Checklist do Edital — Backend (Obrigatório)
 
-- [x] API versionada /v1
-- [x] JWT (expira em 5 min) + refresh token
-- [x] Swagger/OpenAPI
-- [x] Flyway (schema + seed enunciado)
-- [x] Paginação / busca / ordenação (artistas/álbuns)
-- [x] Upload múltiplo de imagens (álbum) via MinIO
-- [x] Presigned URLs com expiração padrão de 30 min
-- [x] Docker compose (API + Front + DB + MinIO)
+- [x] a) Segurança (CORS / Origem)
+  - [x] Restringe chamadas por origem (sem `*`)
+  - [x] Em dev: permite `localhost` (se necessário)
+  - [x] Em produção: permite somente o domínio do Front via env (`CORS_ALLOWED_ORIGINS`)
+- [x] b) Autenticação JWT
+  - [x] JWT implementado
+  - [x] Access token expira em 5 minutos
+  - [x] Refresh token + endpoint de refresh
+- [x] c) Verbos HTTP mínimos
+  - [x] GET
+  - [x] POST
+  - [x] PUT
+- [x] d) Paginação (Álbuns)
+  - [x] Paginação na consulta de álbuns (`page`, `size`)
+- [x] e) Álbuns por Cantores/Bandas (consultas parametrizadas)
+  - [x] Exposição de álbuns por cantores/bandas
+  - [x] Consultas parametrizadas (filtros por artista/tipo/relacionamento)
+- [x] f) Busca por nome do artista + ordenação
+  - [x] Consulta por nome do artista
+  - [x] Ordenação alfabética asc/desc
+- [x] g) Upload de capas (múltiplas imagens)
+  - [x] Upload de uma ou mais imagens (multipart)
+  - [x] Validação de tipo (`image/*` / allowlist) e tamanho máximo
+- [x] h) Armazenamento no MinIO (S3)
+  - [x] Imagens armazenadas no MinIO (API compatível S3)
+  - [x] Bucket configurável via env (`MINIO_BUCKET`)
+- [x] i) Presigned URL (30 min)
+  - [x] Recuperação de imagens via links pré-assinados
+  - [x] Expiração padrão de 30 min (configurável via env, default 30)
+- [x] j) Versionamento de endpoints
+  - [x] Endpoints versionados (ex.: `/v1/...`)
+- [x] k) Flyway Migrations
+  - [x] Criação de tabelas via Flyway
+  - [x] Seed via Flyway
+- [x] l) OpenAPI/Swagger
+  - [x] Endpoints documentados com OpenAPI/Swagger
+  - [x] Segurança Bearer JWT no Swagger
 
-Sênior 
+### ✅ Checklist do Edital — Frontend (Obrigatório)
 
-- [x] Health checks liveness/readiness
-- [x] WebSocket (notificar novo álbum)
-- [x] Rate limit 10 req/min por usuário autenticado
-- [x] Sincronização de “Regionais” (import/sync com ativo)
+- [x] a) Tela Inicial — Listagem de Artistas
+  - [x] Lista de artistas
+  - [x] Cards/tabela responsiva (nome + nº de álbuns)
+  - [x] Busca por nome
+  - [x] Ordenação asc/desc
+  - [x] Paginação
+- [x] b) Tela de Detalhamento do Artista
+  - [x] Exibe álbuns associados ao artista
+  - [x] Exibe informações completas incluindo capas
+  - [x] Estado vazio quando não houver álbuns
+- [x] c) Tela de Cadastro/Edição
+  - [x] Formulário para inserir artistas
+  - [x] Formulário para adicionar álbuns a um artista
+  - [x] Edição de registros (artista e/ou álbum)
+  - [x] Upload de capas (via endpoints com MinIO)
+- [x] d) Autenticação
+  - [x] Acesso ao front exige login
+  - [x] Autenticação JWT consumindo endpoint
+  - [x] Expiração/renovação: no boot (se houver refresh), em 401 (sem loop), logout/redirect em falha
+- [x] e) Arquitetura (Frontend)
+  - [x] Modularização + componentização
+  - [x] Services (API) separados de estado/regras
+  - [x] Layout responsivo
+  - [x] Lazy loading de rotas/módulos
+  - [x] Paginação ou scroll infinito
+  - [x] TypeScript
 
-Observação: o edital exige “várias imagens”. Este projeto implementa múltiplas capas por álbum via /capas.
+### ✅ Checklist do Edital — Requisitos apenas para Sênior
+
+- [x] a) Health Checks e Liveness/Readiness
+  - [x] Health check geral
+  - [x] Liveness
+  - [x] Readiness
+- [x] b) Testes unitários
+  - [x] Backend: testes unitários mínimos
+  - [x] Frontend: testes unitários mínimos
+  - [x] Execução documentada no README
+- [x] c) WebSocket
+  - [x] API notifica a cada novo álbum cadastrado
+  - [x] Front exibe notificação em tempo real
+- [x] d) Rate limit
+  - [x] Máximo 10 req/min por usuário
+  - [x] Retorna 429 quando exceder
+  - [x] Retorna `Retry-After` no 429
+- [x] e) Frontend com Facade + BehaviorSubject
+  - [x] Padrão Facade
+  - [x] Estado com BehaviorSubject (RxJS)
+- [x] f) Integração Regionais — Polícia Civil
+  - [x] Importa endpoint `https://integrador-argus-api.geia.vip/v1/regionais`
+  - [x] Tabela interna `regional(id integer, nome varchar(200), ativo boolean)`
+  - [x] Sincronização por inativação/criação (inserir novos, inativar ausentes, inativar e criar ao alterar)
+
+### ✅ Instruções de Entrega (Obrigatório)
+
+- [x] Solução via `docker-compose` contendo: Banco de Dados (BD), MinIO, API e Frontend
+
+Observação: o edital exige “várias imagens”. Este projeto implementa múltiplas capas por álbum via `/capas`.
 
 ## Estrutura de dados (tabelas e decisões)
 
@@ -489,7 +569,7 @@ Exemplo de práticas recomendadas:
 ## O que foi e o que não foi feito
 
 - Foi feito: itens do checklist do edital, incluindo JWT/refresh, CRUD, paginação, upload em MinIO, presigned, rate limit, WebSocket, regionais, Swagger, Flyway, health checks e docker-compose.
-- Não foi feito: nenhuma pendência relevante identificada no momento. Se algo faltar na avaliação, a seção pode ser atualizada com a justificativa correspondente.
+- Não foi feito: nenhuma pendência funcional relevante identificada no momento. Se algo faltar na avaliação (ex.: algum requisito interpretado de forma diferente), esta seção deve ser atualizada com a justificativa correspondente.
 
 ## Troubleshooting
 1) Imagens não carregam no frontend

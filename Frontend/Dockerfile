@@ -16,8 +16,8 @@ COPY . .
 ARG VITE_API_URL=http://localhost:3001/v1
 ENV VITE_API_URL=$VITE_API_URL
 
-# Build the application (skip TS check due to TS errors)
-RUN npm run build:no-check
+# Build the application with TypeScript checks enabled
+RUN npm run build
 
 # Production stage
 FROM nginx:alpine

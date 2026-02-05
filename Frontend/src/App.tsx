@@ -5,6 +5,7 @@ import { PublicRoute } from "./components/PublicRoute";
 import { ToastProvider } from "./contexts/ToastContext";
 import { LoadingSpinner } from "./components/common/LoadingSpinner";
 import { ApiGlobalToasts } from "./components/ApiGlobalToasts";
+import { WebSocketToasts } from "./components/WebSocketToasts";
 import { authFacade } from "./facades/AuthFacade";
 import { notificationsFacade } from "./facades/NotificationsFacade";
 
@@ -41,6 +42,7 @@ export default function App() {
     <BrowserRouter>
       <ToastProvider>
         <ApiGlobalToasts />
+        <WebSocketToasts />
         <Suspense fallback={<FullScreenFallback />}>
           <Routes>
             {/* rota raiz */}

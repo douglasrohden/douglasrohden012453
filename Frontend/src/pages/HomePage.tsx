@@ -107,7 +107,6 @@ export default function HomePage() {
       <CreateArtistForm
         isOpen={showCreate}
         onClose={() => setShowCreate(false)}
-        onCreated={refresh}
       />
 
       <EditArtistForm

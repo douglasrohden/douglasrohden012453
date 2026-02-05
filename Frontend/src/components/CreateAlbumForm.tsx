@@ -213,7 +213,6 @@ export default function CreateAlbumForm({
             titulo: trimmedTitulo,
             ano: anoValue,
             artistaIds: artistIds,
-            individual: true,
           },
           files,
         );

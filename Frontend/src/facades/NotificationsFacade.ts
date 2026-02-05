@@ -1,8 +1,6 @@
 import { BehaviorSubject } from "rxjs";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
-import { albumsFacade } from "./AlbumsFacade";
-import { artistsFacade } from "./ArtistsFacade";
 
 export type AlbumCreatedMessage = {
   id: number;
@@ -68,9 +66,6 @@ class NotificationsFacade {
             this.notifications$.next(updated);
             this.unreadCount$.next(updated.filter((n) => !n.read).length);
 
-            // refletir na UI automaticamente
-            albumsFacade.refresh();
-            artistsFacade.refresh();
           } catch {
             // ignore invalid payload
           }

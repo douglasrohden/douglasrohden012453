@@ -122,7 +122,7 @@ export default function AlbunsList() {
       <CreateAlbumForm
         show={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        onSuccess={refresh}
+        onSuccess={() => {}}
       />
 
       <EditAlbumModal

@@ -181,7 +181,7 @@ export default function ArtistDetailPage() {
             artistId={artist.id}
             show={showAddAlbumModal}
             onClose={() => setShowAddAlbumModal(false)}
-            onSuccess={() => artistDetailFacade.refresh()}
+            onSuccess={() => {}}
           />
 
           <CardGrid
